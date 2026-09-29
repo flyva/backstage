@@ -1,0 +1,10 @@
+[Unit]
+Description=Backstage : rappels quotidiens (matériel à rendre)
+After=backstage.service
+
+[Service]
+Type=oneshot
+User=backstage
+EnvironmentFile=/opt/backstage/.env
+# Le secret est lu dans /opt/backstage/.env (CRON_SECRET) et n'apparaît pas dans la liste des processus.
+ExecStart=/bin/sh -c 'curl -fsS -X POST -H "Authorization: Bearer $CRON_SECRET" http://127.0.0.1:3000/api/cron/reminders'

@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Archives de déploiement générées (npm run package) et scripts de déploiement
+    "dist/**",
+    "deploy/**",
+    "scripts/**",
   ]),
 ]);
 

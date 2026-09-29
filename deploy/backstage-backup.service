@@ -1,0 +1,6 @@
+[Unit]
+Description=Backstage : sauvegarde de la base et des envois
+
+[Service]
+Type=oneshot
+ExecStart=/opt/backstage/backup.sh

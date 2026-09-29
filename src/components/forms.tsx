@@ -15,7 +15,7 @@ export function LoginForm() {
     <form action={action} className="space-y-4">
       <div>
         <label className="label" htmlFor="email">Email</label>
-        <input id="email" name="email" type="email" autoComplete="email" required className="input" />
+        <input id="email" name="email" type="email" autoComplete="email" defaultValue={state?.values?.email} required className="input" />
       </div>
       <div>
         <label className="label" htmlFor="password">Mot de passe</label>
@@ -27,22 +27,29 @@ export function LoginForm() {
   );
 }
 
-export function RegisterForm() {
+export function RegisterForm({ codeRequired = false }: { codeRequired?: boolean }) {
   const [state, action, pending] = useActionState(register, undefined);
   return (
     <form action={action} className="space-y-4">
       <div>
         <label className="label" htmlFor="name">Prénom et nom</label>
-        <input id="name" name="name" autoComplete="name" required className="input" />
+        <input id="name" name="name" autoComplete="name" defaultValue={state?.values?.name} required className="input" />
       </div>
       <div>
         <label className="label" htmlFor="email">Email</label>
-        <input id="email" name="email" type="email" autoComplete="email" required className="input" />
+        <input id="email" name="email" type="email" autoComplete="email" defaultValue={state?.values?.email} required className="input" />
       </div>
       <div>
         <label className="label" htmlFor="password">Mot de passe (8 caractères min.)</label>
         <input id="password" name="password" type="password" autoComplete="new-password" minLength={8} required className="input" />
       </div>
+      {codeRequired && (
+        <div>
+          <label className="label" htmlFor="code">Code d&apos;invitation</label>
+          <input id="code" name="code" required autoComplete="off" className="input" />
+          <p className="mt-1 text-xs text-muted">Demandé à la personne qui gère Backstage.</p>
+        </div>
+      )}
       <Feedback state={state} />
       <button className="btn w-full" disabled={pending}>{pending ? "Création…" : "Créer mon compte"}</button>
     </form>

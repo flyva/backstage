@@ -1,0 +1,7 @@
+# Les scripts et unités systemd tournent sur le Pi (Linux) : toujours des fins de ligne LF,
+# même si Git est configuré en autocrlf sous Windows.
+*.sh text eol=lf
+deploy/*.service text eol=lf
+deploy/*.timer text eol=lf
+deploy/*.yml text eol=lf
+deploy/env.example text eol=lf

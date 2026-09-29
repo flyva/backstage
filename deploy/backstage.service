@@ -1,0 +1,31 @@
+[Unit]
+Description=Backstage (hub de la promo 3IS)
+After=network-online.target mariadb.service mysql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=backstage
+Group=backstage
+WorkingDirectory=/opt/backstage/current/app
+EnvironmentFile=/opt/backstage/.env
+Environment=NODE_ENV=production
+Environment=PORT=3000
+# Écoute uniquement en local : c'est cloudflared qui expose le site.
+Environment=HOSTNAME=127.0.0.1
+# Pi 1 Go : on borne la mémoire de Node pour laisser de la place à la base de données.
+Environment=NODE_OPTIONS=--max-old-space-size=256
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=5
+MemoryMax=450M
+
+# Durcissement : le service n'a besoin d'écrire que dans /opt/backstage/data
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/opt/backstage/data
+
+[Install]
+WantedBy=multi-user.target

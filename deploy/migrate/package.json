@@ -1,0 +1,9 @@
+{
+  "name": "backstage-migrate",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "drizzle-orm": "^0.45.3",
+    "mysql2": "^3.24.5"
+  }
+}

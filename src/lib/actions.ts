@@ -16,9 +16,11 @@ import {
 } from "@/lib/auth";
 import { SETTING_KEYS } from "@/lib/settings";
 import { geocode } from "@/lib/mobility";
+import { allow, clientIp } from "@/lib/rate-limit";
+import { timingSafeEqual } from "node:crypto";
 import { fetchIcal, clearIcalCache } from "@/lib/ical";
 
-export type FormState = { error?: string; ok?: string } | undefined;
+export type FormState = { error?: string; ok?: string; values?: Record<string, string> } | undefined;
 
 const credentials = z.object({
   email: z.string().trim().toLowerCase().email("Email invalide"),
@@ -26,25 +28,41 @@ const credentials = z.object({
 });
 
 export async function login(_: FormState, fd: FormData): Promise<FormState> {
+  const keep = { email: String(fd.get("email") ?? "") };
   const parsed = credentials.safeParse({ email: fd.get("email"), password: fd.get("password") });
-  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  if (!parsed.success) return { error: parsed.error.issues[0].message, values: keep };
+  const ip = await clientIp();
+  // Anti force brute : par couple IP+email, et par IP.
+  if (!allow(`login:${ip}:${parsed.data.email}`, 8, 10 * 60e3) || !allow(`login-ip:${ip}`, 40, 10 * 60e3)) {
+    return { error: "Trop de tentatives : réessaie dans quelques minutes", values: keep };
+  }
   const [user] = await db.select().from(users).where(eq(users.email, parsed.data.email)).limit(1);
   // Même message que l'email ou le mot de passe soit faux.
   if (!user || !(await verifyPassword(parsed.data.password, user.passwordHash)))
-    return { error: "Identifiants incorrects" };
+    return { error: "Identifiants incorrects", values: keep };
   await createSession(user.id);
   redirect("/");
 }
 
 export async function register(_: FormState, fd: FormData): Promise<FormState> {
+  const keep = { name: String(fd.get("name") ?? ""), email: String(fd.get("email") ?? "") };
   const parsed = credentials
     .extend({ name: z.string().trim().min(2, "Nom trop court").max(120) })
     .safeParse({ email: fd.get("email"), password: fd.get("password"), name: fd.get("name") });
-  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  if (!parsed.success) return { error: parsed.error.issues[0].message, values: keep };
   const { email, password, name } = parsed.data;
 
+  if (!allow(`register:${await clientIp()}`, 5, 60 * 60e3)) return { error: "Trop d'inscriptions depuis cette adresse : réessaie plus tard", values: keep };
+  // Si REGISTRATION_CODE est défini, l'inscription est réservée aux personnes qui le connaissent.
+  const required = process.env.REGISTRATION_CODE;
+  if (required) {
+    const given = Buffer.from(String(fd.get("code") ?? "").trim());
+    const expected = Buffer.from(required);
+    if (given.length !== expected.length || !timingSafeEqual(given, expected)) return { error: "Code d'invitation incorrect", values: keep };
+  }
+
   const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
-  if (existing) return { error: "Un compte existe déjà avec cet email" };
+  if (existing) return { error: "Un compte existe déjà avec cet email", values: keep };
 
   // Le tout premier compte devient administrateur.
   const [{ total }] = await db.select({ total: count() }).from(users);

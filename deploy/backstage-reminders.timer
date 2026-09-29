@@ -1,0 +1,9 @@
+[Unit]
+Description=Backstage : rappels quotidiens à 7h30
+
+[Timer]
+OnCalendar=*-*-* 07:30:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

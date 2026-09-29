@@ -18,22 +18,12 @@ Le **premier compte créé** devient administrateur. L'admin règle le Wi-Fi, le
 
 Après une modification de `src/db/schema.ts` : `npm run db:generate` puis `npm run db:migrate`.
 
-## Déploiement sur Raspberry Pi (32 bits, 1 Go)
+## Déploiement
 
-Toujours **compiler sur le PC**, jamais sur le Pi :
+Voir **[DEPLOY.md](DEPLOY.md)** : installation pas à pas sur Raspberry Pi (Node 22, MariaDB, systemd, Cloudflare Tunnel, sauvegardes, mises à jour).
 
-```bash
-npm run build
-```
+En bref, sur le PC : `npm run package` construit `dist/backstage-<date>.tar.gz` (compilation faite ici, jamais sur le Pi), puis `install.sh` sur le Pi migre la base, bascule sur la nouvelle version et revient en arrière si le site ne répond pas.
 
-Copier sur le Pi : `.next/standalone/`, `.next/static/` (dans `.next/standalone/.next/static`), `public/` et `drizzle/`. Puis, sur le Pi :
+## Fonctionnalités
 
-```bash
-PORT=3000 HOSTNAME=127.0.0.1 DATABASE_URL="mysql://..." node server.js
-```
-
-À lancer via `systemd` pour le redémarrage automatique. Le dossier `data/uploads/` (plan de l'école) doit être conservé entre les déploiements. Le projet n'utilise aucune dépendance native (pas de `sharp`, hachage via `node:crypto`), pour rester compatible ARM 32 bits ; il faut seulement une version de Node qui fournit un binaire `armv7l`.
-
-## Exposition
-
-Cloudflare Tunnel (`cloudflared`) vers `http://127.0.0.1:3000`. Le HTTPS est indispensable (cookies de session `secure`, PWA, notifications).
+Comptes et rôles · profil (adresse, iCal Ypareo) · thème clair/sombre · agenda · mobilité (TBM temps réel, Le Vélo, trajets) · école (Wi-Fi QR, plan) · projets (équipe, checklists, kanban, conduite, mode Jour J) · prêt de matériel · wiki · actualités · BDE (évènements, sondages, idées) · galerie photo/vidéo · flux Instagram · FAQ · liens utiles · PWA et notifications push.

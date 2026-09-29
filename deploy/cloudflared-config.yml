@@ -1,0 +1,9 @@
+# /etc/cloudflared/config.yml : expose Backstage en HTTPS sans ouvrir de port sur la box.
+# Remplace <ID-DU-TUNNEL> et le nom de domaine (voir DEPLOY.md, section « Nom de domaine »).
+tunnel: <ID-DU-TUNNEL>
+credentials-file: /etc/cloudflared/<ID-DU-TUNNEL>.json
+
+ingress:
+  - hostname: backstage.exemple.fr
+    service: http://127.0.0.1:3000
+  - service: http_status:404
