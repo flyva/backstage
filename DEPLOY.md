@@ -190,3 +190,40 @@ sudo tar -xzf uploads-AAAAMMJJ-HHMM.tar.gz -C /opt/backstage/data
 | Rappels de prêt non reçus | `systemctl list-timers`, `journalctl -u backstage-reminders`. |
 | Photos/vidéos refusées | Quota `GALLERY_MAX_MB` atteint, ou vidéo > 150 Mo / format autre que MP4 et WebM. |
 | Page « Bienvenue » mais pas admin | Un autre compte a été créé avant toi : `UPDATE users SET role='admin' WHERE email='toi@…';` |
+
+## 11. Connexion avec Microsoft (Office 365)
+
+Permet de se connecter et de s'inscrire avec le compte Office 365 de l'école, sans mot de passe à retenir. **Tu n'as pas besoin d'être administrateur du Office 365 de l'école** pour créer l'application, mais voir la limite ci-dessous.
+
+### Créer l'application (dans ton propre espace Microsoft, pas celui de l'école)
+
+1. Va sur <https://entra.microsoft.com> (ou portal.azure.com) avec un compte Microsoft **personnel** (crée-en un gratuit si besoin), puis **Applications → Inscriptions d'applications → Nouvelle inscription**.
+2. Nom : `Backstage`. Types de comptes pris en charge : **« Comptes dans un annuaire d'organisation (multilocataire) »** (indispensable pour que les comptes de l'école puissent se connecter).
+3. URI de redirection (type **Web**) : `https://backstage.exemple.fr/api/auth/microsoft/callback`. Pour tester en local, ajoutes-en une seconde : `http://localhost:3100/api/auth/microsoft/callback`.
+4. Sur la page de l'application, note l'**ID d'application (client)**.
+5. **Certificats et secrets → Nouveau secret client** : copie **la valeur** tout de suite (elle ne sera plus affichée). Note sa date d'expiration : prévois de le renouveler avant.
+6. **Autorisations d'API** : rien à ajouter (la connexion n'utilise que `openid`, `profile`, `email`).
+
+### Trouver l'identifiant de l'organisation de l'école
+
+Ouvre dans un navigateur (remplace par le domaine des adresses de l'école) :
+
+```
+https://login.microsoftonline.com/domaine-de-l-ecole.fr/.well-known/openid-configuration
+```
+
+Dans le texte affiché, la partie entre `login.microsoftonline.com/` et `/v2.0` de `issuer` est l'identifiant (un GUID). **Seules les organisations listées dans `MS_ALLOWED_TENANTS` peuvent entrer** : c'est le contrôle d'accès.
+
+### Configurer Backstage
+
+Dans `/opt/backstage/.env` (voir `deploy/env.example`) : `MS_CLIENT_ID`, `MS_CLIENT_SECRET`, `MS_ALLOWED_TENANTS`, `APP_URL`. Mets `LOCAL_REGISTRATION=off` pour n'accepter que Microsoft. Redémarre : `sudo systemctl restart backstage`.
+
+### Comportement
+
+- Première connexion : le compte Backstage est **créé automatiquement** (nom et email repris de Microsoft). Le tout premier compte de l'application devient administrateur.
+- Si un compte à mot de passe existe déjà avec cette adresse, il est **lié** à Microsoft, son ancien mot de passe est rendu inutilisable et ses sessions sont fermées (personne ne peut « réserver » l'adresse d'un autre).
+- Les comptes Microsoft n'ont pas de mot de passe Backstage : ils passent toujours par le bouton.
+
+### Limite importante : le consentement de l'organisation
+
+Microsoft demande souvent l'accord d'un **administrateur** de l'école la première fois, pour une application multi-organisation d'un éditeur non vérifié : les élèves voient alors « **Approbation de l'administrateur requise** ». Si c'est le cas, il faut demander au service informatique de l'école d'autoriser l'application **une seule fois** (il a un lien de consentement administrateur à ouvrir avec l'ID d'application) ; ensuite tout le monde peut se connecter. S'il refuse, garde l'inscription par mot de passe avec `REGISTRATION_CODE`.

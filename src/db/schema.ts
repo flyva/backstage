@@ -28,6 +28,8 @@ export const users = mysqlTable("users", {
   homeLng: double("home_lng"),
   icalUrl: varchar("ical_url", { length: 1000 }),
   onboarded: boolean("onboarded").notNull().default(false),
+  // Identifiant Microsoft (« oid » Entra ID) une fois le compte lié à Office 365.
+  msOid: varchar("ms_oid", { length: 80 }).unique(), // « tid.oid » : organisation + identifiant dans l'organisation
   notifyNews: boolean("notify_news").notNull().default(true),
   notifyBde: boolean("notify_bde").notNull().default(true),
   notifyLoans: boolean("notify_loans").notNull().default(true),
@@ -431,3 +433,4 @@ export const projectFiles = mysqlTable(
   },
   (t) => [index("pf_project_idx").on(t.projectId)],
 );
+

@@ -2,7 +2,6 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
 import { eq, count } from "drizzle-orm";
 import { z } from "zod";
 import { writeFile, mkdir } from "node:fs/promises";
@@ -18,6 +17,7 @@ import { SETTING_KEYS } from "@/lib/settings";
 import { geocode } from "@/lib/mobility";
 import { allow, clientIp } from "@/lib/rate-limit";
 import { skinFrom } from "@/lib/skin";
+import { writeSkinCookies } from "@/lib/skin-cookies";
 import { timingSafeEqual } from "node:crypto";
 import { fetchIcal, clearIcalCache } from "@/lib/ical";
 
@@ -47,6 +47,7 @@ export async function login(_: FormState, fd: FormData): Promise<FormState> {
 }
 
 export async function register(_: FormState, fd: FormData): Promise<FormState> {
+  if (process.env.LOCAL_REGISTRATION === "off") return { error: "L'inscription se fait avec le compte Microsoft de l'école." };
   const keep = { name: String(fd.get("name") ?? ""), email: String(fd.get("email") ?? "") };
   const parsed = credentials
     .extend({ name: z.string().trim().min(2, "Nom trop court").max(120) })
@@ -98,15 +99,6 @@ export async function changePassword(_: FormState, fd: FormData): Promise<FormSt
 export async function logout() {
   await destroySession();
   redirect("/login");
-}
-
-const SKIN_COOKIE = { path: "/", maxAge: 31536000, sameSite: "lax" as const };
-
-async function writeSkinCookies(skin: { theme: string; accent: string; sidebar: string }) {
-  const jar = await cookies();
-  jar.set("theme", skin.theme, SKIN_COOKIE);
-  jar.set("accent", skin.accent, SKIN_COOKIE);
-  jar.set("sidebar", skin.sidebar, SKIN_COOKIE);
 }
 
 /** Enregistre le skin de la personne (cookie pour l'affichage immédiat, base pour le retrouver sur un autre appareil). */
