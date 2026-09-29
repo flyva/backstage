@@ -1,18 +1,25 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getUser } from "@/lib/auth";
+import { getSessionUser } from "@/lib/auth";
 import { microsoftEnabled } from "@/lib/microsoft";
+import { googleEnabled } from "@/lib/google";
 import { allowedDomainsFromEnv } from "@/lib/email-domain";
 import { RegisterForm } from "@/components/forms";
 import { MicrosoftButton } from "@/components/MicrosoftButton";
+import { GoogleButton } from "@/components/GoogleButton";
 
 export const metadata = { title: "Inscription" };
 
 export default async function RegisterPage() {
-  if (await getUser()) redirect("/");
+  const session = await getSessionUser();
+  if (session) redirect(session.status === "active" ? "/" : "/en-attente");
+
   const microsoft = microsoftEnabled();
+  const google = googleEnabled();
+  const dev = process.env.NODE_ENV !== "production";
   const localRegistration = process.env.LOCAL_REGISTRATION !== "off";
   const domains = allowedDomainsFromEnv();
+  const social = microsoft || google || dev;
 
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 p-6">
@@ -20,30 +27,31 @@ export default async function RegisterPage() {
         <div className="text-3xl font-bold tracking-tight">Back<span className="text-accent">stage</span></div>
         <p className="text-sm text-muted">Crée ton espace personnel.</p>
         {domains.length > 0 && (
-          <p className="mt-1 text-xs text-muted">Réservé aux adresses {domains.map((d) => `@${d}`).join(", ")}.</p>
+          <p className="mt-1 text-xs text-muted">
+            Inscription par mot de passe réservée aux adresses {domains.map((d) => `@${d}`).join(", ")}.
+          </p>
         )}
       </div>
 
       <div className="card space-y-4">
-        {!microsoft && process.env.NODE_ENV !== "production" && (
-          <>
-            <MicrosoftButton label="S'inscrire avec Microsoft" disabled />
-            <div className="flex items-center gap-3 text-xs text-muted"><span className="h-px flex-1 bg-line" /> ou avec un mot de passe <span className="h-px flex-1 bg-line" /></div>
-          </>
+        {social && (
+          <div className="space-y-2">
+            {microsoft ? <MicrosoftButton label="S'inscrire avec Microsoft" /> : dev && <MicrosoftButton label="S'inscrire avec Microsoft" disabled />}
+            {google ? <GoogleButton label="S'inscrire avec Google" /> : dev && <GoogleButton label="S'inscrire avec Google" disabled />}
+            {google && (
+              <p className="text-xs text-muted">
+                Adresse de l&apos;école : accès immédiat. Compte Google personnel : ton compte est créé puis doit être validé par un administrateur.
+              </p>
+            )}
+          </div>
         )}
-        {microsoft && (
-          <>
-            <MicrosoftButton label="S'inscrire avec Microsoft" />
-            <p className="text-xs text-muted">Utilise ton compte Office 365 de l&apos;école : ton compte Backstage est créé automatiquement.</p>
-          </>
-        )}
-        {microsoft && localRegistration && (
+        {social && localRegistration && (
           <div className="flex items-center gap-3 text-xs text-muted"><span className="h-px flex-1 bg-line" /> ou avec un mot de passe <span className="h-px flex-1 bg-line" /></div>
         )}
         {localRegistration ? (
           <RegisterForm codeRequired={!!process.env.REGISTRATION_CODE} />
         ) : (
-          !microsoft && <p className="text-sm text-muted">Les inscriptions sont fermées.</p>
+          !microsoft && !google && <p className="text-sm text-muted">Les inscriptions sont fermées.</p>
         )}
       </div>
 

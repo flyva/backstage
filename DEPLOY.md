@@ -235,3 +235,35 @@ Avec `ALLOWED_EMAIL_DOMAINS` défini, l'**inscription par mot de passe** est aus
 ### Limite importante : le consentement de l'organisation
 
 Microsoft demande souvent l'accord d'un **administrateur** de l'école la première fois, pour une application multi-organisation d'un éditeur non vérifié : les élèves voient alors « **Approbation de l'administrateur requise** ». Si c'est le cas, il faut demander au service informatique de l'école d'autoriser l'application **une seule fois** (il a un lien de consentement administrateur à ouvrir avec l'ID d'application) ; ensuite tout le monde peut se connecter. S'il refuse, garde l'inscription par mot de passe avec `REGISTRATION_CODE`.
+
+## 12. Connexion avec Google (comptes personnels)
+
+Permet à quelqu'un **sans adresse de l'école** de se connecter avec son compte Google. La règle :
+
+- **Adresse `@3is.fr` (ou autre domaine de `ALLOWED_EMAIL_DOMAINS`) vérifiée par Google** : accès immédiat.
+- **Toute autre adresse Google** : le compte est créé « **en attente** ». La personne voit seulement une page d'attente, sans accès à aucune donnée, jusqu'à ce qu'un administrateur clique sur **Valider** dans *Administration → En attente de validation*. Un refus supprime le compte.
+- Une adresse que Google n'a pas vérifiée est refusée.
+- Le tout premier compte administrateur ne peut **jamais** venir d'un Google personnel : crée-le par mot de passe (adresse `@3is.fr`) ou avec une adresse autorisée.
+
+### Créer les identifiants (Google Cloud Console, gratuit)
+
+1. Va sur <https://console.cloud.google.com> avec ton compte Google, puis **Nouveau projet** : `Backstage`.
+2. **API et services → Écran de consentement OAuth** (ou « Google Auth Platform ») : type d'utilisateur **Externe** (nécessaire pour les comptes personnels). Renseigne le nom de l'application, ton email d'assistance et de contact. Scopes : uniquement `openid`, `email`, `profile` (aucune vérification Google n'est demandée pour ces trois-là).
+3. **Publie l'application** (passage de « Test » à « En production ») : en mode test, seuls 100 comptes ajoutés à la main peuvent se connecter.
+4. **Identifiants → Créer des identifiants → ID client OAuth → Application Web**. **URI de redirection autorisés** :
+   - `http://localhost:3100/api/auth/google/callback` (test en local)
+   - `https://backstage.exemple.fr/api/auth/google/callback` (production)
+5. Copie l'**ID client** et le **code secret du client**.
+
+### Configurer Backstage
+
+Dans `.env.local` (PC) ou `/opt/backstage/.env` (Pi) :
+
+```
+GOOGLE_CLIENT_ID="…"
+GOOGLE_CLIENT_SECRET="…"
+ALLOWED_EMAIL_DOMAINS="3is.fr"
+APP_URL="https://backstage.exemple.fr"     # obligatoire en production
+```
+
+Redémarre le serveur : le bouton « Continuer avec Google » apparaît sur les pages de connexion et d'inscription. Si un compte à mot de passe existe déjà avec la même adresse, il est lié à Google (ancien mot de passe et sessions révoqués).

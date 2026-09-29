@@ -29,6 +29,9 @@ export const users = mysqlTable("users", {
   icalUrl: varchar("ical_url", { length: 1000 }),
   onboarded: boolean("onboarded").notNull().default(false),
   // Identifiant Microsoft (« oid » Entra ID) une fois le compte lié à Office 365.
+  // « active » : accès normal ; « pending » : compte Google personnel en attente de validation par un admin.
+  status: mysqlEnum("status", ["active", "pending"]).notNull().default("active"),
+  googleSub: varchar("google_sub", { length: 40 }).unique(), // identifiant Google (« sub »)
   msOid: varchar("ms_oid", { length: 80 }).unique(), // « tid.oid » : organisation + identifiant dans l'organisation
   notifyNews: boolean("notify_news").notNull().default(true),
   notifyBde: boolean("notify_bde").notNull().default(true),

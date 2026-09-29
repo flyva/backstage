@@ -160,6 +160,21 @@ export async function updateProfile(_: FormState, fd: FormData): Promise<FormSta
 
 // ---------- Administration ----------
 
+export async function approveUser(fd: FormData) {
+  await requireAdmin();
+  await db.update(users).set({ status: "active" }).where(eq(users.id, Number(fd.get("id"))));
+  revalidatePath("/admin");
+}
+
+/** Refuser un compte en attente = le supprimer (la personne pourra se reconnecter, et sera de nouveau mise en attente). */
+export async function rejectUser(fd: FormData) {
+  await requireAdmin();
+  const id = Number(fd.get("id"));
+  const [u] = await db.select({ status: users.status }).from(users).where(eq(users.id, id)).limit(1);
+  if (u?.status === "pending") await db.delete(users).where(eq(users.id, id));
+  revalidatePath("/admin");
+}
+
 const faqSchema = z.object({
   category: z.string().trim().min(1).max(80),
   question: z.string().trim().min(3).max(255),

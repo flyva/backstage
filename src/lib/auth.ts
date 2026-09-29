@@ -58,7 +58,8 @@ export async function destroyOtherSessions(userId: number) {
   for (const s of all) if (s.id !== keep) await db.delete(sessions).where(eq(sessions.id, s.id));
 }
 
-export const getUser = cache(async (): Promise<User | null> => {
+/** Personne connectée, quel que soit son statut (y compris « en attente de validation »). */
+export const getSessionUser = cache(async (): Promise<User | null> => {
   const token = (await cookies()).get(COOKIE)?.value;
   if (!token) return null;
   const rows = await db
@@ -72,9 +73,19 @@ export const getUser = cache(async (): Promise<User | null> => {
   return row.user;
 });
 
+/**
+ * Personne connectée ET validée. Un compte « en attente » (Google personnel) n'a accès à rien : ni pages, ni fichiers,
+ * ni API (getUser renvoie null pour lui, donc toutes les routes le traitent comme non connecté).
+ */
+export const getUser = cache(async (): Promise<User | null> => {
+  const user = await getSessionUser();
+  return user && user.status === "active" ? user : null;
+});
+
 export async function requireUser() {
-  const user = await getUser();
+  const user = await getSessionUser();
   if (!user) redirect("/login");
+  if (user.status !== "active") redirect("/en-attente");
   return user;
 }
 

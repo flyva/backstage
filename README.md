@@ -26,6 +26,6 @@ En bref, sur le PC : `npm run package` construit `dist/backstage-<date>.tar.gz` 
 
 ## Fonctionnalités
 
-Comptes et rôles · profil (adresse, iCal Ypareo) · thème clair/sombre · agenda · mobilité (TBM temps réel, Le Vélo, trajets) · école (Wi-Fi QR, plan) · projets (équipe, checklists, kanban, conduite, mode Jour J) · prêt de matériel · wiki · actualités · BDE (évènements, sondages, idées) · galerie photo/vidéo · flux Instagram · FAQ · liens utiles · PWA et notifications push · recherche globale · fiches techniques · connexion Microsoft (Office 365) en option.
+Comptes et rôles · profil (adresse, iCal Ypareo) · thème clair/sombre · agenda · mobilité (TBM temps réel, Le Vélo, trajets) · école (Wi-Fi QR, plan) · projets (équipe, checklists, kanban, conduite, mode Jour J) · prêt de matériel · wiki · actualités · BDE (évènements, sondages, idées) · galerie photo/vidéo · flux Instagram · FAQ · liens utiles · PWA et notifications push · recherche globale · fiches techniques · connexion Microsoft (Office 365) et Google en option.
 
 **Interface** : style « Mix » (menu ardoise façon AdminLTE avec profil en haut, cartes arrondies façon TailAdmin). Chaque personne règle son skin dans le panneau de droite : thème clair (blanc, par défaut) ou sombre, couleur d'accent (ambre, bleu, indigo, émeraude, rose) et menu sombre ou blanc. Le réglage est mémorisé dans un cookie et dans le compte.
