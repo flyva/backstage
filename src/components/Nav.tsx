@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Package, FolderKanban, CalendarDays, TramFront, School, CircleHelp, Link2, User, Shield } from "lucide-react";
+import { Home, BookOpen, Package, FolderKanban, CalendarDays, TramFront, School, CircleHelp, Link2, User, Shield } from "lucide-react";
 
 const ITEMS = [
   { href: "/", label: "Accueil", icon: Home },
@@ -11,6 +11,7 @@ const ITEMS = [
   { href: "/agenda", label: "Agenda", icon: CalendarDays },
   { href: "/mobilite", label: "Mobilité", icon: TramFront },
   { href: "/ecole", label: "École", icon: School },
+  { href: "/wiki", label: "Wiki", icon: BookOpen },
   { href: "/faq", label: "FAQ", icon: CircleHelp },
   { href: "/liens", label: "Liens utiles", icon: Link2 },
   { href: "/profil", label: "Profil", icon: User },

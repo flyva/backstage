@@ -12,7 +12,7 @@ const timeFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", hou
 
 const SOON = [
   "Projets : conduite de spectacle et fiches techniques",
-  "Wiki de ressources, kanban, actus, BDE, galerie",
+  "Kanban, actualités, BDE, galerie",
 ];
 
 export default async function HomePage() {

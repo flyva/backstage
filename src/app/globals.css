@@ -68,6 +68,23 @@ body {
   .btn-ghost {
     @apply inline-flex items-center justify-center gap-2 rounded-lg border border-line px-3 py-2 text-sm transition hover:bg-bg;
   }
+  .prose-wiki { @apply text-sm leading-relaxed; }
+  .prose-wiki > * + * { @apply mt-3; }
+  .prose-wiki h1 { @apply mt-6 text-2xl font-bold; }
+  .prose-wiki h2 { @apply mt-5 border-b border-line pb-1 text-xl font-semibold; }
+  .prose-wiki h3 { @apply mt-4 text-lg font-semibold; }
+  .prose-wiki a { @apply text-accent underline; }
+  .prose-wiki ul { @apply list-inside list-disc space-y-1; }
+  .prose-wiki ol { @apply list-inside list-decimal space-y-1; }
+  .prose-wiki blockquote { @apply border-l-4 border-accent pl-3 text-muted; }
+  .prose-wiki code { @apply rounded bg-bg px-1 py-0.5 font-mono text-xs; }
+  .prose-wiki pre { @apply overflow-x-auto rounded-lg border border-line bg-bg p-3; }
+  .prose-wiki pre code { @apply bg-transparent p-0; }
+  .prose-wiki table { @apply w-full border-collapse text-left; }
+  .prose-wiki th, .prose-wiki td { @apply border border-line px-2 py-1; }
+  .prose-wiki th { @apply bg-bg font-semibold; }
+  .prose-wiki img { @apply max-w-full rounded-lg; }
+  .prose-wiki hr { @apply border-line; }
   .label {
     @apply mb-1 block text-xs font-medium text-muted;
   }

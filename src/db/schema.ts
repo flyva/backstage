@@ -10,6 +10,7 @@ import {
   index,
   primaryKey,
   date,
+  mediumtext,
 } from "drizzle-orm/mysql-core";
 
 export const users = mysqlTable("users", {
@@ -182,4 +183,32 @@ export const loans = mysqlTable(
     returnedAt: datetime("returned_at"),
   },
   (t) => [index("loan_item_idx").on(t.itemId, t.status), index("loan_user_idx").on(t.userId)],
+);
+
+// ---------- Wiki ----------
+
+export const wikiPages = mysqlTable("wiki_pages", {
+  id: int("id").primaryKey().autoincrement(),
+  slug: varchar("slug", { length: 160 }).notNull().unique(),
+  title: varchar("title", { length: 200 }).notNull(),
+  category: varchar("category", { length: 80 }).notNull().default("Général"),
+  body: mediumtext("body").notNull(),
+  createdBy: int("created_by").notNull().references(() => users.id),
+  updatedBy: int("updated_by").notNull().references(() => users.id),
+  createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+  updatedAt: datetime("updated_at").notNull().$defaultFn(() => new Date()),
+});
+
+// Chaque enregistrement crée une révision : un vandalisme se répare en un clic.
+export const wikiRevisions = mysqlTable(
+  "wiki_revisions",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    pageId: int("page_id").notNull().references(() => wikiPages.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 200 }).notNull(),
+    body: mediumtext("body").notNull(),
+    editorId: int("editor_id").notNull().references(() => users.id),
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [index("wr_page_idx").on(t.pageId, t.createdAt)],
 );
