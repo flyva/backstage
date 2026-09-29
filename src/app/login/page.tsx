@@ -9,6 +9,9 @@ import { GoogleButton } from "@/components/GoogleButton";
 
 export const metadata = { title: "Connexion" };
 
+// Passe à true pour réafficher « Se connecter avec Microsoft » (une fois l'application Entra ID créée).
+const SHOW_MICROSOFT = false;
+
 const ERRORS: Record<string, string> = {
   "organisation-refusee": "Ce compte Microsoft n'appartient pas à une organisation autorisée à utiliser Backstage.",
   "domaine-refuse": "Ce compte Microsoft n'a pas une adresse d'un domaine autorisé : seules les adresses de l'école peuvent se connecter avec Microsoft.",
@@ -30,7 +33,8 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
 
   const erreur = (await searchParams).erreur;
   const message = typeof erreur === "string" ? ERRORS[erreur] : undefined;
-  const microsoft = microsoftEnabled();
+  // Microsoft (Office 365) est masqué pour l'instant : le code reste en place et se réactive ici (voir DEPLOY.md, section 11).
+  const microsoft = SHOW_MICROSOFT && microsoftEnabled();
   const google = googleEnabled();
   const dev = process.env.NODE_ENV !== "production";
   const localRegistration = process.env.LOCAL_REGISTRATION !== "off";
@@ -48,7 +52,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
       <div className="card space-y-4">
         {social && (
           <div className="space-y-2">
-            {microsoft ? <MicrosoftButton /> : dev && <MicrosoftButton disabled />}
+            {microsoft && <MicrosoftButton />}
             {google ? <GoogleButton /> : dev && <GoogleButton disabled />}
           </div>
         )}

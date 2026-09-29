@@ -10,11 +10,15 @@ import { GoogleButton } from "@/components/GoogleButton";
 
 export const metadata = { title: "Inscription" };
 
+// Passe à true pour réafficher « S'inscrire avec Microsoft » (une fois l'application Entra ID créée).
+const SHOW_MICROSOFT = false;
+
 export default async function RegisterPage() {
   const session = await getSessionUser();
   if (session) redirect(session.status === "active" ? "/" : "/en-attente");
 
-  const microsoft = microsoftEnabled();
+  // Microsoft (Office 365) est masqué pour l'instant : le code reste en place et se réactive ici (voir DEPLOY.md, section 11).
+  const microsoft = SHOW_MICROSOFT && microsoftEnabled();
   const google = googleEnabled();
   const dev = process.env.NODE_ENV !== "production";
   const localRegistration = process.env.LOCAL_REGISTRATION !== "off";
@@ -36,7 +40,7 @@ export default async function RegisterPage() {
       <div className="card space-y-4">
         {social && (
           <div className="space-y-2">
-            {microsoft ? <MicrosoftButton label="S'inscrire avec Microsoft" /> : dev && <MicrosoftButton label="S'inscrire avec Microsoft" disabled />}
+            {microsoft && <MicrosoftButton label="S'inscrire avec Microsoft" />}
             {google ? <GoogleButton label="S'inscrire avec Google" /> : dev && <GoogleButton label="S'inscrire avec Google" disabled />}
             {google && (
               <p className="text-xs text-muted">
