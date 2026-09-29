@@ -64,6 +64,13 @@
       "when": 1790714262205,
       "tag": "0008_round_iron_lad",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1790714951246,
+      "tag": "0009_dashing_shaman",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { and, count, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
@@ -10,6 +11,7 @@ import {
 import { requireUser } from "@/lib/auth";
 import { requirePublisher } from "@/lib/news";
 import { parseParisInput } from "@/lib/paris";
+import { notifyCategory } from "@/lib/push";
 import type { FormState } from "@/lib/actions";
 
 const id = z.coerce.number().int().positive();
@@ -58,7 +60,10 @@ export async function saveEvent(_: FormState, fd: FormData): Promise<FormState> 
   if ("error" in e) return { error: e.error };
   const eventId = Number(fd.get("eventId") || 0);
   if (eventId) await db.update(bdeEvents).set(e.value).where(eq(bdeEvents.id, eventId));
-  else await db.insert(bdeEvents).values({ ...e.value, createdBy: user.id });
+  else {
+    await db.insert(bdeEvents).values({ ...e.value, createdBy: user.id });
+    after(() => notifyCategory("bde", { title: "Nouvel évènement BDE", body: e.value.title, url: "/bde", tag: "bde-event" }, user.id));
+  }
   refresh();
   return { ok: eventId ? "Évènement mis à jour" : "Évènement créé" };
 }

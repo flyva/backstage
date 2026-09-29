@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hors ligne · Backstage</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; box-sizing: border-box;
+           font-family: system-ui, sans-serif; background: #0e0e13; color: #ececf1; text-align: center; }
+    main { max-width: 26rem; }
+    img { width: 96px; height: 96px; }
+    h1 { margin: 16px 0 8px; font-size: 1.4rem; }
+    p { color: #9a9aad; line-height: 1.5; }
+    button { margin-top: 16px; padding: 10px 18px; border: 0; border-radius: 10px; background: #f59e0b; color: #14110a; font-weight: 600; font-size: 1rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <img src="/icon-192.png" alt="">
+    <h1>Tu es hors ligne</h1>
+    <p>Backstage a besoin d'une connexion pour afficher tes données. Vérifie ton réseau puis réessaie.</p>
+    <button onclick="location.reload()">Réessayer</button>
+  </main>
+</body>
+</html>

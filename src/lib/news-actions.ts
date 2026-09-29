@@ -1,12 +1,14 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { newsPosts } from "@/db/schema";
 import { requirePublisher } from "@/lib/news";
+import { notifyCategory } from "@/lib/push";
 import type { FormState } from "@/lib/actions";
 
 const schema = z.object({
@@ -38,6 +40,8 @@ export async function saveNews(_: FormState, fd: FormData): Promise<FormState> {
     const pinned = user.role === "admin" && p.data.pinned;
     const [res] = await db.insert(newsPosts).values({ ...p.data, pinned, authorId: user.id, createdAt: now, updatedAt: now });
     refresh();
+    // Après la réponse : la publication n'attend pas l'envoi des notifications.
+    after(() => notifyCategory("news", { title: p.data.title, body: "Nouvel article sur Backstage", url: `/actus/${res.insertId}`, tag: `news-${res.insertId}` }, user.id));
     redirect(`/actus/${res.insertId}`);
   }
   const [post] = await db.select({ authorId: newsPosts.authorId, pinned: newsPosts.pinned }).from(newsPosts).where(eq(newsPosts.id, postId)).limit(1);

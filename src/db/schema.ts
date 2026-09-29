@@ -25,6 +25,9 @@ export const users = mysqlTable("users", {
   homeLng: double("home_lng"),
   icalUrl: varchar("ical_url", { length: 1000 }),
   onboarded: boolean("onboarded").notNull().default(false),
+  notifyNews: boolean("notify_news").notNull().default(true),
+  notifyBde: boolean("notify_bde").notNull().default(true),
+  notifyLoans: boolean("notify_loans").notNull().default(true),
   createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
 });
 
@@ -358,4 +361,20 @@ export const galleryItems = mysqlTable(
     createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
   },
   (t) => [index("gi_album_idx").on(t.albumId, t.createdAt)],
+);
+
+// ---------- Notifications push ----------
+
+export const pushSubscriptions = mysqlTable(
+  "push_subscriptions",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    userId: int("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    endpoint: varchar("endpoint", { length: 600 }).notNull().unique(),
+    p256dh: varchar("p256dh", { length: 255 }).notNull(),
+    auth: varchar("auth", { length: 100 }).notNull(),
+    userAgent: varchar("user_agent", { length: 200 }),
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [index("ps_user_idx").on(t.userId)],
 );
