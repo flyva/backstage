@@ -378,3 +378,53 @@ export const pushSubscriptions = mysqlTable(
   },
   (t) => [index("ps_user_idx").on(t.userId)],
 );
+
+// ---------- Fiches techniques (par projet) ----------
+
+export const techLights = mysqlTable(
+  "tech_lights",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    projectId: int("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+    channel: int("channel"), // numéro de circuit / canal console
+    label: varchar("label", { length: 120 }).notNull(),
+    mode: varchar("mode", { length: 60 }),
+    universe: int("universe").notNull().default(1),
+    address: int("address"), // 1..512, null = pas encore patché
+    footprint: int("footprint").notNull().default(1), // nombre de canaux DMX occupés
+    position: varchar("position", { length: 100 }),
+    color: varchar("color", { length: 60 }),
+    notes: varchar("notes", { length: 300 }),
+  },
+  (t) => [index("tl_project_idx").on(t.projectId, t.universe, t.address)],
+);
+
+export const techInputs = mysqlTable(
+  "tech_inputs",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    projectId: int("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+    channel: int("channel").notNull(),
+    source: varchar("source", { length: 100 }).notNull(),
+    mic: varchar("mic", { length: 100 }),
+    stand: varchar("stand", { length: 60 }),
+    phantom: boolean("phantom").notNull().default(false),
+    notes: varchar("notes", { length: 300 }),
+  },
+  (t) => [index("ti_project_idx").on(t.projectId, t.channel)],
+);
+
+export const projectFiles = mysqlTable(
+  "project_files",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    projectId: int("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+    file: varchar("file", { length: 60 }).notNull(),
+    originalName: varchar("original_name", { length: 200 }).notNull(),
+    mime: varchar("mime", { length: 60 }).notNull(),
+    size: int("size").notNull(),
+    uploadedBy: int("uploaded_by").notNull().references(() => users.id),
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [index("pf_project_idx").on(t.projectId)],
+);

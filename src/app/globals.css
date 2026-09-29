@@ -49,6 +49,11 @@
   --font-sans: var(--font-geist-sans), system-ui, sans-serif;
 }
 
+@media print {
+  :root, :root.dark { --bg: #fff; --surface: #fff; --border: #ccc; --fg: #000; --muted: #444; --accent: #b45309; color-scheme: light; }
+  body { background: #fff; }
+}
+
 body {
   background: var(--bg);
   color: var(--fg);

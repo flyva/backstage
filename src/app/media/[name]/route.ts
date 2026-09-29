@@ -14,12 +14,16 @@ export async function GET(req: Request, ctx: { params: Promise<{ name: string }>
   const info = await stat(file).catch(() => null);
   if (!info) return new Response("Introuvable", { status: 404 });
 
+  if (req.headers.get("if-none-match") === `"${name}"`) return new Response(null, { status: 304, headers: { ETag: `"${name}"`, "Cache-Control": "private, no-cache" } });
+
   const type = MIME[name.split(".")[1]];
   const headers: Record<string, string> = {
     "Content-Type": type,
     "Accept-Ranges": "bytes",
-    // Les noms sont aléatoires et uniques : un fichier ne change jamais.
-    "Cache-Control": "private, max-age=31536000, immutable",
+    // « no-cache » : le navigateur doit revalider (donc repasser par l'authentification) avant de réutiliser sa copie,
+    // ce qui évite qu'un autre compte sur le même ordinateur voie les médias en cache. L'ETag évite de retélécharger.
+    "Cache-Control": "private, no-cache",
+    ETag: `"${name}"`,
     "X-Content-Type-Options": "nosniff",
   };
 

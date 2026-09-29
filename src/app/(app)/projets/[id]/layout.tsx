@@ -13,15 +13,16 @@ export default async function ProjectLayout({ children, params }: LayoutProps<"/
     { slug: "kanban", label: "Kanban" },
     { slug: "conduite", label: "Conduite" },
     { slug: "jour-j", label: "Jour J" },
+    { slug: "fiches", label: "Fiches" },
     { slug: "membres", label: "Équipe" },
     ...(role === "owner" ? [{ slug: "reglages", label: "Réglages" }] : []),
   ];
   return (
     <div className="max-w-6xl space-y-5">
-      <Link href="/projets" className="inline-flex items-center gap-1 text-sm text-muted hover:text-fg">
+      <Link href="/projets" className="print:hidden inline-flex items-center gap-1 text-sm text-muted hover:text-fg">
         <ArrowLeft size={14} /> Tous les projets
       </Link>
-      <header className="space-y-1">
+      <header className="space-y-1 print:hidden">
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-bold">{project.name}</h1>
           <span className="rounded-md border border-line px-1.5 py-0.5 text-xs text-muted">{ROLE_LABEL[role]}</span>
@@ -33,7 +34,7 @@ export default async function ProjectLayout({ children, params }: LayoutProps<"/
         )}
         {project.description && <p className="text-sm text-muted">{project.description}</p>}
       </header>
-      <ProjectTabs base={`/projets/${project.id}`} tabs={tabs} />
+      <div className="print:hidden"><ProjectTabs base={`/projets/${project.id}`} tabs={tabs} /></div>
       {children}
     </div>
   );
