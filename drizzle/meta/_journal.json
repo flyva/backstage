@@ -8,6 +8,13 @@
       "when": 1790711144563,
       "tag": "0000_fast_killmonger",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1790712104018,
+      "tag": "0001_silky_wither",
+      "breakpoints": true
     }
   ]
 }

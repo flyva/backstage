@@ -7,7 +7,7 @@ import { dayKey, getEvents, type AgendaEvent } from "@/lib/ical";
 const timeFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit" });
 
 const SOON = [
-  "Projets : conduite, checklists, fiches techniques",
+  "Projets : conduite de spectacle et fiches techniques",
   "Prêt de matériel de l'école",
   "Wiki de ressources, kanban, actus, BDE, galerie",
 ];

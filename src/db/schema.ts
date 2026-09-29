@@ -8,6 +8,7 @@ import {
   double,
   mysqlEnum,
   index,
+  primaryKey,
 } from "drizzle-orm/mysql-core";
 
 export const users = mysqlTable("users", {
@@ -61,3 +62,60 @@ export const settings = mysqlTable("settings", {
 });
 
 export type User = typeof users.$inferSelect;
+
+// ---------- Projets ----------
+
+export const projects = mysqlTable("projects", {
+  id: int("id").primaryKey().autoincrement(),
+  name: varchar("name", { length: 150 }).notNull(),
+  description: text("description"),
+  eventDate: varchar("event_date", { length: 10 }), // AAAA-MM-JJ, facultatif
+  createdBy: int("created_by")
+    .notNull()
+    .references(() => users.id),
+  createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+});
+
+export const projectMembers = mysqlTable(
+  "project_members",
+  {
+    projectId: int("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    userId: int("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: mysqlEnum("role", ["owner", "editor", "viewer"]).notNull().default("editor"),
+    addedAt: datetime("added_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [primaryKey({ columns: [t.projectId, t.userId] }), index("pm_user_idx").on(t.userId)],
+);
+
+export const checklists = mysqlTable(
+  "checklists",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    projectId: int("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 150 }).notNull(),
+    position: int("position").notNull().default(0),
+  },
+  (t) => [index("cl_project_idx").on(t.projectId)],
+);
+
+export const checklistItems = mysqlTable(
+  "checklist_items",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    checklistId: int("checklist_id")
+      .notNull()
+      .references(() => checklists.id, { onDelete: "cascade" }),
+    label: varchar("label", { length: 255 }).notNull(),
+    done: boolean("done").notNull().default(false),
+    position: int("position").notNull().default(0),
+  },
+  (t) => [index("ci_checklist_idx").on(t.checklistId)],
+);
+
+export type ProjectRole = "owner" | "editor" | "viewer";
