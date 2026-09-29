@@ -43,6 +43,7 @@ export default async function AdminPage() {
                   <input type="hidden" name="id" value={u.id} />
                   <select name="role" defaultValue={u.role} className="input w-auto">
                     <option value="member">Membre</option>
+                    <option value="materiel">Référent matériel</option>
                     <option value="bde">BDE</option>
                     <option value="admin">Admin</option>
                   </select>

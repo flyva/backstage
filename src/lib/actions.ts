@@ -159,7 +159,7 @@ export async function deleteLink(fd: FormData) {
 export async function setRole(fd: FormData) {
   const admin = await requireAdmin();
   const id = Number(fd.get("id"));
-  const role = z.enum(["admin", "bde", "member"]).safeParse(fd.get("role"));
+  const role = z.enum(["admin", "materiel", "bde", "member"]).safeParse(fd.get("role"));
   // Un admin ne peut pas se retirer ses propres droits par erreur.
   if (role.success && id !== admin.id)
     await db.update(users).set({ role: role.data }).where(eq(users.id, id));

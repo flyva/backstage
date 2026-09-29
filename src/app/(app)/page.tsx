@@ -3,12 +3,15 @@ import { ExternalLink, Mail, GraduationCap, Briefcase, Wifi, Map } from "lucide-
 import { requireUser } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 import { dayKey, getEvents, type AgendaEvent } from "@/lib/ical";
+import { and, eq, inArray } from "drizzle-orm";
+import { db } from "@/db";
+import { equipmentItems, loans } from "@/db/schema";
+import { daysBetween, isManager, todayParis } from "@/lib/equipment";
 
 const timeFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit" });
 
 const SOON = [
   "Projets : conduite de spectacle et fiches techniques",
-  "Prêt de matériel de l'école",
   "Wiki de ressources, kanban, actus, BDE, galerie",
 ];
 
@@ -34,6 +37,20 @@ export default async function HomePage() {
     }
   }
 
+  // Matériel : mes prêts à rendre bientôt / en retard, et la file d'attente pour les référents.
+  const todayStr = todayParis();
+  const myLoans = await db
+    .select({ id: loans.id, dueDate: loans.dueDate, itemName: equipmentItems.name, quantity: loans.quantity })
+    .from(loans)
+    .innerJoin(equipmentItems, eq(equipmentItems.id, loans.itemId))
+    .where(and(eq(loans.userId, user.id), eq(loans.status, "out")));
+  const dueSoon = myLoans.filter((l) => daysBetween(todayStr, l.dueDate) <= 2).sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+  const pending = isManager(user)
+    ? await db.select({ id: loans.id, status: loans.status, dueDate: loans.dueDate }).from(loans).where(inArray(loans.status, ["requested", "out"]))
+    : [];
+  const toHandle = pending.filter((l) => l.status === "requested").length;
+  const lateCount = pending.filter((l) => l.status === "out" && l.dueDate < todayStr).length;
+
   return (
     <div className="space-y-6">
       <header>
@@ -48,6 +65,23 @@ export default async function HomePage() {
             adresse du domicile et lien iCalendar Ypareo pour personnaliser ton espace.
           </p>
         </div>
+      )}
+
+      {(dueSoon.length > 0 || toHandle > 0 || lateCount > 0) && (
+        <section className="card space-y-1.5 border-accent text-sm">
+          <h2 className="font-semibold">Matériel</h2>
+          {dueSoon.map((l) => {
+            const left = daysBetween(todayStr, l.dueDate);
+            return (
+              <p key={l.id} className={left < 0 ? "text-danger" : ""}>
+                {l.quantity > 1 && `${l.quantity} × `}{l.itemName} : {left < 0 ? `en retard de ${-left} j` : left === 0 ? "à rendre aujourd'hui" : `à rendre dans ${left} j`}
+              </p>
+            );
+          })}
+          {toHandle > 0 && <p>{toHandle} demande{toHandle > 1 ? "s" : ""} de prêt à traiter</p>}
+          {lateCount > 0 && <p className="text-danger">{lateCount} prêt{lateCount > 1 ? "s" : ""} en retard</p>}
+          <Link href={toHandle + lateCount > 0 ? "/materiel/gestion" : "/materiel"} className="inline-block text-xs text-accent underline">Voir le matériel</Link>
+        </section>
       )}
 
       {today && (

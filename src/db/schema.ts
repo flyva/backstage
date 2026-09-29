@@ -9,6 +9,7 @@ import {
   mysqlEnum,
   index,
   primaryKey,
+  date,
 } from "drizzle-orm/mysql-core";
 
 export const users = mysqlTable("users", {
@@ -16,7 +17,7 @@ export const users = mysqlTable("users", {
   email: varchar("email", { length: 190 }).notNull().unique(),
   name: varchar("name", { length: 120 }).notNull(),
   passwordHash: varchar("password_hash", { length: 255 }).notNull(),
-  role: mysqlEnum("role", ["admin", "bde", "member"]).notNull().default("member"),
+  role: mysqlEnum("role", ["admin", "materiel", "bde", "member"]).notNull().default("member"),
   theme: mysqlEnum("theme", ["system", "light", "dark"]).notNull().default("system"),
   homeAddress: varchar("home_address", { length: 255 }),
   homeLat: double("home_lat"),
@@ -140,4 +141,45 @@ export const cues = mysqlTable(
     notes: text("notes"),
   },
   (t) => [index("cue_project_idx").on(t.projectId, t.position)],
+);
+
+// ---------- Prêt de matériel (école) ----------
+
+export const equipmentItems = mysqlTable("equipment_items", {
+  id: int("id").primaryKey().autoincrement(),
+  name: varchar("name", { length: 150 }).notNull(),
+  category: varchar("category", { length: 80 }).notNull().default("Divers"),
+  code: varchar("code", { length: 40 }), // repère d'inventaire, ex. LUM-014
+  description: text("description"),
+  location: varchar("location", { length: 120 }),
+  quantity: int("quantity").notNull().default(1),
+  status: mysqlEnum("status", ["active", "maintenance", "retired"]).notNull().default("active"),
+  createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+});
+
+export const LOAN_STATUSES = ["requested", "reserved", "out", "returned", "rejected", "cancelled"] as const;
+export type LoanStatus = (typeof LOAN_STATUSES)[number];
+
+export const loans = mysqlTable(
+  "loans",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    itemId: int("item_id")
+      .notNull()
+      .references(() => equipmentItems.id),
+    userId: int("user_id")
+      .notNull()
+      .references(() => users.id),
+    quantity: int("quantity").notNull().default(1),
+    status: mysqlEnum("status", LOAN_STATUSES).notNull().default("requested"),
+    startDate: date("start_date", { mode: "string" }).notNull(),
+    dueDate: date("due_date", { mode: "string" }).notNull(), // deadline de retour
+    note: varchar("note", { length: 500 }), // motif / projet
+    conditionOut: varchar("condition_out", { length: 500 }),
+    conditionIn: varchar("condition_in", { length: 500 }),
+    requestedAt: datetime("requested_at").notNull().$defaultFn(() => new Date()),
+    outAt: datetime("out_at"),
+    returnedAt: datetime("returned_at"),
+  },
+  (t) => [index("loan_item_idx").on(t.itemId, t.status), index("loan_user_idx").on(t.userId)],
 );
