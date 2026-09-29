@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  BookOpen, Briefcase, CalendarDays, Camera, CircleHelp, Home, Images, Link2, Newspaper, Package, PartyPopper, School, Shield, TramFront, User,
+  BookOpen, Briefcase, CalendarDays, Camera, CircleHelp, Home, Images, Link2, Newspaper, Package, PartyPopper, School, Settings, Shield, TramFront, User,
   type LucideIcon,
 } from "lucide-react";
 
@@ -47,6 +47,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
     title: "Compte",
     items: [
       { href: "/profil", label: "Profil", icon: User },
+      { href: "/parametres", label: "Paramètres", icon: Settings },
       { href: "/admin", label: "Administration", icon: Shield, adminOnly: true },
     ],
   },

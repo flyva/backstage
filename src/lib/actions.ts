@@ -82,7 +82,8 @@ export async function register(_: FormState, fd: FormData): Promise<FormState> {
   if (existing) return { error: "Un compte existe déjà avec cet email", values: keep };
 
   // Le tout premier compte devient administrateur.
-  const [{ total }] = await db.select({ total: count() }).from(users);
+  // Seuls les comptes ACTIFS comptent : un compte Google en attente ne doit pas empêcher le premier vrai compte de devenir administrateur.
+  const [{ total }] = await db.select({ total: count() }).from(users).where(eq(users.status, "active"));
   const [res] = await db.insert(users).values({
     email, firstName, lastName, name: joinName(firstName, lastName), passwordHash: await hashPassword(password),
     role: total === 0 ? "admin" : "member",
@@ -107,6 +108,13 @@ export async function changePassword(_: FormState, fd: FormData): Promise<FormSt
   // Les autres appareils connectés sont déconnectés ; celui-ci reste ouvert.
   await destroyOtherSessions(user.id);
   return { ok: "Mot de passe modifié. Les autres appareils ont été déconnectés." };
+}
+
+/** La cloche vient d'être ouverte : tout ce qui est plus ancien compte comme lu. */
+export async function markNotificationsSeen() {
+  const user = await requireUser();
+  await db.update(users).set({ notifSeenAt: new Date() }).where(eq(users.id, user.id));
+  // Pas de revalidatePath : la pastille est déjà à zéro côté navigateur, et on évite de recharger la page.
 }
 
 export async function logout() {

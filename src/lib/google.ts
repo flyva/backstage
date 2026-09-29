@@ -105,7 +105,8 @@ export async function signInWithGoogle(identity: GoogleIdentity): Promise<{ user
     return { user: { ...existing, googleSub: identity.sub, name: identity.name, firstName: identity.firstName, lastName: identity.lastName }, created: false };
   }
 
-  const [{ total }] = await db.select({ total: count() }).from(users);
+  // Seuls les comptes ACTIFS comptent : un compte Google en attente ne doit pas empêcher le premier vrai compte de devenir administrateur.
+  const [{ total }] = await db.select({ total: count() }).from(users).where(eq(users.status, "active"));
   const status = identity.trusted ? "active" : "pending";
   const [res] = await db.insert(users).values({
     email: identity.email,

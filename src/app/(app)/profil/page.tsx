@@ -1,7 +1,6 @@
 import { requireUser } from "@/lib/auth";
-import { ChangePasswordForm, ProfileForm } from "@/components/forms";
-import { NotificationSettings } from "@/components/NotificationSettings";
-import { pushEnabled, vapidPublicKey } from "@/lib/push";
+import Link from "next/link";
+import { ProfileForm } from "@/components/forms";
 
 export const metadata = { title: "Profil" };
 
@@ -20,19 +19,9 @@ export default async function ProfilPage({ searchParams }: PageProps<"/profil">)
         <ProfileForm firstName={user.firstName} lastName={user.lastName} homeAddress={user.homeAddress ?? ""} icalUrl={user.icalUrl ?? ""} />
       </div>
 
-      <div className="card space-y-3">
-        <h2 className="font-semibold">Mot de passe</h2>
-        <ChangePasswordForm />
-      </div>
-
-      <div className="card space-y-3">
-        <h2 className="font-semibold">Notifications</h2>
-        <NotificationSettings
-          publicKey={vapidPublicKey()}
-          serverReady={pushEnabled()}
-          initial={{ news: user.notifyNews, bde: user.notifyBde, loans: user.notifyLoans }}
-        />
-      </div>
+      <p className="text-sm text-muted">
+        Thème, couleurs, notifications et mot de passe : <Link href="/parametres" className="text-accent underline">Paramètres</Link>.
+      </p>
 
       <div className="card">
         <h2 className="mb-2 font-semibold">Comment obtenir mon lien iCalendar Ypareo ?</h2>

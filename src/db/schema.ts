@@ -31,6 +31,8 @@ export const users = mysqlTable("users", {
   homeLng: double("home_lng"),
   icalUrl: varchar("ical_url", { length: 1000 }),
   onboarded: boolean("onboarded").notNull().default(false),
+  // Dernière ouverture de la cloche : les nouveautés plus récentes comptent comme « non lues ».
+  notifSeenAt: datetime("notif_seen_at"),
   // Identifiant Microsoft (« oid » Entra ID) une fois le compte lié à Office 365.
   // « active » : accès normal ; « pending » : compte Google personnel en attente de validation par un admin.
   status: mysqlEnum("status", ["active", "pending"]).notNull().default("active"),

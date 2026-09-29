@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD `notif_seen_at` datetime;

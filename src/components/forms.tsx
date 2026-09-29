@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { changePassword, login, register, updateProfile, saveSettings, type FormState } from "@/lib/actions";
 import { PasswordField } from "@/components/PasswordField";
 import { EmailField } from "@/components/EmailField";
+import { AddressField } from "@/components/AddressField";
 
 function Feedback({ state }: { state: FormState }) {
   if (state?.error) return <p className="text-sm text-danger" role="alert">{state.error}</p>;
@@ -73,11 +74,13 @@ export function ProfileForm(props: { firstName: string; lastName: string; homeAd
           <input id="lastName" name="lastName" autoComplete="family-name" defaultValue={props.lastName} maxLength={60} required className="input" />
         </div>
       </div>
-      <div>
-        <label className="label" htmlFor="homeAddress">Adresse du domicile</label>
-        <input id="homeAddress" name="homeAddress" defaultValue={props.homeAddress} placeholder="12 rue Exemple, 33000 Bordeaux" className="input" />
-        <p className="mt-1 text-xs text-muted">Sert aux horaires de tram/bus et aux stations V³ proches de chez toi.</p>
-      </div>
+      <AddressField
+        id="homeAddress"
+        name="homeAddress"
+        label="Adresse du domicile"
+        defaultValue={props.homeAddress}
+        hint="Commence à taper (numéro, rue, ville) et choisis dans la liste. Sert aux horaires de tram/bus et aux stations Le Vélo proches de chez toi."
+      />
       <div>
         <label className="label" htmlFor="icalUrl">Lien iCalendar Ypareo</label>
         <input id="icalUrl" name="icalUrl" defaultValue={props.icalUrl} placeholder="https://…" className="input" />
@@ -109,7 +112,7 @@ export function SettingsForm({ values }: { values: Record<string, string> }) {
             <option value="nopass">Aucune</option>
           </select>
         </div>
-        {field("school_address", "Adresse de l'école")}
+        <AddressField id="school_address" name="school_address" label="Adresse de l'école" defaultValue={values.school_address ?? ""} placeholder="Adresse de l'école, Bordeaux" />
         {field("webmail_url", "Lien webmail 3IS", "https://…")}
         {field("ypareo_url", "Lien Ypareo", "https://…")}
         {field("studea_url", "Lien Studea", "https://…")}

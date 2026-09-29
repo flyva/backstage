@@ -175,7 +175,8 @@ export async function signInWithMicrosoft(identity: Identity): Promise<{ user: U
     return { user: { ...existing, msOid: identity.key, name: identity.name }, created: false };
   }
 
-  const [{ total }] = await db.select({ total: count() }).from(users);
+  // Seuls les comptes ACTIFS comptent : un compte Google en attente ne doit pas empêcher le premier vrai compte de devenir administrateur.
+  const [{ total }] = await db.select({ total: count() }).from(users).where(eq(users.status, "active"));
   const [res] = await db.insert(users).values({
     email: identity.email,
     name: identity.name,
