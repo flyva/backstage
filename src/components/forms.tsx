@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { changePassword, login, register, updateProfile, saveSettings, type FormState } from "@/lib/actions";
 import { PasswordField } from "@/components/PasswordField";
+import { EmailField } from "@/components/EmailField";
 
 function Feedback({ state }: { state: FormState }) {
   if (state?.error) return <p className="text-sm text-danger" role="alert">{state.error}</p>;
@@ -10,14 +11,11 @@ function Feedback({ state }: { state: FormState }) {
   return null;
 }
 
-export function LoginForm() {
+export function LoginForm({ emailDomain }: { emailDomain?: string }) {
   const [state, action, pending] = useActionState(login, undefined);
   return (
     <form action={action} className="space-y-4">
-      <div>
-        <label className="label" htmlFor="email">Email</label>
-        <input id="email" name="email" type="email" autoComplete="email" defaultValue={state?.values?.email} required className="input" />
-      </div>
+      <EmailField key={state?.values?.email} domain={emailDomain} defaultValue={state?.values?.email} />
       <PasswordField id="password" name="password" label="Mot de passe" autoComplete="current-password" />
       <Feedback state={state} />
       <button className="btn w-full" disabled={pending}>{pending ? "Connexion…" : "Se connecter"}</button>
@@ -25,7 +23,7 @@ export function LoginForm() {
   );
 }
 
-export function RegisterForm({ codeRequired = false }: { codeRequired?: boolean }) {
+export function RegisterForm({ codeRequired = false, emailDomain }: { codeRequired?: boolean; emailDomain?: string }) {
   const [state, action, pending] = useActionState(register, undefined);
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
@@ -42,10 +40,7 @@ export function RegisterForm({ codeRequired = false }: { codeRequired?: boolean 
           <input id="lastName" name="lastName" autoComplete="family-name" defaultValue={state?.values?.lastName} maxLength={60} required className="input" />
         </div>
       </div>
-      <div>
-        <label className="label" htmlFor="email">Email</label>
-        <input id="email" name="email" type="email" autoComplete="email" defaultValue={state?.values?.email} required className="input" />
-      </div>
+      <EmailField key={state?.values?.email} domain={emailDomain} defaultValue={state?.values?.email} />
       <PasswordField id="password" name="password" label="Mot de passe (8 caractères min.)" autoComplete="new-password" minLength={8} onValueChange={setPw} />
       <div>
         <PasswordField id="password2" name="password2" label="Confirme le mot de passe" autoComplete="new-password" minLength={8} onValueChange={setPw2} invalid={mismatch} />

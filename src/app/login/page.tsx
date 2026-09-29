@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
 import { microsoftEnabled } from "@/lib/microsoft";
 import { googleEnabled } from "@/lib/google";
+import { allowedDomainsFromEnv } from "@/lib/email-domain";
 import { LoginForm } from "@/components/forms";
 import { MicrosoftButton } from "@/components/MicrosoftButton";
 import { GoogleButton } from "@/components/GoogleButton";
@@ -39,6 +40,9 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const dev = process.env.NODE_ENV !== "production";
   const localRegistration = process.env.LOCAL_REGISTRATION !== "off";
   const social = microsoft || google || dev;
+  // Un seul domaine autorisé (ex. 3is.fr) : on l'affiche déjà dans le champ email.
+  const domains = allowedDomainsFromEnv();
+  const emailDomain = domains.length === 1 ? domains[0] : undefined;
 
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 p-6">
@@ -59,7 +63,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
         {social && (
           <div className="flex items-center gap-3 text-xs text-muted"><span className="h-px flex-1 bg-line" /> ou avec un mot de passe <span className="h-px flex-1 bg-line" /></div>
         )}
-        <LoginForm />
+        <LoginForm emailDomain={emailDomain} />
       </div>
 
       {(localRegistration || microsoft || google) && (

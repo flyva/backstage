@@ -53,7 +53,7 @@ export default async function RegisterPage() {
           <div className="flex items-center gap-3 text-xs text-muted"><span className="h-px flex-1 bg-line" /> ou avec un mot de passe <span className="h-px flex-1 bg-line" /></div>
         )}
         {localRegistration ? (
-          <RegisterForm codeRequired={!!process.env.REGISTRATION_CODE} />
+          <RegisterForm codeRequired={!!process.env.REGISTRATION_CODE} emailDomain={domains.length === 1 ? domains[0] : undefined} />
         ) : (
           !microsoft && !google && <p className="text-sm text-muted">Les inscriptions sont fermées.</p>
         )}
