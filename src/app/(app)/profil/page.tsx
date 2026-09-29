@@ -17,7 +17,7 @@ export default async function ProfilPage({ searchParams }: PageProps<"/profil">)
         </div>
       )}
       <div className="card">
-        <ProfileForm name={user.name} homeAddress={user.homeAddress ?? ""} icalUrl={user.icalUrl ?? ""} />
+        <ProfileForm firstName={user.firstName} lastName={user.lastName} homeAddress={user.homeAddress ?? ""} icalUrl={user.icalUrl ?? ""} />
       </div>
 
       <div className="card space-y-3">

@@ -89,7 +89,7 @@ export default async function HomePage() {
     <div className="max-w-6xl space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Salut {user.name.split(" ")[0]} 👋</h1>
+          <h1 className="text-2xl font-semibold">Salut {user.firstName || user.name.split(" ")[0]} 👋</h1>
           <p className="text-sm text-muted">Ton hub 3IS : cours, transports, matériel et actus.</p>
         </div>
         {shortcuts.length > 0 && (

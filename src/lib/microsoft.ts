@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { sessions, users, type User } from "@/db/schema";
 import { createSession, hashPassword } from "@/lib/auth";
 import { allowedDomainsFromEnv, emailInDomains } from "@/lib/email-domain";
+import { splitName } from "@/lib/names";
 import { skinFrom } from "@/lib/skin";
 import { writeSkinCookies } from "@/lib/skin-cookies";
 
@@ -167,7 +168,7 @@ export async function signInWithMicrosoft(identity: Identity): Promise<{ user: U
   if (existing) {
     const unusable = await hashPassword(newSecret(48));
     // Le nom vient désormais de Microsoft (celui saisi à l'inscription locale n'était pas vérifié).
-    await db.update(users).set({ msOid: identity.key, passwordHash: unusable, name: identity.name }).where(eq(users.id, existing.id));
+    await db.update(users).set({ msOid: identity.key, passwordHash: unusable, name: identity.name, firstName: splitName(identity.name).first, lastName: splitName(identity.name).last }).where(eq(users.id, existing.id));
     await db.delete(sessions).where(eq(sessions.userId, existing.id));
     await createSession(existing.id);
     await writeSkinCookies(skinFrom(existing));
@@ -178,6 +179,8 @@ export async function signInWithMicrosoft(identity: Identity): Promise<{ user: U
   const [res] = await db.insert(users).values({
     email: identity.email,
     name: identity.name,
+    firstName: splitName(identity.name).first,
+    lastName: splitName(identity.name).last,
     passwordHash: await hashPassword(newSecret(48)), // pas de mot de passe local : la connexion passe par Microsoft
     role: total === 0 ? "admin" : "member",
     msOid: identity.key,

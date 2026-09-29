@@ -32,9 +32,15 @@ export function RegisterForm({ codeRequired = false }: { codeRequired?: boolean 
   const mismatch = pw2 !== "" && pw !== pw2;
   return (
     <form action={action} className="space-y-4">
-      <div>
-        <label className="label" htmlFor="name">Prénom et nom</label>
-        <input id="name" name="name" autoComplete="name" defaultValue={state?.values?.name} required className="input" />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label className="label" htmlFor="firstName">Prénom</label>
+          <input id="firstName" name="firstName" autoComplete="given-name" defaultValue={state?.values?.firstName} maxLength={60} required className="input" />
+        </div>
+        <div>
+          <label className="label" htmlFor="lastName">Nom</label>
+          <input id="lastName" name="lastName" autoComplete="family-name" defaultValue={state?.values?.lastName} maxLength={60} required className="input" />
+        </div>
       </div>
       <div>
         <label className="label" htmlFor="email">Email</label>
@@ -58,13 +64,19 @@ export function RegisterForm({ codeRequired = false }: { codeRequired?: boolean 
   );
 }
 
-export function ProfileForm(props: { name: string; homeAddress: string; icalUrl: string }) {
+export function ProfileForm(props: { firstName: string; lastName: string; homeAddress: string; icalUrl: string }) {
   const [state, action, pending] = useActionState(updateProfile, undefined);
   return (
     <form action={action} className="space-y-4">
-      <div>
-        <label className="label" htmlFor="name">Nom</label>
-        <input id="name" name="name" defaultValue={props.name} required className="input" />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label className="label" htmlFor="firstName">Prénom</label>
+          <input id="firstName" name="firstName" autoComplete="given-name" defaultValue={props.firstName} maxLength={60} required className="input" />
+        </div>
+        <div>
+          <label className="label" htmlFor="lastName">Nom</label>
+          <input id="lastName" name="lastName" autoComplete="family-name" defaultValue={props.lastName} maxLength={60} required className="input" />
+        </div>
       </div>
       <div>
         <label className="label" htmlFor="homeAddress">Adresse du domicile</label>

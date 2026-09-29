@@ -16,6 +16,9 @@ import {
 export const users = mysqlTable("users", {
   id: int("id").primaryKey().autoincrement(),
   email: varchar("email", { length: 190 }).notNull().unique(),
+  // Prénom et nom sont saisis séparément ; « name » en est l'assemblage (« Prénom Nom »), utilisé pour l'affichage.
+  firstName: varchar("first_name", { length: 60 }).notNull().default(""),
+  lastName: varchar("last_name", { length: 60 }).notNull().default(""),
   name: varchar("name", { length: 120 }).notNull(),
   passwordHash: varchar("password_hash", { length: 255 }).notNull(),
   role: mysqlEnum("role", ["admin", "materiel", "bde", "member"]).notNull().default("member"),

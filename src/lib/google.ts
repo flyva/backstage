@@ -5,6 +5,7 @@ import { sessions, users, type User } from "@/db/schema";
 import { createSession, hashPassword } from "@/lib/auth";
 import { allowedDomainsFromEnv, emailInDomains } from "@/lib/email-domain";
 import { challengeFor, newSecret } from "@/lib/microsoft";
+import { joinName, splitName } from "@/lib/names";
 import { skinFrom } from "@/lib/skin";
 import { writeSkinCookies } from "@/lib/skin-cookies";
 
@@ -48,9 +49,9 @@ export function googleAuthorizeUrl(cfg: GoogleConfig, base: string, s: { state: 
   return `${cfg.authUrl}?${q}`;
 }
 
-export type GoogleClaims = { iss?: string; aud?: string; exp?: number; nonce?: string; sub?: string; email?: string; email_verified?: boolean | string; name?: string };
+export type GoogleClaims = { iss?: string; aud?: string; exp?: number; nonce?: string; sub?: string; email?: string; email_verified?: boolean | string; name?: string; given_name?: string; family_name?: string };
 
-export type GoogleIdentity = { sub: string; email: string; name: string; trusted: boolean };
+export type GoogleIdentity = { sub: string; email: string; name: string; firstName: string; lastName: string; trusted: boolean };
 
 export type GoogleCheck = { ok: true; identity: GoogleIdentity } | { ok: false; code: "google-echec" | "google-email-non-verifie" };
 
@@ -67,8 +68,12 @@ export function validateGoogleClaims(c: GoogleClaims, cfg: GoogleConfig, nonce: 
   if (!c.sub || !email.includes("@")) return { ok: false, code: "google-echec" };
   // Une adresse non vérifiée par Google ne prouve rien : on refuse.
   if (c.email_verified !== true && c.email_verified !== "true") return { ok: false, code: "google-email-non-verifie" };
-  const name = (c.name ?? email.split("@")[0]).trim().slice(0, 120) || email;
-  return { ok: true, identity: { sub: c.sub.slice(0, 40), email: email.slice(0, 190), name, trusted: emailInDomains(email, cfg.domains) } };
+  // Google fournit prénom et nom séparément quand le profil les renseigne ; sinon on découpe le nom affiché.
+  const fallback = splitName(c.name ?? email.split("@")[0]);
+  const firstName = (c.given_name ?? fallback.first).trim().slice(0, 60);
+  const lastName = (c.family_name ?? fallback.last).trim().slice(0, 60);
+  const name = joinName(firstName, lastName).slice(0, 120) || email;
+  return { ok: true, identity: { sub: c.sub.slice(0, 40), email: email.slice(0, 190), name, firstName, lastName, trusted: emailInDomains(email, cfg.domains) } };
 }
 
 /**
@@ -94,10 +99,10 @@ export async function signInWithGoogle(identity: GoogleIdentity): Promise<{ user
   const [existing] = await db.select().from(users).where(eq(users.email, identity.email)).limit(1);
   if (existing) {
     const unusable = await hashPassword(newSecret(48));
-    await db.update(users).set({ googleSub: identity.sub, passwordHash: unusable, name: identity.name }).where(eq(users.id, existing.id));
+    await db.update(users).set({ googleSub: identity.sub, passwordHash: unusable, name: identity.name, firstName: identity.firstName, lastName: identity.lastName }).where(eq(users.id, existing.id));
     await db.delete(sessions).where(eq(sessions.userId, existing.id));
     await open(existing);
-    return { user: { ...existing, googleSub: identity.sub, name: identity.name }, created: false };
+    return { user: { ...existing, googleSub: identity.sub, name: identity.name, firstName: identity.firstName, lastName: identity.lastName }, created: false };
   }
 
   const [{ total }] = await db.select({ total: count() }).from(users);
@@ -105,6 +110,8 @@ export async function signInWithGoogle(identity: GoogleIdentity): Promise<{ user
   const [res] = await db.insert(users).values({
     email: identity.email,
     name: identity.name,
+    firstName: identity.firstName,
+    lastName: identity.lastName,
     passwordHash: await hashPassword(newSecret(48)), // pas de mot de passe local : la connexion passe par Google
     // Jamais d'administrateur par Google personnel : le premier admin vient d'une adresse autorisée.
     role: total === 0 && identity.trusted ? "admin" : "member",

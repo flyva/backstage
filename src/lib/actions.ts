@@ -17,12 +17,17 @@ import { SETTING_KEYS } from "@/lib/settings";
 import { geocode } from "@/lib/mobility";
 import { allow, clientIp } from "@/lib/rate-limit";
 import { allowedDomainsFromEnv, emailInDomains } from "@/lib/email-domain";
+import { joinName } from "@/lib/names";
 import { skinFrom } from "@/lib/skin";
 import { writeSkinCookies } from "@/lib/skin-cookies";
 import { timingSafeEqual } from "node:crypto";
 import { fetchIcal, clearIcalCache } from "@/lib/ical";
 
 export type FormState = { error?: string; ok?: string; values?: Record<string, string> } | undefined;
+
+// Prénom ou nom : au moins une lettre, 60 caractères maximum.
+const personName = (label: string) =>
+  z.string().trim().min(1, `${label} requis`).max(60, `${label} trop long (60 caractères max)`).regex(/\p{L}/u, `${label} invalide`);
 
 const credentials = z.object({
   email: z.string().trim().toLowerCase().email("Email invalide"),
@@ -49,12 +54,14 @@ export async function login(_: FormState, fd: FormData): Promise<FormState> {
 
 export async function register(_: FormState, fd: FormData): Promise<FormState> {
   if (process.env.LOCAL_REGISTRATION === "off") return { error: "L'inscription se fait avec le compte Microsoft de l'école." };
-  const keep = { name: String(fd.get("name") ?? ""), email: String(fd.get("email") ?? "") };
+  const keep = { firstName: String(fd.get("firstName") ?? ""), lastName: String(fd.get("lastName") ?? ""), email: String(fd.get("email") ?? "") };
   const parsed = credentials
-    .extend({ name: z.string().trim().min(2, "Nom trop court").max(120) })
-    .safeParse({ email: fd.get("email"), password: fd.get("password"), name: fd.get("name") });
+    .extend({ firstName: personName("Prénom"), lastName: personName("Nom") })
+    .safeParse({ email: fd.get("email"), password: fd.get("password"), firstName: fd.get("firstName"), lastName: fd.get("lastName") });
   if (!parsed.success) return { error: parsed.error.issues[0].message, values: keep };
-  const { email, password, name } = parsed.data;
+  const { email, password } = parsed.data;
+  const firstName = parsed.data.firstName.replace(/\s+/g, " ");
+  const lastName = parsed.data.lastName.replace(/\s+/g, " ");
   // Domaines autorisés (ex. 3is.fr) : aucune inscription avec une autre adresse.
   const domains = allowedDomainsFromEnv();
   if (domains.length > 0 && !emailInDomains(email, domains)) {
@@ -77,7 +84,7 @@ export async function register(_: FormState, fd: FormData): Promise<FormState> {
   // Le tout premier compte devient administrateur.
   const [{ total }] = await db.select({ total: count() }).from(users);
   const [res] = await db.insert(users).values({
-    email, name, passwordHash: await hashPassword(password),
+    email, firstName, lastName, name: joinName(firstName, lastName), passwordHash: await hashPassword(password),
     role: total === 0 ? "admin" : "member",
   });
   await createSession(res.insertId);
@@ -116,7 +123,8 @@ export async function setSkin(patch: { theme?: string; accent?: string; sidebar?
 }
 
 const profileSchema = z.object({
-  name: z.string().trim().min(2, "Nom trop court").max(120),
+  firstName: personName("Prénom"),
+  lastName: personName("Nom"),
   homeAddress: z.string().trim().max(255),
   icalUrl: z
     .string().trim().max(1000)
@@ -126,12 +134,15 @@ const profileSchema = z.object({
 export async function updateProfile(_: FormState, fd: FormData): Promise<FormState> {
   const user = await requireUser();
   const parsed = profileSchema.safeParse({
-    name: fd.get("name"),
+    firstName: fd.get("firstName"),
+    lastName: fd.get("lastName"),
     homeAddress: fd.get("homeAddress") ?? "",
     icalUrl: fd.get("icalUrl") ?? "",
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
-  const { name, homeAddress, icalUrl } = parsed.data;
+  const { homeAddress, icalUrl } = parsed.data;
+  const firstName = parsed.data.firstName.replace(/\s+/g, " ");
+  const lastName = parsed.data.lastName.replace(/\s+/g, " ");
   let place = null;
   if (homeAddress) {
     place = await geocode(homeAddress);
@@ -147,7 +158,9 @@ export async function updateProfile(_: FormState, fd: FormData): Promise<FormSta
     }
   }
   await db.update(users).set({
-    name,
+    firstName,
+    lastName,
+    name: joinName(firstName, lastName),
     homeAddress: place?.label ?? null,
     homeLat: place?.lat ?? null,
     homeLng: place?.lng ?? null,
