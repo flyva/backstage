@@ -60,7 +60,7 @@ export function RegisterForm({ codeRequired = false, emailDomain }: { codeRequir
   );
 }
 
-export function ProfileForm(props: { firstName: string; lastName: string; homeAddress: string; icalUrl: string }) {
+export function ProfileForm(props: { firstName: string; lastName: string; homeAddress: string; companyName: string; companyAddress: string; icalUrl: string }) {
   const [state, action, pending] = useActionState(updateProfile, undefined);
   return (
     <form action={action} className="space-y-4">
@@ -81,6 +81,17 @@ export function ProfileForm(props: { firstName: string; lastName: string; homeAd
         defaultValue={props.homeAddress}
         hint="Commence à taper (numéro, rue, ville) et choisis dans la liste. Sert aux horaires de tram/bus et aux stations Le Vélo proches de chez toi."
       />
+      <div className="space-y-4 rounded-xl border border-line p-4">
+        <div>
+          <h3 className="text-sm font-semibold">Entreprise (alternance)</h3>
+          <p className="text-xs text-muted">Facultatif : sert à calculer ton trajet et à voir les transports autour de ton lieu de travail (page Mobilité).</p>
+        </div>
+        <div>
+          <label className="label" htmlFor="companyName">Nom de l&apos;entreprise</label>
+          <input id="companyName" name="companyName" defaultValue={props.companyName} maxLength={120} className="input" />
+        </div>
+        <AddressField id="companyAddress" name="companyAddress" label="Adresse de l'entreprise" defaultValue={props.companyAddress} />
+      </div>
       <div>
         <label className="label" htmlFor="icalUrl">Lien iCalendar Ypareo</label>
         <input id="icalUrl" name="icalUrl" defaultValue={props.icalUrl} placeholder="https://…" className="input" />

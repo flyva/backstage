@@ -30,6 +30,11 @@ export const users = mysqlTable("users", {
   homeLat: double("home_lat"),
   homeLng: double("home_lng"),
   icalUrl: varchar("ical_url", { length: 1000 }),
+  // Entreprise d'alternance (facultatif) : trajets et transports autour de son adresse.
+  companyName: varchar("company_name", { length: 120 }),
+  companyAddress: varchar("company_address", { length: 255 }),
+  companyLat: double("company_lat"),
+  companyLng: double("company_lng"),
   onboarded: boolean("onboarded").notNull().default(false),
   // Dernière ouverture de la cloche : les nouveautés plus récentes comptent comme « non lues ».
   notifSeenAt: datetime("notif_seen_at"),

@@ -134,6 +134,8 @@ const profileSchema = z.object({
   firstName: personName("Prénom"),
   lastName: personName("Nom"),
   homeAddress: z.string().trim().max(255),
+  companyName: z.string().trim().max(120),
+  companyAddress: z.string().trim().max(255),
   icalUrl: z
     .string().trim().max(1000)
     .refine((v) => v === "" || /^(https?|webcal):\/\//i.test(v), "Le lien doit commencer par https://"),
@@ -145,16 +147,23 @@ export async function updateProfile(_: FormState, fd: FormData): Promise<FormSta
     firstName: fd.get("firstName"),
     lastName: fd.get("lastName"),
     homeAddress: fd.get("homeAddress") ?? "",
+    companyName: fd.get("companyName") ?? "",
+    companyAddress: fd.get("companyAddress") ?? "",
     icalUrl: fd.get("icalUrl") ?? "",
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
-  const { homeAddress, icalUrl } = parsed.data;
+  const { homeAddress, companyName, companyAddress, icalUrl } = parsed.data;
   const firstName = parsed.data.firstName.replace(/\s+/g, " ");
   const lastName = parsed.data.lastName.replace(/\s+/g, " ");
   let place = null;
   if (homeAddress) {
     place = await geocode(homeAddress);
     if (!place) return { error: "Adresse introuvable : essaie avec numéro, rue et ville" };
+  }
+  let company = null;
+  if (companyAddress) {
+    company = await geocode(companyAddress);
+    if (!company) return { error: "Adresse de l'entreprise introuvable : essaie avec numéro, rue et ville" };
   }
   // On vérifie que le lien iCal est bien lisible avant de l'enregistrer.
   const ical = icalUrl ? icalUrl.replace(/^webcal:/i, "https:") : "";
@@ -172,6 +181,10 @@ export async function updateProfile(_: FormState, fd: FormData): Promise<FormSta
     homeAddress: place?.label ?? null,
     homeLat: place?.lat ?? null,
     homeLng: place?.lng ?? null,
+    companyName: companyName || null,
+    companyAddress: company?.label ?? null,
+    companyLat: company?.lat ?? null,
+    companyLng: company?.lng ?? null,
     icalUrl: ical || null,
     onboarded: true,
   }).where(eq(users.id, user.id));

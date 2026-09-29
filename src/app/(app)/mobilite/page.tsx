@@ -8,6 +8,8 @@ import { AutoRefresh } from "@/components/AutoRefresh";
 export const metadata = { title: "Mobilité" };
 
 const fmtDistance = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${m} m`);
+// Durée d'un trajet : « 45 min », « 2 h 05 ».
+const fmtTrip = (m: number) => (m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")}` : `${m} min`);
 const fmtMinutes = (m: number) => (m <= 0 ? "Imminent" : `${m} min`);
 
 const TRAFFIC = {
@@ -77,13 +79,74 @@ async function Place({ title, address, origin }: { title: string; address: strin
   );
 }
 
+type Trip = Awaited<ReturnType<typeof tripEstimates>>;
+
+function TripCard({ title, trip, isAdmin }: { title: string; trip: Trip; isAdmin: boolean }) {
+  return (
+    <section className="card space-y-4 p-6">
+      <h2 className="text-lg font-semibold">{title}</h2>
+      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {trip.car && (
+          <li className="rounded-xl border border-line bg-bg p-4">
+            <div className="flex items-center gap-2 text-sm text-muted"><Car size={18} className="text-accent" /> En voiture</div>
+            <div className="mt-1 text-2xl font-bold tabular-nums">{fmtTrip(trip.car.minutes)}</div>
+            <div className="text-sm text-muted">{trip.car.km} km</div>
+            {trip.car.level ? (
+              <div className="mt-2 space-y-1">
+                <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${TRAFFIC[trip.car.level].cls}`}>{TRAFFIC[trip.car.level].label}</span>
+                {trip.car.delayMinutes > 0 && <div className="text-xs text-muted">dont +{trip.car.delayMinutes} min de trafic</div>}
+              </div>
+            ) : (
+              <div className="mt-2 text-xs text-muted" title="Le trafic en direct demande une clé TomTom (TOMTOM_API_KEY)">Sans trafic (estimation)</div>
+            )}
+          </li>
+        )}
+        {trip.bike && (
+          <li className="rounded-xl border border-line bg-bg p-4">
+            <div className="flex items-center gap-2 text-sm text-muted"><Bike size={18} className="text-accent" /> À vélo</div>
+            <div className="mt-1 text-2xl font-bold tabular-nums">{fmtTrip(trip.bike.minutes)}</div>
+            <div className="text-sm text-muted">{trip.bike.km} km</div>
+          </li>
+        )}
+        {trip.foot && (
+          <li className="rounded-xl border border-line bg-bg p-4">
+            <div className="flex items-center gap-2 text-sm text-muted"><Footprints size={18} className="text-accent" /> À pied</div>
+            <div className="mt-1 text-2xl font-bold tabular-nums">{fmtTrip(trip.foot.minutes)}</div>
+            <div className="text-sm text-muted">{trip.foot.km} km</div>
+          </li>
+        )}
+        <li className="flex items-center rounded-xl border border-line bg-bg p-4">
+          <a href={trip.transitUrl} target="_blank" rel="noopener noreferrer" className="btn-ghost w-full">
+            <TramFront size={16} /> Transports <ExternalLink size={14} />
+          </a>
+        </li>
+      </ul>
+      {trip.car && !trip.car.live && isAdmin && (
+        <p className="text-xs text-muted">
+          Le temps en voiture ne tient pas compte des embouteillages : ajoute <code className="rounded bg-bg px-1">TOMTOM_API_KEY</code> dans le fichier .env pour activer le trafic en direct (voir DEPLOY.md, section 13).
+        </p>
+      )}
+    </section>
+  );
+}
+
 export default async function MobilitePage() {
   const user = await requireUser();
   const s = await getSettings();
 
   const home: LatLng | null = user.homeLat != null && user.homeLng != null ? { lat: user.homeLat, lng: user.homeLng } : null;
   const school: LatLng | null = s.school_lat && s.school_lng ? { lat: Number(s.school_lat), lng: Number(s.school_lng) } : null;
-  const trip = home && school ? await tripEstimates(home, school) : null;
+  const company: LatLng | null = user.companyLat != null && user.companyLng != null ? { lat: user.companyLat, lng: user.companyLng } : null;
+  const companyLabel = user.companyName || "l'entreprise";
+  // Un trajet par destination connue : l'école et, si renseignée, l'entreprise d'alternance.
+  const [toSchool, toCompany] = await Promise.all([
+    home && school ? tripEstimates(home, school) : null,
+    home && company ? tripEstimates(home, company) : null,
+  ]);
+  const trips = [
+    ...(toSchool ? [{ title: "Domicile → École", trip: toSchool }] : []),
+    ...(toCompany ? [{ title: `Domicile → ${companyLabel}`, trip: toCompany }] : []),
+  ];
 
   return (
     <div className="max-w-5xl space-y-8">
@@ -93,56 +156,18 @@ export default async function MobilitePage() {
         <p className="text-sm text-muted">Horaires en temps réel TBM et disponibilité des vélos, autour de chez toi et de l&apos;école.</p>
       </header>
 
-      {trip && (
-        <section className="card space-y-4 p-6">
-          <h2 className="text-lg font-semibold">Domicile → École</h2>
-          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {trip.car && (
-              <li className="rounded-xl border border-line bg-bg p-4">
-                <div className="flex items-center gap-2 text-sm text-muted"><Car size={18} className="text-accent" /> En voiture</div>
-                <div className="mt-1 text-2xl font-bold tabular-nums">{trip.car.minutes} min</div>
-                <div className="text-sm text-muted">{trip.car.km} km</div>
-                {trip.car.level ? (
-                  <div className="mt-2 space-y-1">
-                    <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${TRAFFIC[trip.car.level].cls}`}>{TRAFFIC[trip.car.level].label}</span>
-                    {trip.car.delayMinutes > 0 && <div className="text-xs text-muted">dont +{trip.car.delayMinutes} min de trafic</div>}
-                  </div>
-                ) : (
-                  <div className="mt-2 text-xs text-muted" title="Le trafic en direct demande une clé TomTom (TOMTOM_API_KEY)">Sans trafic (estimation)</div>
-                )}
-              </li>
-            )}
-            {trip.bike && (
-              <li className="rounded-xl border border-line bg-bg p-4">
-                <div className="flex items-center gap-2 text-sm text-muted"><Bike size={18} className="text-accent" /> À vélo</div>
-                <div className="mt-1 text-2xl font-bold tabular-nums">{trip.bike.minutes} min</div>
-                <div className="text-sm text-muted">{trip.bike.km} km</div>
-              </li>
-            )}
-            {trip.foot && (
-              <li className="rounded-xl border border-line bg-bg p-4">
-                <div className="flex items-center gap-2 text-sm text-muted"><Footprints size={18} className="text-accent" /> À pied</div>
-                <div className="mt-1 text-2xl font-bold tabular-nums">{trip.foot.minutes} min</div>
-                <div className="text-sm text-muted">{trip.foot.km} km</div>
-              </li>
-            )}
-            <li className="flex items-center rounded-xl border border-line bg-bg p-4">
-              <a href={trip.transitUrl} target="_blank" rel="noopener noreferrer" className="btn-ghost w-full">
-                <TramFront size={16} /> Transports <ExternalLink size={14} />
-              </a>
-            </li>
-          </ul>
-          {trip.car && !trip.car.live && user.role === "admin" && (
-            <p className="text-xs text-muted">
-              Le temps en voiture ne tient pas compte des embouteillages : ajoute <code className="rounded bg-bg px-1">TOMTOM_API_KEY</code> dans le fichier .env pour activer le trafic en direct (voir DEPLOY.md, section 13).
-            </p>
-          )}
-        </section>
-      )}
+      {trips.map((t) => (
+        <TripCard key={t.title} title={t.title} trip={t.trip} isAdmin={user.role === "admin"} />
+      ))}
 
       {!home && (
         <div className="card border-accent text-sm">
           Renseigne ton adresse dans ton <Link href="/profil" className="font-medium text-accent underline">profil</Link> pour voir les transports près de chez toi.
+        </div>
+      )}
+      {home && !company && (
+        <div className="card text-sm text-muted">
+          Tu es en alternance ? Ajoute l&apos;adresse de ton entreprise dans ton <Link href="/profil" className="text-accent underline">profil</Link> pour voir le trajet et les transports jusqu&apos;à ton lieu de travail.
         </div>
       )}
       {!school && (
@@ -154,6 +179,7 @@ export default async function MobilitePage() {
       <div className="grid gap-8 xl:grid-cols-2">
         {home && <Place title="Près de chez toi" address={user.homeAddress ?? ""} origin={home} />}
         {school && <Place title="Près de l'école" address={s.school_address ?? ""} origin={school} />}
+        {company && <Place title={`Près de ${companyLabel}`} address={user.companyAddress ?? ""} origin={company} />}
       </div>
 
       <p className="text-xs text-muted">

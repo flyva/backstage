@@ -16,7 +16,7 @@ export default async function ProfilPage({ searchParams }: PageProps<"/profil">)
         </div>
       )}
       <div className="card">
-        <ProfileForm firstName={user.firstName} lastName={user.lastName} homeAddress={user.homeAddress ?? ""} icalUrl={user.icalUrl ?? ""} />
+        <ProfileForm firstName={user.firstName} lastName={user.lastName} homeAddress={user.homeAddress ?? ""} companyName={user.companyName ?? ""} companyAddress={user.companyAddress ?? ""} icalUrl={user.icalUrl ?? ""} />
       </div>
 
       <p className="text-sm text-muted">
