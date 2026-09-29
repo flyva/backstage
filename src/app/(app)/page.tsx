@@ -5,14 +5,15 @@ import { getSettings } from "@/lib/settings";
 import { dayKey, getEvents, type AgendaEvent } from "@/lib/ical";
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { equipmentItems, loans } from "@/db/schema";
+import { equipmentItems, loans, newsPosts } from "@/db/schema";
+import { desc } from "drizzle-orm";
 import { daysBetween, isManager, todayParis } from "@/lib/equipment";
 
 const timeFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit" });
 
 const SOON = [
   "Projets : conduite de spectacle et fiches techniques",
-  "Kanban, actualités, BDE, galerie",
+  "BDE (événements, sondages, idées), galerie",
 ];
 
 export default async function HomePage() {
@@ -36,6 +37,8 @@ export default async function HomePage() {
       today = null;
     }
   }
+
+  const latestNews = await db.select({ id: newsPosts.id, title: newsPosts.title, pinned: newsPosts.pinned, createdAt: newsPosts.createdAt }).from(newsPosts).orderBy(desc(newsPosts.pinned), desc(newsPosts.createdAt)).limit(3);
 
   // Matériel : mes prêts à rendre bientôt / en retard, et la file d'attente pour les référents.
   const todayStr = todayParis();
@@ -81,6 +84,23 @@ export default async function HomePage() {
           {toHandle > 0 && <p>{toHandle} demande{toHandle > 1 ? "s" : ""} de prêt à traiter</p>}
           {lateCount > 0 && <p className="text-danger">{lateCount} prêt{lateCount > 1 ? "s" : ""} en retard</p>}
           <Link href={toHandle + lateCount > 0 ? "/materiel/gestion" : "/materiel"} className="inline-block text-xs text-accent underline">Voir le matériel</Link>
+        </section>
+      )}
+
+      {latestNews.length > 0 && (
+        <section className="card space-y-1.5">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold">Actualités</h2>
+            <Link href="/actus" className="text-xs text-accent underline">Tout voir</Link>
+          </div>
+          <ul className="space-y-1 text-sm">
+            {latestNews.map((n) => (
+              <li key={n.id} className="flex items-baseline gap-2">
+                <Link href={`/actus/${n.id}`} className="min-w-0 flex-1 truncate hover:text-accent">{n.pinned && "📌 "}{n.title}</Link>
+                <span className="shrink-0 text-xs text-muted">{n.createdAt.toLocaleDateString("fr-FR", { timeZone: "Europe/Paris", day: "numeric", month: "short" })}</span>
+              </li>
+            ))}
+          </ul>
         </section>
       )}
 

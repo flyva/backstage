@@ -241,3 +241,20 @@ export const kanbanCards = mysqlTable(
   },
   (t) => [index("kcard_col_idx").on(t.columnId, t.position)],
 );
+
+// ---------- Actualités ----------
+
+export const newsPosts = mysqlTable(
+  "news_posts",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    title: varchar("title", { length: 200 }).notNull(),
+    body: mediumtext("body").notNull(),
+    scope: mysqlEnum("scope", ["ecole", "bde"]).notNull().default("ecole"),
+    pinned: boolean("pinned").notNull().default(false),
+    authorId: int("author_id").notNull().references(() => users.id),
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+    updatedAt: datetime("updated_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [index("news_created_idx").on(t.pinned, t.createdAt)],
+);
