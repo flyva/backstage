@@ -217,7 +217,7 @@ export async function nearbyBikeStations(origin: LatLng, opts: { maxDistance?: n
 
 export type Route = { minutes: number; km: number };
 
-async function route(profile: "foot" | "bike", a: LatLng, b: LatLng): Promise<Route | null> {
+async function route(profile: "foot" | "bike" | "car", a: LatLng, b: LatLng): Promise<Route | null> {
   const coords = `${a.lng},${a.lat};${b.lng},${b.lat}`;
   const data = await cached(`route:${profile}:${coords}`, 600e3, () =>
     getJson<{ routes?: { duration: number; distance: number }[] }>(
@@ -228,9 +228,55 @@ async function route(profile: "foot" | "bike", a: LatLng, b: LatLng): Promise<Ro
   return r ? { minutes: Math.max(1, Math.round(r.duration / 60)), km: Math.round(r.distance / 100) / 10 } : null;
 }
 
+export type CarTrip = {
+  minutes: number; // durée avec la circulation actuelle (ou sans trafic si non disponible)
+  km: number;
+  delayMinutes: number; // retard dû au trafic (0 si inconnu)
+  live: boolean; // true = trafic en direct (TomTom), false = simple estimation sans trafic
+  level: "fluide" | "ralenti" | "bouchons" | null;
+};
+
+/** Niveau de circulation d'après le retard par rapport à un trajet sans trafic. */
+export function trafficLevel(baseMinutes: number, delayMinutes: number): "fluide" | "ralenti" | "bouchons" {
+  const ratio = baseMinutes > 0 ? delayMinutes / baseMinutes : 0;
+  if (ratio < 0.12 || delayMinutes < 2) return "fluide";
+  if (ratio < 0.35) return "ralenti";
+  return "bouchons";
+}
+
+/** Extrait le résultat d'une réponse TomTom « calculateRoute » (exporté pour les tests). */
+export function parseTomTom(json: unknown): { minutes: number; km: number; baseMinutes: number; delayMinutes: number } | null {
+  const sum = (json as { routes?: { summary?: Record<string, number> }[] })?.routes?.[0]?.summary;
+  if (!sum || typeof sum.travelTimeInSeconds !== "number") return null;
+  const delay = Math.max(0, sum.trafficDelayInSeconds ?? 0);
+  const base = sum.noTrafficTravelTimeInSeconds ?? Math.max(0, sum.travelTimeInSeconds - delay);
+  return {
+    minutes: Math.max(1, Math.round(sum.travelTimeInSeconds / 60)),
+    km: Math.round((sum.lengthInMeters ?? 0) / 100) / 10,
+    baseMinutes: Math.max(1, Math.round(base / 60)),
+    delayMinutes: Math.round(delay / 60),
+  };
+}
+
+/**
+ * Temps en voiture. Avec TOMTOM_API_KEY : circulation en direct (embouteillages compris), mémorisée 3 minutes pour
+ * rester dans le quota gratuit. Sans clé (ou en cas d'échec) : trajet OpenStreetMap sans trafic, signalé comme tel.
+ */
+async function carTrip(a: LatLng, b: LatLng): Promise<CarTrip | null> {
+  const key = process.env.TOMTOM_API_KEY?.trim();
+  if (key) {
+    const url = `https://api.tomtom.com/routing/1/calculateRoute/${a.lat},${a.lng}:${b.lat},${b.lng}/json?key=${encodeURIComponent(key)}&traffic=true&travelMode=car&routeType=fastest&departAt=now`;
+    const data = await cached(`tomtom:${a.lat.toFixed(4)},${a.lng.toFixed(4)}:${b.lat.toFixed(4)},${b.lng.toFixed(4)}`, 180e3, () => getJson<unknown>(url));
+    const r = parseTomTom(data);
+    if (r) return { minutes: r.minutes, km: r.km, delayMinutes: r.delayMinutes, live: true, level: trafficLevel(r.baseMinutes, r.delayMinutes) };
+  }
+  const free = await route("car", a, b);
+  return free ? { minutes: free.minutes, km: free.km, delayMinutes: 0, live: false, level: null } : null;
+}
+
 export async function tripEstimates(a: LatLng, b: LatLng) {
-  const [foot, bike] = await Promise.all([route("foot", a, b), route("bike", a, b)]);
+  const [foot, bike, car] = await Promise.all([route("foot", a, b), route("bike", a, b), carTrip(a, b)]);
   const transitUrl =
     `https://www.google.com/maps/dir/?api=1&origin=${a.lat},${a.lng}&destination=${b.lat},${b.lng}&travelmode=transit`;
-  return { foot, bike, transitUrl, straightKm: Math.round(distanceM(a, b) / 100) / 10 };
+  return { foot, bike, car, transitUrl, straightKm: Math.round(distanceM(a, b) / 100) / 10 };
 }

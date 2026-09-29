@@ -267,3 +267,17 @@ APP_URL="https://backstage.exemple.fr"     # obligatoire en production
 ```
 
 Redémarre le serveur : le bouton « Continuer avec Google » apparaît sur les pages de connexion et d'inscription. Si un compte à mot de passe existe déjà avec la même adresse, il est lié à Google (ancien mot de passe et sessions révoqués).
+
+## 13. Temps en voiture avec les embouteillages (TomTom)
+
+La page **Mobilité** affiche le temps en voiture domicile → école. **Sans clé**, c'est une estimation sans circulation (OpenStreetMap). **Avec une clé TomTom**, le temps tient compte des embouteillages en direct, avec un indicateur « Circulation fluide / Ralentissements / Embouteillages » et le retard dû au trafic.
+
+1. Crée un compte gratuit sur <https://developer.tomtom.com> (aucune carte bancaire demandée pour l'offre gratuite).
+2. Dans le tableau de bord, **créer une clé API** (produit « Routing » activé). Le quota gratuit est d'environ 2 500 requêtes par jour ; Backstage mémorise chaque trajet 3 minutes, ce qui suffit largement pour une promo.
+3. Ajoute la clé dans `.env.local` (PC) ou `/opt/backstage/.env` (Pi) :
+
+```
+TOMTOM_API_KEY="ta-cle"
+```
+
+Redémarre le serveur. Si TomTom est injoignable ou si le quota est dépassé, la page retombe automatiquement sur l'estimation sans trafic.

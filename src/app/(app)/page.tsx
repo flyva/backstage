@@ -11,6 +11,7 @@ import { homeGlance } from "@/lib/glance";
 import { ago } from "@/lib/relative-time";
 
 const timeFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit" });
+const dateFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", weekday: "long", day: "numeric", month: "long" });
 const shortDate = new Intl.DateTimeFormat("fr-FR", { timeZone: "UTC", day: "numeric", month: "short" });
 
 type Stat = { label: string; value: string; sub: string; icon: LucideIcon; color: string; href: string };
@@ -26,13 +27,13 @@ export default async function HomePage() {
   const home = user.homeLat != null && user.homeLng != null ? { lat: user.homeLat, lng: user.homeLng } : null;
 
   // Chaque source est indépendante : si l'une échoue, l'accueil s'affiche quand même.
-  const [events, glance, myLoans, news] = await Promise.all([
+  const [agenda, glance, myLoans, news] = await Promise.all([
     (async (): Promise<AgendaEvent[] | null> => {
       if (!user.icalUrl) return null;
       try {
         const now = new Date();
-        const all = await getEvents(user.icalUrl, new Date(now.getTime() - 864e5), new Date(now.getTime() + 2 * 864e5));
-        return all.filter((e) => dayKey(e.start) === dayKey(now));
+        // Deux semaines : assez loin pour retrouver le prochain cours même après un week-end ou des vacances courtes.
+        return await getEvents(user.icalUrl, new Date(now.getTime() - 864e5), new Date(now.getTime() + 14 * 864e5));
       } catch {
         return null;
       }
@@ -49,7 +50,11 @@ export default async function HomePage() {
   ]);
 
   const now = new Date();
-  const nextEvent = events?.find((e) => e.end >= now && !e.allDay);
+  const events = agenda ? agenda.filter((e) => dayKey(e.start) === dayKey(now)) : null; // cours du jour
+  const nextEvent = agenda?.find((e) => e.end >= now && !e.allDay); // prochain cours, aujourd'hui ou plus tard
+  const tomorrow = new Date(now.getTime() + 864e5);
+  const dayLabel = (d: Date) =>
+    dayKey(d) === dayKey(now) ? "Aujourd'hui" : dayKey(d) === dayKey(tomorrow) ? "Demain" : dateFmt.format(d);
   const stop = glance.stops.find((st) => st.departures.length > 0);
   const dep = stop?.departures[0];
   const bike = glance.bikes[0];
@@ -60,7 +65,7 @@ export default async function HomePage() {
     {
       label: "Prochain cours", icon: Clock, color: "#17a2b8", href: "/agenda",
       value: nextEvent ? timeFmt.format(nextEvent.start) : "–",
-      sub: nextEvent ? `${nextEvent.title}${nextEvent.location ? ` · ${nextEvent.location}` : ""}` : user.icalUrl ? "Plus de cours aujourd'hui" : "Ajoute ton lien iCal",
+      sub: nextEvent ? `${dayLabel(nextEvent.start)} · ${nextEvent.title}${nextEvent.location ? ` · ${nextEvent.location}` : ""}` : user.icalUrl ? "Aucun cours dans les 2 semaines" : "Ajoute ton lien iCal",
     },
     {
       label: dep ? `Prochain passage (${dep.line})` : "Prochain passage", icon: TramFront, color: "#28a745", href: "/mobilite",
@@ -115,7 +120,7 @@ export default async function HomePage() {
             <span className="grid size-11 place-items-center rounded-xl" style={{ background: `color-mix(in srgb, ${st.color} 16%, transparent)`, color: st.color }}><st.icon size={22} /></span>
             <div className="mt-4 text-sm text-muted">{st.label}</div>
             <div className="mt-1 text-3xl font-bold">{st.value}</div>
-            <div className="mt-1 truncate text-xs text-muted" title={st.sub}>{st.sub}</div>
+            <div className="mt-1 line-clamp-2 text-xs text-muted" title={st.sub}>{st.sub}</div>
           </Link>
         ))}
       </section>
