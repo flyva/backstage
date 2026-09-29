@@ -16,6 +16,7 @@ import {
 } from "@/lib/auth";
 import { SETTING_KEYS } from "@/lib/settings";
 import { geocode } from "@/lib/mobility";
+import { fetchIcal, clearIcalCache } from "@/lib/ical";
 
 export type FormState = { error?: string; ok?: string } | undefined;
 
@@ -89,12 +90,21 @@ export async function updateProfile(_: FormState, fd: FormData): Promise<FormSta
     place = await geocode(homeAddress);
     if (!place) return { error: "Adresse introuvable : essaie avec numéro, rue et ville" };
   }
+  // On vérifie que le lien iCal est bien lisible avant de l'enregistrer.
+  const ical = icalUrl ? icalUrl.replace(/^webcal:/i, "https:") : "";
+  if (ical) {
+    try {
+      await fetchIcal(ical, { force: true });
+    } catch (e) {
+      return { error: `Lien iCalendar inutilisable : ${e instanceof Error ? e.message : "erreur inconnue"}` };
+    }
+  }
   await db.update(users).set({
     name,
     homeAddress: place?.label ?? null,
     homeLat: place?.lat ?? null,
     homeLng: place?.lng ?? null,
-    icalUrl: icalUrl ? icalUrl.replace(/^webcal:/i, "https:") : null,
+    icalUrl: ical || null,
     onboarded: true,
   }).where(eq(users.id, user.id));
   revalidatePath("/", "layout");
@@ -193,4 +203,11 @@ export async function saveSettings(_: FormState, fd: FormData): Promise<FormStat
   }
   revalidatePath("/", "layout");
   return { ok: "Paramètres enregistrés" };
+}
+
+export async function refreshAgenda() {
+  const user = await requireUser();
+  if (user.icalUrl) clearIcalCache(user.icalUrl);
+  revalidatePath("/agenda");
+  revalidatePath("/");
 }
