@@ -1,40 +1,64 @@
 @import "tailwindcss";
 
-/* Jetons de couleur : clair par défaut, sombre via .dark ou préférence système. */
+/* Jetons de couleur — style « Mix » : menu ardoise façon AdminLTE, cartes arrondies façon TailAdmin.
+   Clair (blanc) par défaut ; sombre via .dark. La couleur d'accent (data-accent) et la couleur du menu
+   (data-sidebar) sont choisies par chaque personne dans le panneau de droite. */
 :root {
-  --bg: #f6f6f8;
+  --bg: #f3f5f8;
   --surface: #ffffff;
-  --border: #e3e3ea;
-  --fg: #15151c;
-  --muted: #6b6b7b;
-  --accent: #d97706;
-  --accent-fg: #ffffff;
+  --border: #e3e7ee;
+  --fg: #1d2530;
+  --muted: #667085;
   --danger: #dc2626;
+  --accent: #b45309;
+  --accent-fg: #ffffff;
+  /* Menu latéral (sombre par défaut, y compris en thème clair) */
+  --side: #2f353b;
+  --side-text: #c2c7d0;
+  --side-muted: #8b949e;
+  --side-hover: rgba(255, 255, 255, 0.07);
+  --side-line: rgba(255, 255, 255, 0.1);
+  --side-strong: #ffffff;
   color-scheme: light;
 }
+:root[data-accent="bleu"] { --accent: #0069d9; }
+:root[data-accent="indigo"] { --accent: #4f46e5; }
+:root[data-accent="vert"] { --accent: #047857; }
+:root[data-accent="rose"] { --accent: #be185d; }
+
 :root.dark {
-  --bg: #0e0e13;
-  --surface: #17171f;
-  --border: #2a2a36;
-  --fg: #ececf1;
-  --muted: #9a9aad;
-  --accent: #f59e0b;
-  --accent-fg: #14110a;
+  --bg: #1f2428;
+  --surface: #2b3035;
+  --border: #3b4249;
+  --fg: #eef0f3;
+  --muted: #9aa3ad;
   --danger: #f87171;
+  --accent: #f59e0b;
+  --accent-fg: #1a1204;
+  --side: #262b30;
   color-scheme: dark;
 }
-@media (prefers-color-scheme: dark) {
-  :root:not(.light):not(.dark) {
-    --bg: #0e0e13;
-    --surface: #17171f;
-    --border: #2a2a36;
-    --fg: #ececf1;
-    --muted: #9a9aad;
-    --accent: #f59e0b;
-    --accent-fg: #14110a;
-    --danger: #f87171;
-    color-scheme: dark;
-  }
+:root.dark[data-accent="bleu"] { --accent: #4da3ff; --accent-fg: #06121f; }
+:root.dark[data-accent="indigo"] { --accent: #8b93ff; --accent-fg: #0d0f2b; }
+:root.dark[data-accent="vert"] { --accent: #34d399; --accent-fg: #04140d; }
+:root.dark[data-accent="rose"] { --accent: #f472b6; --accent-fg: #1f0511; }
+
+/* Menu blanc (option « Blanc » du panneau de personnalisation) */
+:root[data-sidebar="light"] {
+  --side: #ffffff;
+  --side-text: #344054;
+  --side-muted: #98a2b3;
+  --side-hover: rgba(16, 24, 40, 0.05);
+  --side-line: #e3e7ee;
+  --side-strong: #101828;
+}
+:root.dark[data-sidebar="light"] {
+  --side: #2b3035;
+  --side-text: #d0d5dd;
+  --side-muted: #98a2b3;
+  --side-hover: rgba(255, 255, 255, 0.06);
+  --side-line: #3b4249;
+  --side-strong: #ffffff;
 }
 
 @theme inline {
@@ -46,6 +70,12 @@
   --color-accent: var(--accent);
   --color-accent-fg: var(--accent-fg);
   --color-danger: var(--danger);
+  --color-side: var(--side);
+  --color-side-text: var(--side-text);
+  --color-side-muted: var(--side-muted);
+  --color-side-hover: var(--side-hover);
+  --color-side-line: var(--side-line);
+  --color-side-strong: var(--side-strong);
   --font-sans: var(--font-geist-sans), system-ui, sans-serif;
 }
 
@@ -62,16 +92,16 @@ body {
 
 @layer components {
   .card {
-    @apply rounded-xl border border-line bg-surface p-5;
+    @apply rounded-2xl border border-line bg-surface p-5 shadow-[0_1px_2px_rgba(16,24,40,0.06)];
   }
   .input {
-    @apply w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/30;
+    @apply w-full rounded-xl border border-line bg-bg px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/30;
   }
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg transition hover:opacity-90 disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2 text-sm font-medium text-accent-fg transition hover:opacity-90 disabled:opacity-50;
   }
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-line px-3 py-2 text-sm transition hover:bg-bg;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-line px-3 py-2 text-sm transition hover:bg-bg;
   }
   .prose-wiki { @apply text-sm leading-relaxed; }
   .prose-wiki > * + * { @apply mt-3; }

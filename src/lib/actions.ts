@@ -17,6 +17,7 @@ import {
 import { SETTING_KEYS } from "@/lib/settings";
 import { geocode } from "@/lib/mobility";
 import { allow, clientIp } from "@/lib/rate-limit";
+import { skinFrom } from "@/lib/skin";
 import { timingSafeEqual } from "node:crypto";
 import { fetchIcal, clearIcalCache } from "@/lib/ical";
 
@@ -41,6 +42,7 @@ export async function login(_: FormState, fd: FormData): Promise<FormState> {
   if (!user || !(await verifyPassword(parsed.data.password, user.passwordHash)))
     return { error: "Identifiants incorrects", values: keep };
   await createSession(user.id);
+  await writeSkinCookies(skinFrom(user)); // retrouve son skin sur cet appareil
   redirect("/");
 }
 
@@ -79,11 +81,21 @@ export async function logout() {
   redirect("/login");
 }
 
-export async function setTheme(theme: "system" | "light" | "dark") {
-  (await cookies()).set("theme", theme, { path: "/", maxAge: 31536000, sameSite: "lax" });
+const SKIN_COOKIE = { path: "/", maxAge: 31536000, sameSite: "lax" as const };
+
+async function writeSkinCookies(skin: { theme: string; accent: string; sidebar: string }) {
+  const jar = await cookies();
+  jar.set("theme", skin.theme, SKIN_COOKIE);
+  jar.set("accent", skin.accent, SKIN_COOKIE);
+  jar.set("sidebar", skin.sidebar, SKIN_COOKIE);
+}
+
+/** Enregistre le skin de la personne (cookie pour l'affichage immédiat, base pour le retrouver sur un autre appareil). */
+export async function setSkin(patch: { theme?: string; accent?: string; sidebar?: string }) {
   const user = await requireUser();
-  await db.update(users).set({ theme }).where(eq(users.id, user.id));
-  revalidatePath("/", "layout");
+  const next = skinFrom({ theme: patch.theme ?? user.theme, accent: patch.accent ?? user.accent, sidebar: patch.sidebar ?? user.sidebar });
+  await db.update(users).set(next).where(eq(users.id, user.id));
+  await writeSkinCookies(next);
 }
 
 const profileSchema = z.object({
