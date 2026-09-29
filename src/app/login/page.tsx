@@ -34,6 +34,12 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
       {message && <div className="card border-danger text-sm" role="alert">{message}</div>}
 
       <div className="card space-y-4">
+        {!microsoft && process.env.NODE_ENV !== "production" && (
+          <>
+            <MicrosoftButton disabled />
+            <div className="flex items-center gap-3 text-xs text-muted"><span className="h-px flex-1 bg-line" /> ou avec un mot de passe <span className="h-px flex-1 bg-line" /></div>
+          </>
+        )}
         {microsoft && (
           <>
             <MicrosoftButton />

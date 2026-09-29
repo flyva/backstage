@@ -1,5 +1,16 @@
 // Bouton « Se connecter avec Microsoft » (lien : la connexion se fait sur le site de Microsoft).
-export function MicrosoftButton({ label = "Se connecter avec Microsoft" }: { label?: string }) {
+export function MicrosoftButton({ label = "Se connecter avec Microsoft", disabled = false }: { label?: string; disabled?: boolean }) {
+  if (disabled) {
+    // Visible uniquement en développement : montre où sera le bouton tant que Microsoft n'est pas configuré.
+    return (
+      <div className="space-y-1.5">
+        <span aria-disabled className="flex w-full cursor-not-allowed items-center justify-center gap-3 rounded-xl border border-dashed border-line px-4 py-2.5 text-sm font-medium text-muted">
+          {label} (non configuré)
+        </span>
+        <p className="text-xs text-muted">Renseigne MS_CLIENT_ID, MS_CLIENT_SECRET et ALLOWED_EMAIL_DOMAINS dans .env.local (voir DEPLOY.md, section 11). Ce message n&apos;apparaît qu&apos;en développement.</p>
+      </div>
+    );
+  }
   return (
     <a
       href="/api/auth/microsoft/login"

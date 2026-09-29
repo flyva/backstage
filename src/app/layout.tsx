@@ -25,8 +25,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${skin.theme === "dark" ? "dark" : ""} h-full antialiased`}
       data-accent={skin.accent}
       data-sidebar={skin.sidebar}
+      // Des extensions (LanguageTool, etc.) ajoutent des attributs sur <html>/<body> avant React : sans cela, alerte d'hydratation.
+      suppressHydrationWarning
     >
-      <body className="min-h-full">
+      <body className="min-h-full" suppressHydrationWarning>
         {children}
         <PwaRegister />
       </body>

@@ -25,6 +25,12 @@ export default async function RegisterPage() {
       </div>
 
       <div className="card space-y-4">
+        {!microsoft && process.env.NODE_ENV !== "production" && (
+          <>
+            <MicrosoftButton label="S'inscrire avec Microsoft" disabled />
+            <div className="flex items-center gap-3 text-xs text-muted"><span className="h-px flex-1 bg-line" /> ou avec un mot de passe <span className="h-px flex-1 bg-line" /></div>
+          </>
+        )}
         {microsoft && (
           <>
             <MicrosoftButton label="S'inscrire avec Microsoft" />
