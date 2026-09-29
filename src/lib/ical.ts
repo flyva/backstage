@@ -50,7 +50,7 @@ const safeLookup: net.LookupFunction = (hostname, options, callback) => {
   });
 };
 
-function download(url: string, redirects = 3): Promise<string> {
+function download(url: string, redirects = 3, accept = "text/calendar, */*"): Promise<string> {
   return new Promise((resolve, reject) => {
     let u: URL;
     try { u = new URL(url); } catch { return reject(new Error("Lien invalide")); }
@@ -60,12 +60,12 @@ function download(url: string, redirects = 3): Promise<string> {
     const host = u.hostname.replace(/^\[|\]$/g, "");
     if (net.isIP(host) && isPrivateIp(host)) return reject(new Error("Adresse non autorisée"));
 
-    const req = https.get(u, { lookup: safeLookup, timeout: 10000, headers: { Accept: "text/calendar, */*", "User-Agent": "Backstage/1.0" } }, (res) => {
+    const req = https.get(u, { lookup: safeLookup, timeout: 10000, headers: { Accept: accept, "User-Agent": "Backstage/1.0" } }, (res) => {
       const status = res.statusCode ?? 0;
       if (status >= 300 && status < 400 && res.headers.location) {
         res.resume();
         if (redirects <= 0) return reject(new Error("Trop de redirections"));
-        return download(new URL(res.headers.location, u).toString(), redirects - 1).then(resolve, reject);
+        return download(new URL(res.headers.location, u).toString(), redirects - 1, accept).then(resolve, reject);
       }
       if (status !== 200) { res.resume(); return reject(new Error(`Réponse ${status} du serveur`)); }
       const chunks: Buffer[] = [];
@@ -82,6 +82,9 @@ function download(url: string, redirects = 3): Promise<string> {
     req.on("error", reject);
   });
 }
+
+/** Télécharge un texte depuis une URL publique (mêmes protections anti-SSRF que pour l'iCal). */
+export const fetchPublicText = (url: string, accept = "application/json, */*") => download(url, 3, accept);
 
 const g = globalThis as unknown as { __icalCache?: Map<string, { at: number; text: string }> };
 const cache = (g.__icalCache ??= new Map());

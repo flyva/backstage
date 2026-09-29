@@ -57,6 +57,13 @@
       "when": 1790713964437,
       "tag": "0007_tricky_mysterio",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1790714262205,
+      "tag": "0008_round_iron_lad",
+      "breakpoints": true
     }
   ]
 }

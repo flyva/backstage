@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, PartyPopper, Newspaper, BookOpen, Package, FolderKanban, CalendarDays, TramFront, School, CircleHelp, Link2, User, Shield } from "lucide-react";
+import { Home, Camera, Images, PartyPopper, Newspaper, BookOpen, Package, FolderKanban, CalendarDays, TramFront, School, CircleHelp, Link2, User, Shield } from "lucide-react";
 
 const ITEMS = [
   { href: "/", label: "Accueil", icon: Home },
   { href: "/actus", label: "Actualités", icon: Newspaper },
   { href: "/bde", label: "BDE", icon: PartyPopper },
+  { href: "/galerie", label: "Galerie", icon: Images },
+  { href: "/instagram", label: "Instagram", icon: Camera },
   { href: "/projets", label: "Projets", icon: FolderKanban },
   { href: "/materiel", label: "Matériel", icon: Package },
   { href: "/agenda", label: "Agenda", icon: CalendarDays },

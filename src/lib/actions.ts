@@ -174,6 +174,8 @@ const IMAGE_TYPES: Record<string, string> = {
 
 export async function saveSettings(_: FormState, fd: FormData): Promise<FormState> {
   await requireAdmin();
+  const feed = String(fd.get("instagram_feed_url") ?? "").trim();
+  if (feed && !feed.toLowerCase().startsWith("https://")) return { error: "Le flux Instagram doit être un lien https://" };
   for (const key of SETTING_KEYS) {
     if (key === "school_map_file" || !fd.has(key)) continue;
     const value = String(fd.get(key) ?? "").trim();

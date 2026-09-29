@@ -334,3 +334,28 @@ export const bdeIdeaVotes = mysqlTable(
   },
   (t) => [primaryKey({ columns: [t.ideaId, t.userId] })],
 );
+
+// ---------- Galerie ----------
+
+export const galleryAlbums = mysqlTable("gallery_albums", {
+  id: int("id").primaryKey().autoincrement(),
+  title: varchar("title", { length: 150 }).notNull(),
+  description: varchar("description", { length: 500 }),
+  createdBy: int("created_by").notNull().references(() => users.id),
+  createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+});
+
+export const galleryItems = mysqlTable(
+  "gallery_items",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    albumId: int("album_id").notNull().references(() => galleryAlbums.id, { onDelete: "cascade" }),
+    kind: mysqlEnum("kind", ["image", "video"]).notNull(),
+    file: varchar("file", { length: 60 }).notNull(),
+    thumb: varchar("thumb", { length: 60 }),
+    caption: varchar("caption", { length: 300 }),
+    uploaderId: int("uploader_id").notNull().references(() => users.id),
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [index("gi_album_idx").on(t.albumId, t.createdAt)],
+);

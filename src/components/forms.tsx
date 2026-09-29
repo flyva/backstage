@@ -98,6 +98,7 @@ export function SettingsForm({ values }: { values: Record<string, string> }) {
         {field("ypareo_url", "Lien Ypareo", "https://…")}
         {field("studea_url", "Lien Studea", "https://…")}
         {field("school_instagram_url", "Instagram de l'école", "https://instagram.com/…")}
+        {field("instagram_feed_url", "Flux Instagram (URL JSON)", "https://feeds.behold.so/…")}
       </div>
       <div>
         <label className="label" htmlFor="school_map">Plan de l&apos;école (image PNG, JPG ou WebP)</label>

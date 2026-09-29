@@ -13,7 +13,7 @@ const timeFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", hou
 
 const SOON = [
   "Projets : conduite de spectacle et fiches techniques",
-  "Galerie photo/vidéo, flux Instagram de l'école",
+  "Notifications, application installable (PWA)",
 ];
 
 export default async function HomePage() {

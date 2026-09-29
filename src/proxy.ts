@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+// /api/gallery est exclu : le proxy met le corps de requête en mémoire (10 Mo max), or on y envoie
+// des vidéos en flux. Ces routes vérifient elles-mêmes la session.
 // Vérification optimiste : sans cookie de session, on renvoie vers /login.
 // La vraie vérification (session valide en base) se fait dans requireUser().
 export function proxy(request: NextRequest) {
@@ -10,5 +12,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!login|register|_next/static|_next/image|favicon.ico|manifest.webmanifest|icon.*).*)"],
+  matcher: ["/((?!login|register|api/gallery|_next/static|_next/image|favicon.ico|manifest.webmanifest|icon.*).*)"],
 };
