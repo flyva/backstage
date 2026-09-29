@@ -2,15 +2,16 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { and, count, eq, max } from "drizzle-orm";
+import { and, asc, count, eq, max } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import {
-  checklistItems, checklists, projectMembers, projects, users, type ProjectRole,
+  checklistItems, checklists, cues, CUE_CATEGORIES, projectMembers, projects, users, type ProjectRole,
 } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { CHECKLIST_TEMPLATES, requireProject } from "@/lib/projects";
 import type { FormState } from "@/lib/actions";
+import { parseDuration } from "@/lib/time";
 
 const id = z.coerce.number().int().positive();
 const role = z.enum(["owner", "editor", "viewer"]);
@@ -213,5 +214,94 @@ export async function deleteItem(fd: FormData) {
   if (!pid) return;
   await requireProject(pid, "editor");
   await db.delete(checklistItems).where(eq(checklistItems.id, iid));
+  touch(pid);
+}
+
+// ---------- Conduite ----------
+
+const cueSchema = z.object({
+  number: z.string().trim().max(20),
+  title: z.string().trim().min(1, "Titre requis").max(200),
+  category: z.enum(CUE_CATEGORIES),
+  duration: z.string().trim().max(12),
+  notes: z.string().trim().max(2000),
+});
+
+function readCue(fd: FormData) {
+  const p = cueSchema.safeParse({
+    number: fd.get("number") ?? "",
+    title: fd.get("title"),
+    category: fd.get("category"),
+    duration: fd.get("duration") ?? "",
+    notes: fd.get("notes") ?? "",
+  });
+  if (!p.success) return { error: p.error.issues[0].message } as const;
+  const durationSec = parseDuration(p.data.duration);
+  if (durationSec === undefined) return { error: "Durée invalide : utilise 2:30, 1:02:03 ou un nombre de secondes" } as const;
+  return {
+    value: {
+      number: p.data.number || null,
+      title: p.data.title,
+      category: p.data.category,
+      durationSec,
+      notes: p.data.notes || null,
+    },
+  } as const;
+}
+
+export async function addCue(_: FormState, fd: FormData): Promise<FormState> {
+  const pid = id.parse(fd.get("projectId"));
+  await requireProject(pid, "editor");
+  const c = readCue(fd);
+  if ("error" in c) return { error: c.error };
+  const [r] = await db.select({ m: max(cues.position) }).from(cues).where(eq(cues.projectId, pid));
+  await db.insert(cues).values({ projectId: pid, position: (r.m ?? -1) + 1, ...c.value });
+  touch(pid);
+  return { ok: "Cue ajoutée" };
+}
+
+async function projectOfCue(cueId: number) {
+  const [row] = await db.select({ projectId: cues.projectId }).from(cues).where(eq(cues.id, cueId)).limit(1);
+  return row?.projectId ?? null;
+}
+
+export async function updateCue(_: FormState, fd: FormData): Promise<FormState> {
+  const cid = id.parse(fd.get("cueId"));
+  const pid = await projectOfCue(cid);
+  if (!pid) return { error: "Cue introuvable" };
+  await requireProject(pid, "editor");
+  const c = readCue(fd);
+  if ("error" in c) return { error: c.error };
+  await db.update(cues).set(c.value).where(eq(cues.id, cid));
+  touch(pid);
+  return { ok: "Cue mise à jour" };
+}
+
+export async function deleteCue(fd: FormData) {
+  const cid = id.parse(fd.get("cueId"));
+  const pid = await projectOfCue(cid);
+  if (!pid) return;
+  await requireProject(pid, "editor");
+  await db.delete(cues).where(eq(cues.id, cid));
+  touch(pid);
+}
+
+export async function moveCue(fd: FormData) {
+  const cid = id.parse(fd.get("cueId"));
+  const dir = fd.get("dir") === "up" ? -1 : 1;
+  const pid = await projectOfCue(cid);
+  if (!pid) return;
+  await requireProject(pid, "editor");
+  await db.transaction(async (tx) => {
+    const list = await tx.select({ id: cues.id }).from(cues).where(eq(cues.projectId, pid)).orderBy(asc(cues.position), asc(cues.id));
+    const i = list.findIndex((c) => c.id === cid);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= list.length) return;
+    [list[i], list[j]] = [list[j], list[i]];
+    // On renumérote tout : positions contiguës, pas de trous ni de doublons.
+    for (const [position, c] of list.entries()) {
+      await tx.update(cues).set({ position }).where(eq(cues.id, c.id));
+    }
+  });
   touch(pid);
 }

@@ -119,3 +119,25 @@ export const checklistItems = mysqlTable(
 );
 
 export type ProjectRole = "owner" | "editor" | "viewer";
+
+// ---------- Conduite de spectacle ----------
+
+export const CUE_CATEGORIES = ["lumiere", "son", "video", "plateau", "regie", "autre"] as const;
+export type CueCategory = (typeof CUE_CATEGORIES)[number];
+
+export const cues = mysqlTable(
+  "cues",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    projectId: int("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    position: int("position").notNull().default(0),
+    number: varchar("number", { length: 20 }), // numéro affiché (ex. « 12.5 »), sinon l'ordre
+    title: varchar("title", { length: 200 }).notNull(),
+    category: mysqlEnum("category", CUE_CATEGORIES).notNull().default("lumiere"),
+    durationSec: int("duration_sec"),
+    notes: text("notes"),
+  },
+  (t) => [index("cue_project_idx").on(t.projectId, t.position)],
+);

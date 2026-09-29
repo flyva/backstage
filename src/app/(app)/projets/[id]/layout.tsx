@@ -10,6 +10,8 @@ export default async function ProjectLayout({ children, params }: LayoutProps<"/
   const { project, role } = await requireProject(Number(id));
   const tabs = [
     { slug: "", label: "Checklists" },
+    { slug: "conduite", label: "Conduite" },
+    { slug: "jour-j", label: "Jour J" },
     { slug: "membres", label: "Équipe" },
     ...(role === "owner" ? [{ slug: "reglages", label: "Réglages" }] : []),
   ];
