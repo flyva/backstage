@@ -11,7 +11,7 @@ import { randomBytes } from "node:crypto";
 import { db } from "@/db";
 import { users, faqItems, usefulLinks, settings } from "@/db/schema";
 import {
-  createSession, destroySession, hashPassword, verifyPassword,
+  createSession, destroyOtherSessions, destroySession, hashPassword, verifyPassword,
   requireUser, requireAdmin,
 } from "@/lib/auth";
 import { SETTING_KEYS } from "@/lib/settings";
@@ -53,6 +53,7 @@ export async function register(_: FormState, fd: FormData): Promise<FormState> {
     .safeParse({ email: fd.get("email"), password: fd.get("password"), name: fd.get("name") });
   if (!parsed.success) return { error: parsed.error.issues[0].message, values: keep };
   const { email, password, name } = parsed.data;
+  if (String(fd.get("password2") ?? "") !== password) return { error: "Les deux mots de passe ne correspondent pas", values: keep };
 
   if (!allow(`register:${await clientIp()}`, 5, 60 * 60e3)) return { error: "Trop d'inscriptions depuis cette adresse : réessaie plus tard", values: keep };
   // Si REGISTRATION_CODE est défini, l'inscription est réservée aux personnes qui le connaissent.
@@ -74,6 +75,24 @@ export async function register(_: FormState, fd: FormData): Promise<FormState> {
   });
   await createSession(res.insertId);
   redirect("/profil?bienvenue=1");
+}
+
+export async function changePassword(_: FormState, fd: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const current = String(fd.get("currentPassword") ?? "");
+  const next = String(fd.get("newPassword") ?? "");
+  if (next.length < 8) return { error: "Le nouveau mot de passe doit faire 8 caractères minimum" };
+  if (next.length > 200) return { error: "Mot de passe trop long" };
+  if (next !== String(fd.get("newPassword2") ?? "")) return { error: "Les deux mots de passe ne correspondent pas" };
+  // Anti force brute sur le mot de passe actuel.
+  if (!allow(`chpw:${user.id}`, 6, 10 * 60e3)) return { error: "Trop de tentatives : réessaie dans quelques minutes" };
+  if (!(await verifyPassword(current, user.passwordHash))) return { error: "Le mot de passe actuel est incorrect" };
+  if (next === current) return { error: "Le nouveau mot de passe doit être différent de l'actuel" };
+
+  await db.update(users).set({ passwordHash: await hashPassword(next) }).where(eq(users.id, user.id));
+  // Les autres appareils connectés sont déconnectés ; celui-ci reste ouvert.
+  await destroyOtherSessions(user.id);
+  return { ok: "Mot de passe modifié. Les autres appareils ont été déconnectés." };
 }
 
 export async function logout() {

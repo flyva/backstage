@@ -1,5 +1,5 @@
 import { requireUser } from "@/lib/auth";
-import { ProfileForm } from "@/components/forms";
+import { ChangePasswordForm, ProfileForm } from "@/components/forms";
 import { NotificationSettings } from "@/components/NotificationSettings";
 import { pushEnabled, vapidPublicKey } from "@/lib/push";
 
@@ -18,6 +18,11 @@ export default async function ProfilPage({ searchParams }: PageProps<"/profil">)
       )}
       <div className="card">
         <ProfileForm name={user.name} homeAddress={user.homeAddress ?? ""} icalUrl={user.icalUrl ?? ""} />
+      </div>
+
+      <div className="card space-y-3">
+        <h2 className="font-semibold">Mot de passe</h2>
+        <ChangePasswordForm />
       </div>
 
       <div className="card space-y-3">

@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
-import { login, register, updateProfile, saveSettings, type FormState } from "@/lib/actions";
+import { useActionState, useState } from "react";
+import { changePassword, login, register, updateProfile, saveSettings, type FormState } from "@/lib/actions";
+import { PasswordField } from "@/components/PasswordField";
 
 function Feedback({ state }: { state: FormState }) {
   if (state?.error) return <p className="text-sm text-danger" role="alert">{state.error}</p>;
@@ -17,10 +18,7 @@ export function LoginForm() {
         <label className="label" htmlFor="email">Email</label>
         <input id="email" name="email" type="email" autoComplete="email" defaultValue={state?.values?.email} required className="input" />
       </div>
-      <div>
-        <label className="label" htmlFor="password">Mot de passe</label>
-        <input id="password" name="password" type="password" autoComplete="current-password" required className="input" />
-      </div>
+      <PasswordField id="password" name="password" label="Mot de passe" autoComplete="current-password" />
       <Feedback state={state} />
       <button className="btn w-full" disabled={pending}>{pending ? "Connexion…" : "Se connecter"}</button>
     </form>
@@ -29,6 +27,9 @@ export function LoginForm() {
 
 export function RegisterForm({ codeRequired = false }: { codeRequired?: boolean }) {
   const [state, action, pending] = useActionState(register, undefined);
+  const [pw, setPw] = useState("");
+  const [pw2, setPw2] = useState("");
+  const mismatch = pw2 !== "" && pw !== pw2;
   return (
     <form action={action} className="space-y-4">
       <div>
@@ -39,9 +40,10 @@ export function RegisterForm({ codeRequired = false }: { codeRequired?: boolean 
         <label className="label" htmlFor="email">Email</label>
         <input id="email" name="email" type="email" autoComplete="email" defaultValue={state?.values?.email} required className="input" />
       </div>
+      <PasswordField id="password" name="password" label="Mot de passe (8 caractères min.)" autoComplete="new-password" minLength={8} onValueChange={setPw} />
       <div>
-        <label className="label" htmlFor="password">Mot de passe (8 caractères min.)</label>
-        <input id="password" name="password" type="password" autoComplete="new-password" minLength={8} required className="input" />
+        <PasswordField id="password2" name="password2" label="Confirme le mot de passe" autoComplete="new-password" minLength={8} onValueChange={setPw2} invalid={mismatch} />
+        {mismatch && <p className="mt-1 text-xs text-danger" role="alert">Les deux mots de passe ne correspondent pas.</p>}
       </div>
       {codeRequired && (
         <div>
@@ -51,7 +53,7 @@ export function RegisterForm({ codeRequired = false }: { codeRequired?: boolean 
         </div>
       )}
       <Feedback state={state} />
-      <button className="btn w-full" disabled={pending}>{pending ? "Création…" : "Créer mon compte"}</button>
+      <button className="btn w-full" disabled={pending || mismatch}>{pending ? "Création…" : "Créer mon compte"}</button>
     </form>
   );
 }
@@ -113,6 +115,26 @@ export function SettingsForm({ values }: { values: Record<string, string> }) {
       </div>
       <Feedback state={state} />
       <button className="btn" disabled={pending}>{pending ? "Enregistrement…" : "Enregistrer les paramètres"}</button>
+    </form>
+  );
+}
+
+export function ChangePasswordForm() {
+  const [state, action, pending] = useActionState(changePassword, undefined);
+  const [pw, setPw] = useState("");
+  const [pw2, setPw2] = useState("");
+  const mismatch = pw2 !== "" && pw !== pw2;
+  return (
+    // key : le formulaire est vidé (et donc les mots de passe effacés de l'écran) après un succès.
+    <form action={action} className="space-y-4" key={state?.ok ? "done" : "form"}>
+      <PasswordField id="currentPassword" name="currentPassword" label="Mot de passe actuel" autoComplete="current-password" />
+      <PasswordField id="newPassword" name="newPassword" label="Nouveau mot de passe (8 caractères min.)" autoComplete="new-password" minLength={8} onValueChange={setPw} />
+      <div>
+        <PasswordField id="newPassword2" name="newPassword2" label="Confirme le nouveau mot de passe" autoComplete="new-password" minLength={8} onValueChange={setPw2} invalid={mismatch} />
+        {mismatch && <p className="mt-1 text-xs text-danger" role="alert">Les deux mots de passe ne correspondent pas.</p>}
+      </div>
+      <Feedback state={state} />
+      <button className="btn" disabled={pending || mismatch}>{pending ? "Enregistrement…" : "Changer le mot de passe"}</button>
     </form>
   );
 }

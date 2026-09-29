@@ -50,6 +50,14 @@ export async function destroySession() {
   jar.delete(COOKIE);
 }
 
+/** Déconnecte tous les appareils de la personne sauf la session courante (après un changement de mot de passe). */
+export async function destroyOtherSessions(userId: number) {
+  const token = (await cookies()).get(COOKIE)?.value;
+  const keep = token ? sha256(token) : null;
+  const all = await db.select({ id: sessions.id }).from(sessions).where(eq(sessions.userId, userId));
+  for (const s of all) if (s.id !== keep) await db.delete(sessions).where(eq(sessions.id, s.id));
+}
+
 export const getUser = cache(async (): Promise<User | null> => {
   const token = (await cookies()).get(COOKIE)?.value;
   if (!token) return null;
