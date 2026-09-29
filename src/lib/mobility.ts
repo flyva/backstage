@@ -5,15 +5,15 @@ import "server-only";
 //  - Le Vélo TBM (ex V³) : GBFS 3.0
 //  - Adresses : api-adresse.data.gouv.fr (BAN)
 //  - Itinéraires piéton / vélo : routing.openstreetmap.de (OSRM)
-const KEY = "opendata-bordeaux-metropole-flux-gtfs-rt";
-const SIRI = "https://bdx.mecatran.com/utw/ws/siri/2.0/bordeaux";
+export const KEY = "opendata-bordeaux-metropole-flux-gtfs-rt";
+export const SIRI = "https://bdx.mecatran.com/utw/ws/siri/2.0/bordeaux";
 const GBFS = "https://bdx.mecatran.com/utw/ws/gbfs/bordeaux/v3";
 
 export type LatLng = { lat: number; lng: number };
 
 // ---------- utilitaires ----------
 
-async function getJson<T>(url: string): Promise<T> {
+export async function getJson<T>(url: string): Promise<T> {
   const res = await fetch(url, { signal: AbortSignal.timeout(7000), cache: "no-store" });
   if (!res.ok) throw new Error(`HTTP ${res.status} ${url}`);
   return res.json() as Promise<T>;
@@ -25,7 +25,7 @@ type Entry = { at: number; value?: unknown; pending?: Promise<unknown> };
 const g = globalThis as unknown as { __mobilityCache?: Map<string, Entry> };
 const store = (g.__mobilityCache ??= new Map<string, Entry>());
 
-async function cached<T>(key: string, ttlMs: number, load: () => Promise<T>): Promise<T | undefined> {
+export async function cached<T>(key: string, ttlMs: number, load: () => Promise<T>): Promise<T | undefined> {
   const hit = store.get(key);
   if (hit?.value !== undefined && Date.now() - hit.at < ttlMs) return hit.value as T;
   if (hit?.pending) return hit.pending as Promise<T | undefined>;
@@ -70,27 +70,27 @@ export async function geocode(address: string): Promise<(LatLng & { label: strin
 
 // ---------- bus / tram ----------
 
-type StopPoint = { ref: string; name: string; lat: number; lng: number };
-type LineInfo = { code: string; name: string; tram: boolean };
+export type StopPoint = { ref: string; name: string; lat: number; lng: number; lines: string[] };
+export type LineInfo = { code: string; name: string; tram: boolean };
 
-async function getStopPoints(): Promise<StopPoint[]> {
+export async function getStopPoints(): Promise<StopPoint[]> {
   const list = await cached("stops", 24 * 3600e3, async () => {
     const j = await getJson<{
       Siri: { StopPointsDelivery: { AnnotatedStopPointRef: {
         StopPointRef: { value: string };
         StopName: { value: string };
-        Lines?: unknown[];
+        Lines?: { value: string }[];
         Location: { latitude: number; longitude: number };
       }[] } };
     }>(`${SIRI}/stoppoints-discovery.json?AccountKey=${KEY}`);
     return j.Siri.StopPointsDelivery.AnnotatedStopPointRef
       .filter((s) => s.Lines && s.Lines.length > 0)
-      .map((s) => ({ ref: s.StopPointRef.value, name: s.StopName.value, lat: s.Location.latitude, lng: s.Location.longitude }));
+      .map((s) => ({ ref: s.StopPointRef.value, name: s.StopName.value, lat: s.Location.latitude, lng: s.Location.longitude, lines: (s.Lines ?? []).map((l) => l.value) }));
   });
   return list ?? [];
 }
 
-async function getLines(): Promise<Map<string, LineInfo>> {
+export async function getLines(): Promise<Map<string, LineInfo>> {
   const list = await cached("lines", 24 * 3600e3, async () => {
     const j = await getJson<{
       Siri: { LinesDelivery: { AnnotatedLineRef: { LineRef: { value: string }; LineName: { value: string }[]; LineCode?: { value: string } }[] } };
@@ -106,7 +106,7 @@ async function getLines(): Promise<Map<string, LineInfo>> {
 export type Departure = { line: string; lineName: string; tram: boolean; destination: string; minutes: number[] };
 export type StopResult = { name: string; distance: number; departures: Departure[] };
 
-async function fetchVisits(ref: string) {
+export async function fetchVisits(ref: string) {
   const data = await cached(`sm:${ref}`, 20e3, () =>
     getJson<{
       Siri: { ServiceDelivery: { StopMonitoringDelivery: { MonitoredStopVisit?: {

@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { Bike, Car, ExternalLink, Footprints, TramFront } from "lucide-react";
+import { Bike, Car, ExternalLink, TramFront } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 import { nearbyStops, nearbyBikeStations, tripEstimates, type LatLng } from "@/lib/mobility";
+import { bestTransitCached, type TransitPlan } from "@/lib/transit";
 import { AutoRefresh } from "@/components/AutoRefresh";
 
 export const metadata = { title: "Mobilité" };
@@ -81,14 +82,29 @@ async function Place({ title, address, origin }: { title: string; address: strin
 
 type Trip = Awaited<ReturnType<typeof tripEstimates>>;
 
-function TripCard({ title, trip, isAdmin }: { title: string; trip: Trip; isAdmin: boolean }) {
+const FASTEST = (
+  <span className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-semibold text-accent-fg">Le plus rapide</span>
+);
+
+function TripCard({ title, trip, transit, isAdmin }: { title: string; trip: Trip; transit: TransitPlan | null; isAdmin: boolean }) {
+  // Le mode le plus rapide parmi la voiture, le vélo et le transport (si un trajet direct existe).
+  const times = [
+    trip.car ? { mode: "car", min: trip.car.minutes } : null,
+    trip.bike ? { mode: "bike", min: trip.bike.minutes } : null,
+    transit ? { mode: "transit", min: transit.totalMin } : null,
+  ].filter((x): x is { mode: string; min: number } => x !== null);
+  const fastest = times.length > 1 ? times.reduce((a, b) => (b.min < a.min ? b : a)).mode : null;
+
   return (
     <section className="card space-y-4 p-6">
       <h2 className="text-lg font-semibold">{title}</h2>
-      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {trip.car && (
           <li className="rounded-xl border border-line bg-bg p-4">
-            <div className="flex items-center gap-2 text-sm text-muted"><Car size={18} className="text-accent" /> En voiture</div>
+            <div className="flex items-center justify-between gap-2 text-sm text-muted">
+              <span className="flex items-center gap-2"><Car size={18} className="text-accent" /> En voiture</span>
+              {fastest === "car" && FASTEST}
+            </div>
             <div className="mt-1 text-2xl font-bold tabular-nums">{fmtTrip(trip.car.minutes)}</div>
             <div className="text-sm text-muted">{trip.car.km} km</div>
             {trip.car.level ? (
@@ -103,21 +119,40 @@ function TripCard({ title, trip, isAdmin }: { title: string; trip: Trip; isAdmin
         )}
         {trip.bike && (
           <li className="rounded-xl border border-line bg-bg p-4">
-            <div className="flex items-center gap-2 text-sm text-muted"><Bike size={18} className="text-accent" /> À vélo</div>
+            <div className="flex items-center justify-between gap-2 text-sm text-muted">
+              <span className="flex items-center gap-2"><Bike size={18} className="text-accent" /> À vélo</span>
+              {fastest === "bike" && FASTEST}
+            </div>
             <div className="mt-1 text-2xl font-bold tabular-nums">{fmtTrip(trip.bike.minutes)}</div>
             <div className="text-sm text-muted">{trip.bike.km} km</div>
           </li>
         )}
-        {trip.foot && (
-          <li className="rounded-xl border border-line bg-bg p-4">
-            <div className="flex items-center gap-2 text-sm text-muted"><Footprints size={18} className="text-accent" /> À pied</div>
-            <div className="mt-1 text-2xl font-bold tabular-nums">{fmtTrip(trip.foot.minutes)}</div>
-            <div className="text-sm text-muted">{trip.foot.km} km</div>
-          </li>
-        )}
-        <li className="flex items-center rounded-xl border border-line bg-bg p-4">
-          <a href={trip.transitUrl} target="_blank" rel="noopener noreferrer" className="btn-ghost w-full">
-            <TramFront size={16} /> Transports <ExternalLink size={14} />
+        <li className="rounded-xl border border-line bg-bg p-4">
+          <div className="flex items-center justify-between gap-2 text-sm text-muted">
+            <span className="flex items-center gap-2"><TramFront size={18} className="text-accent" /> En transport</span>
+            {fastest === "transit" && FASTEST}
+          </div>
+          {transit ? (
+            <div className="space-y-2">
+              <div className="mt-1 text-2xl font-bold tabular-nums">{fmtTrip(transit.totalMin)}</div>
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                {transit.lines.map((l) => (
+                  <span key={l.code} title={l.name} className={`inline-flex min-w-9 justify-center rounded-lg px-2 py-0.5 text-sm font-bold ${l.tram ? "bg-accent text-accent-fg" : "border border-line bg-surface"}`}>{l.code}</span>
+                ))}
+                <span className="text-muted">
+                  {transit.departsInMin <= 0 ? "départ imminent" : `départ dans ${transit.departsInMin} min`}
+                </span>
+              </div>
+              <p className="text-xs leading-relaxed text-muted">
+                {transit.walkStartMin} min à pied jusqu&apos;à <strong className="text-fg">{transit.from}</strong>
+                {transit.waitMin > 0 && <>, {transit.waitMin} min d&apos;attente</>}, {transit.rideMin} min à bord jusqu&apos;à <strong className="text-fg">{transit.to}</strong>, puis {transit.walkEndMin} min à pied.
+              </p>
+            </div>
+          ) : (
+            <p className="mt-2 text-sm text-muted">Pas de ligne directe en service pour le moment. Regarde l&apos;itinéraire complet, avec correspondances.</p>
+          )}
+          <a href={trip.transitUrl} target="_blank" rel="noopener noreferrer" className="btn-ghost mt-3 w-full text-xs">
+            Itinéraire complet <ExternalLink size={13} />
           </a>
         </li>
       </ul>
@@ -139,13 +174,12 @@ export default async function MobilitePage() {
   const company: LatLng | null = user.companyLat != null && user.companyLng != null ? { lat: user.companyLat, lng: user.companyLng } : null;
   const companyLabel = user.companyName || "l'entreprise";
   // Un trajet par destination connue : l'école et, si renseignée, l'entreprise d'alternance.
-  const [toSchool, toCompany] = await Promise.all([
-    home && school ? tripEstimates(home, school) : null,
-    home && company ? tripEstimates(home, company) : null,
-  ]);
+  const plan = async (dest: LatLng | null) =>
+    home && dest ? { trip: await tripEstimates(home, dest), transit: await bestTransitCached(home, dest).catch(() => null) } : null;
+  const [toSchool, toCompany] = await Promise.all([plan(school), plan(company)]);
   const trips = [
-    ...(toSchool ? [{ title: "Domicile → École", trip: toSchool }] : []),
-    ...(toCompany ? [{ title: `Domicile → ${companyLabel}`, trip: toCompany }] : []),
+    ...(toSchool ? [{ title: "Domicile → École", ...toSchool }] : []),
+    ...(toCompany ? [{ title: `Domicile → ${companyLabel}`, ...toCompany }] : []),
   ];
 
   return (
@@ -157,7 +191,7 @@ export default async function MobilitePage() {
       </header>
 
       {trips.map((t) => (
-        <TripCard key={t.title} title={t.title} trip={t.trip} isAdmin={user.role === "admin"} />
+        <TripCard key={t.title} title={t.title} trip={t.trip} transit={t.transit} isAdmin={user.role === "admin"} />
       ))}
 
       {!home && (
