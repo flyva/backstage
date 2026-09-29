@@ -212,3 +212,32 @@ export const wikiRevisions = mysqlTable(
   },
   (t) => [index("wr_page_idx").on(t.pageId, t.createdAt)],
 );
+
+// ---------- Kanban (par projet) ----------
+
+export const kanbanColumns = mysqlTable(
+  "kanban_columns",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    projectId: int("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 80 }).notNull(),
+    position: int("position").notNull().default(0),
+  },
+  (t) => [index("kc_project_idx").on(t.projectId, t.position)],
+);
+
+export const kanbanCards = mysqlTable(
+  "kanban_cards",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    columnId: int("column_id").notNull().references(() => kanbanColumns.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 200 }).notNull(),
+    description: text("description"),
+    assigneeId: int("assignee_id").references(() => users.id, { onDelete: "set null" }),
+    dueDate: date("due_date", { mode: "string" }),
+    position: int("position").notNull().default(0),
+    createdBy: int("created_by").notNull().references(() => users.id),
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [index("kcard_col_idx").on(t.columnId, t.position)],
+);

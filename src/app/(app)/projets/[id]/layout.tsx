@@ -10,13 +10,14 @@ export default async function ProjectLayout({ children, params }: LayoutProps<"/
   const { project, role } = await requireProject(Number(id));
   const tabs = [
     { slug: "", label: "Checklists" },
+    { slug: "kanban", label: "Kanban" },
     { slug: "conduite", label: "Conduite" },
     { slug: "jour-j", label: "Jour J" },
     { slug: "membres", label: "Équipe" },
     ...(role === "owner" ? [{ slug: "reglages", label: "Réglages" }] : []),
   ];
   return (
-    <div className="max-w-4xl space-y-5">
+    <div className="max-w-6xl space-y-5">
       <Link href="/projets" className="inline-flex items-center gap-1 text-sm text-muted hover:text-fg">
         <ArrowLeft size={14} /> Tous les projets
       </Link>

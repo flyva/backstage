@@ -6,10 +6,10 @@ import { and, asc, count, eq, max } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import {
-  checklistItems, checklists, cues, CUE_CATEGORIES, projectMembers, projects, users, type ProjectRole,
+  checklistItems, checklists, cues, CUE_CATEGORIES, kanbanColumns, projectMembers, projects, users, type ProjectRole,
 } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
-import { CHECKLIST_TEMPLATES, requireProject } from "@/lib/projects";
+import { CHECKLIST_TEMPLATES, DEFAULT_KANBAN_COLUMNS, requireProject } from "@/lib/projects";
 import type { FormState } from "@/lib/actions";
 import { parseDuration } from "@/lib/time";
 
@@ -40,6 +40,7 @@ export async function createProject(_: FormState, fd: FormData): Promise<FormSta
     createdBy: user.id,
   });
   await db.insert(projectMembers).values({ projectId: res.insertId, userId: user.id, role: "owner" });
+  await db.insert(kanbanColumns).values(DEFAULT_KANBAN_COLUMNS.map((title, position) => ({ projectId: res.insertId, title, position })));
   redirect(`/projets/${res.insertId}`);
 }
 

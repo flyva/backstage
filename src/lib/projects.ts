@@ -32,6 +32,8 @@ export async function requireProject(projectId: number, min: ProjectRole = "view
   return { user, project: row.project, role: row.role };
 }
 
+export const DEFAULT_KANBAN_COLUMNS = ["À faire", "En cours", "Fait"];
+
 // Modèles de checklists pour démarrer vite.
 export const CHECKLIST_TEMPLATES: Record<string, { title: string; items: string[] }> = {
   montage: {
