@@ -1,26 +1,74 @@
 @import "tailwindcss";
 
+/* Jetons de couleur : clair par défaut, sombre via .dark ou préférence système. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #f6f6f8;
+  --surface: #ffffff;
+  --border: #e3e3ea;
+  --fg: #15151c;
+  --muted: #6b6b7b;
+  --accent: #d97706;
+  --accent-fg: #ffffff;
+  --danger: #dc2626;
+  color-scheme: light;
 }
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+:root.dark {
+  --bg: #0e0e13;
+  --surface: #17171f;
+  --border: #2a2a36;
+  --fg: #ececf1;
+  --muted: #9a9aad;
+  --accent: #f59e0b;
+  --accent-fg: #14110a;
+  --danger: #f87171;
+  color-scheme: dark;
 }
-
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  :root:not(.light):not(.dark) {
+    --bg: #0e0e13;
+    --surface: #17171f;
+    --border: #2a2a36;
+    --fg: #ececf1;
+    --muted: #9a9aad;
+    --accent: #f59e0b;
+    --accent-fg: #14110a;
+    --danger: #f87171;
+    color-scheme: dark;
   }
 }
 
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-line: var(--border);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl border border-line bg-surface p-5;
+  }
+  .input {
+    @apply w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/30;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg transition hover:opacity-90 disabled:opacity-50;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-line px-3 py-2 text-sm transition hover:bg-bg;
+  }
+  .label {
+    @apply mb-1 block text-xs font-medium text-muted;
+  }
 }
