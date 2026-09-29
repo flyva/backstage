@@ -3,8 +3,10 @@ import https from "node:https";
 import dns from "node:dns";
 import net from "node:net";
 import ICAL from "ical.js";
+import { dayKey, parisParts, parisWallToDate } from "@/lib/paris";
 
-const TZ = "Europe/Paris";
+export { dayKey };
+
 const MAX_BYTES = 5 * 1024 * 1024;
 const CACHE_TTL = 10 * 60e3;
 
@@ -103,29 +105,6 @@ export function clearIcalCache(url: string) {
 }
 
 // ---------- fuseau Europe/Paris ----------
-
-const partsFmt = new Intl.DateTimeFormat("en-CA", {
-  timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit",
-  hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
-});
-
-function parisParts(d: Date) {
-  const p = Object.fromEntries(partsFmt.formatToParts(d).map((x) => [x.type, x.value]));
-  return { y: +p.year, mo: +p.month, d: +p.day, h: +p.hour, mi: +p.minute, s: +p.second };
-}
-
-export const dayKey = (d: Date) => {
-  const p = parisParts(d);
-  return `${p.y}-${String(p.mo).padStart(2, "0")}-${String(p.d).padStart(2, "0")}`;
-};
-
-/** Date réelle pour une heure « murale » à Paris (gère l'heure d'été). */
-function parisWallToDate(y: number, mo: number, d: number, h: number, mi: number, s: number): Date {
-  const guess = Date.UTC(y, mo - 1, d, h, mi, s);
-  const p = parisParts(new Date(guess));
-  const asIfUtc = Date.UTC(p.y, p.mo - 1, p.d, p.h, p.mi, p.s);
-  return new Date(guess - (asIfUtc - guess));
-}
 
 function toDate(t: ICAL.Time): Date {
   // Heure flottante (sans fuseau) : on la lit comme une heure de Paris, quel que soit le fuseau du serveur.

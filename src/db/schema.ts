@@ -258,3 +258,79 @@ export const newsPosts = mysqlTable(
   },
   (t) => [index("news_created_idx").on(t.pinned, t.createdAt)],
 );
+
+// ---------- BDE ----------
+
+export const bdeEvents = mysqlTable(
+  "bde_events",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    title: varchar("title", { length: 200 }).notNull(),
+    description: text("description"),
+    startsAt: datetime("starts_at").notNull(),
+    location: varchar("location", { length: 200 }),
+    capacity: int("capacity"), // null = illimité
+    createdBy: int("created_by").notNull().references(() => users.id),
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [index("bde_ev_start_idx").on(t.startsAt)],
+);
+
+export const bdeRegistrations = mysqlTable(
+  "bde_registrations",
+  {
+    eventId: int("event_id").notNull().references(() => bdeEvents.id, { onDelete: "cascade" }),
+    userId: int("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [primaryKey({ columns: [t.eventId, t.userId] })],
+);
+
+export const bdePolls = mysqlTable("bde_polls", {
+  id: int("id").primaryKey().autoincrement(),
+  question: varchar("question", { length: 255 }).notNull(),
+  closesAt: datetime("closes_at"),
+  createdBy: int("created_by").notNull().references(() => users.id),
+  createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+});
+
+export const bdePollOptions = mysqlTable(
+  "bde_poll_options",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    pollId: int("poll_id").notNull().references(() => bdePolls.id, { onDelete: "cascade" }),
+    label: varchar("label", { length: 150 }).notNull(),
+    position: int("position").notNull().default(0),
+  },
+  (t) => [index("bde_opt_poll_idx").on(t.pollId)],
+);
+
+export const bdePollVotes = mysqlTable(
+  "bde_poll_votes",
+  {
+    pollId: int("poll_id").notNull().references(() => bdePolls.id, { onDelete: "cascade" }),
+    userId: int("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    optionId: int("option_id").notNull().references(() => bdePollOptions.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.pollId, t.userId] })],
+);
+
+export const IDEA_STATUSES = ["new", "planned", "done", "rejected"] as const;
+export type IdeaStatus = (typeof IDEA_STATUSES)[number];
+
+export const bdeIdeas = mysqlTable("bde_ideas", {
+  id: int("id").primaryKey().autoincrement(),
+  userId: int("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  body: varchar("body", { length: 1000 }).notNull(),
+  status: mysqlEnum("status", IDEA_STATUSES).notNull().default("new"),
+  createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+});
+
+export const bdeIdeaVotes = mysqlTable(
+  "bde_idea_votes",
+  {
+    ideaId: int("idea_id").notNull().references(() => bdeIdeas.id, { onDelete: "cascade" }),
+    userId: int("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.ideaId, t.userId] })],
+);
