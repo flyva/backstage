@@ -9,6 +9,7 @@ export const metadata = { title: "Connexion" };
 
 const ERRORS: Record<string, string> = {
   "organisation-refusee": "Ce compte Microsoft n'appartient pas à une organisation autorisée à utiliser Backstage.",
+  "domaine-refuse": "Ce compte Microsoft n'a pas une adresse d'un domaine autorisé : seules les adresses de l'école peuvent se connecter.",
   "microsoft-refuse": "La connexion Microsoft a été refusée ou annulée. Si ton organisation bloque l'application, demande à ton service informatique de l'autoriser.",
   "microsoft-echec": "La connexion Microsoft a échoué. Réessaie dans un instant.",
   "microsoft-indisponible": "La connexion Microsoft n'est pas configurée sur ce serveur.",

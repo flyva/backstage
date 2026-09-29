@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/auth";
 import { microsoftEnabled } from "@/lib/microsoft";
+import { allowedDomainsFromEnv } from "@/lib/email-domain";
 import { RegisterForm } from "@/components/forms";
 import { MicrosoftButton } from "@/components/MicrosoftButton";
 
@@ -11,12 +12,16 @@ export default async function RegisterPage() {
   if (await getUser()) redirect("/");
   const microsoft = microsoftEnabled();
   const localRegistration = process.env.LOCAL_REGISTRATION !== "off";
+  const domains = allowedDomainsFromEnv();
 
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 p-6">
       <div>
         <div className="text-3xl font-bold tracking-tight">Back<span className="text-accent">stage</span></div>
         <p className="text-sm text-muted">Crée ton espace personnel.</p>
+        {domains.length > 0 && (
+          <p className="mt-1 text-xs text-muted">Réservé aux adresses {domains.map((d) => `@${d}`).join(", ")}.</p>
+        )}
       </div>
 
       <div className="card space-y-4">

@@ -204,19 +204,27 @@ Permet de se connecter et de s'inscrire avec le compte Office 365 de l'école, s
 5. **Certificats et secrets → Nouveau secret client** : copie **la valeur** tout de suite (elle ne sera plus affichée). Note sa date d'expiration : prévois de le renouveler avant.
 6. **Autorisations d'API** : rien à ajouter (la connexion n'utilise que `openid`, `profile`, `email`).
 
-### Trouver l'identifiant de l'organisation de l'école
+### Limiter à l'école : le domaine `3is.fr`
 
-Ouvre dans un navigateur (remplace par le domaine des adresses de l'école) :
+Dans `/opt/backstage/.env`, mets simplement :
 
 ```
-https://login.microsoftonline.com/domaine-de-l-ecole.fr/.well-known/openid-configuration
+ALLOWED_EMAIL_DOMAINS="3is.fr"
+MS_CLIENT_ID="…"          # ID d'application (client)
+MS_CLIENT_SECRET="…"      # valeur du secret
+APP_URL="https://backstage.exemple.fr"
 ```
 
-Dans le texte affiché, la partie entre `login.microsoftonline.com/` et `/v2.0` de `issuer` est l'identifiant (un GUID). **Seules les organisations listées dans `MS_ALLOWED_TENANTS` peuvent entrer** : c'est le contrôle d'accès.
+Deux contrôles s'appliquent **ensemble** à chaque connexion ou inscription Microsoft :
 
-### Configurer Backstage
+1. **L'organisation Microsoft du compte doit être celle du domaine `3is.fr`** : Backstage la retrouve tout seul auprès de Microsoft (aucun identifiant à chercher). Un compte d'une autre organisation est refusé, même s'il déclare une adresse en `@3is.fr`.
+2. **L'adresse doit être exactement en `@3is.fr`** : `@gmail.com`, `@evil3is.fr`, `@sous.3is.fr` et `a@3is.fr@evil.com` sont refusées.
 
-Dans `/opt/backstage/.env` (voir `deploy/env.example`) : `MS_CLIENT_ID`, `MS_CLIENT_SECRET`, `MS_ALLOWED_TENANTS`, `APP_URL`. Mets `LOCAL_REGISTRATION=off` pour n'accepter que Microsoft. Redémarre : `sudo systemctl restart backstage`.
+Avec `ALLOWED_EMAIL_DOMAINS` défini, l'**inscription par mot de passe** est aussi réservée à ces adresses (les comptes existants ne sont pas touchés). Plusieurs domaines possibles, séparés par des virgules.
+
+> L'adresse utilisée est celle de messagerie du compte. Si certains comptes de l'école ont un identifiant de connexion en `@3is.onmicrosoft.com` mais une adresse en `@3is.fr`, tout fonctionne ; si leur adresse de messagerie n'est pas renseignée, ils seront refusés.
+> Si Microsoft est injoignable au moment de la connexion, personne n'entre (par sécurité) : réessaie plus tard.
+> Le premier compte créé devient administrateur : s'il n'est pas en `@3is.fr`, retire momentanément `ALLOWED_EMAIL_DOMAINS` pour le créer.
 
 ### Comportement
 

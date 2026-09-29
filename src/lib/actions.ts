@@ -16,6 +16,7 @@ import {
 import { SETTING_KEYS } from "@/lib/settings";
 import { geocode } from "@/lib/mobility";
 import { allow, clientIp } from "@/lib/rate-limit";
+import { allowedDomainsFromEnv, emailInDomains } from "@/lib/email-domain";
 import { skinFrom } from "@/lib/skin";
 import { writeSkinCookies } from "@/lib/skin-cookies";
 import { timingSafeEqual } from "node:crypto";
@@ -54,6 +55,11 @@ export async function register(_: FormState, fd: FormData): Promise<FormState> {
     .safeParse({ email: fd.get("email"), password: fd.get("password"), name: fd.get("name") });
   if (!parsed.success) return { error: parsed.error.issues[0].message, values: keep };
   const { email, password, name } = parsed.data;
+  // Domaines autorisés (ex. 3is.fr) : aucune inscription avec une autre adresse.
+  const domains = allowedDomainsFromEnv();
+  if (domains.length > 0 && !emailInDomains(email, domains)) {
+    return { error: `Seules les adresses ${domains.map((d) => `@${d}`).join(", ")} peuvent s'inscrire.`, values: keep };
+  }
   if (String(fd.get("password2") ?? "") !== password) return { error: "Les deux mots de passe ne correspondent pas", values: keep };
 
   if (!allow(`register:${await clientIp()}`, 5, 60 * 60e3)) return { error: "Trop d'inscriptions depuis cette adresse : réessaie plus tard", values: keep };

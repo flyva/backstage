@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { appBaseUrl, authorizeUrl, microsoftConfig, newSecret } from "@/lib/microsoft";
+import { allowedTenants, appBaseUrl, authorizeUrl, microsoftConfig, newSecret } from "@/lib/microsoft";
 import { allow, clientIp } from "@/lib/rate-limit";
 
 export async function GET(req: Request) {
@@ -8,9 +8,13 @@ export async function GET(req: Request) {
   if (!cfg || !base) return NextResponse.redirect(new URL("/login?erreur=microsoft-indisponible", req.url));
   if (!allow(`ms-login:${await clientIp()}`, 30, 10 * 60e3)) return NextResponse.redirect(new URL("/login?erreur=trop-de-tentatives", req.url));
 
+  const tenants = await allowedTenants(cfg);
+  // Organisation du domaine injoignable chez Microsoft : on n'ouvre rien tant qu'on ne peut pas la vérifier.
+  if (tenants.length === 0) return NextResponse.redirect(new URL("/login?erreur=microsoft-indisponible", req.url));
+
   // État, nonce et vérificateur PKCE : gardés dans un cookie court, lus au retour de Microsoft.
   const s = { state: newSecret(), nonce: newSecret(), verifier: newSecret(48) };
-  const res = NextResponse.redirect(authorizeUrl(cfg, base, s));
+  const res = NextResponse.redirect(authorizeUrl(cfg, tenants, base, s));
   res.cookies.set("ms_oauth", JSON.stringify(s), {
     httpOnly: true,
     sameSite: "lax", // doit accompagner la redirection venant de Microsoft

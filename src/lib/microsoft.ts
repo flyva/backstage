@@ -4,35 +4,75 @@ import { count, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { sessions, users, type User } from "@/db/schema";
 import { createSession, hashPassword } from "@/lib/auth";
+import { allowedDomainsFromEnv, emailInDomains } from "@/lib/email-domain";
 import { skinFrom } from "@/lib/skin";
 import { writeSkinCookies } from "@/lib/skin-cookies";
 
 // Connexion « Se connecter avec Microsoft » (OpenID Connect, flux code + PKCE) pour les comptes Office 365.
 //
 // Variables d'environnement :
-//   MS_CLIENT_ID         identifiant de l'application (Entra ID)
-//   MS_CLIENT_SECRET     secret de l'application
-//   MS_ALLOWED_TENANTS   identifiant(s) d'organisation autorisé(s), séparés par des virgules (celui de l'école)
-//   APP_URL              adresse publique du site (https://backstage.exemple.fr) : sert à l'URL de retour
-//   MS_AUTHORITY_URL     (facultatif) https://login.microsoftonline.com par défaut
+//   MS_CLIENT_ID           identifiant de l'application (Entra ID)
+//   MS_CLIENT_SECRET       secret de l'application
+//   ALLOWED_EMAIL_DOMAINS  domaines d'adresses autorisés, ex. « 3is.fr » (séparés par des virgules)
+//   APP_URL                adresse publique du site (https://backstage.exemple.fr) : sert à l'URL de retour
+//   MS_ALLOWED_TENANTS     (facultatif) identifiants d'organisation en plus de ceux retrouvés depuis les domaines
+//   MS_AUTHORITY_URL       (facultatif) https://login.microsoftonline.com par défaut
+//
+// Deux contrôles cumulés : (1) l'organisation Microsoft du compte doit être celle du domaine autorisé
+// (retrouvée automatiquement, résistante à la falsification de l'email par un autre annuaire) ;
+// (2) l'adresse email doit être exactement dans un domaine autorisé.
 
 const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// Annuaire des comptes Microsoft personnels : jamais autorisé, même si un domaine y pointait.
+const CONSUMER_TENANT = "9188040d-6c67-4c5b-b112-36a304b66dad";
 
 export function microsoftConfig() {
   const clientId = process.env.MS_CLIENT_ID?.trim();
   const clientSecret = process.env.MS_CLIENT_SECRET?.trim();
-  const tenants = (process.env.MS_ALLOWED_TENANTS ?? "").split(",").map((t) => t.trim().toLowerCase()).filter(Boolean);
-  // Sans liste d'organisations autorisées, n'importe quel compte Microsoft pourrait entrer : on désactive plutôt que d'ouvrir grand.
-  if (!clientId || !clientSecret || tenants.length === 0 || !tenants.every((t) => GUID.test(t))) return null;
+  const domains = allowedDomainsFromEnv();
+  const extraTenants = (process.env.MS_ALLOWED_TENANTS ?? "").split(",").map((t) => t.trim().toLowerCase()).filter((t) => GUID.test(t) && t !== CONSUMER_TENANT);
+  // Sans domaine autorisé, n'importe quel compte Microsoft pourrait entrer : on désactive plutôt que d'ouvrir grand.
+  if (!clientId || !clientSecret || domains.length === 0) return null;
   const authority = (process.env.MS_AUTHORITY_URL ?? "https://login.microsoftonline.com").replace(/\/+$/, "");
   // Le jeton d'identité est reçu directement de Microsoft en HTTPS : on refuse tout autre transport en production.
   if (process.env.NODE_ENV === "production" && !authority.startsWith("https://")) return null;
-  // Application propre à une organisation : on l'appelle sur son adresse ; sinon « organizations » (comptes pro/scolaires).
-  const endpointTenant = tenants.length === 1 ? tenants[0] : "organizations";
-  return { clientId, clientSecret, tenants, authority, endpointTenant };
+  return { clientId, clientSecret, domains, extraTenants, authority };
 }
 
+export type MicrosoftConfig = NonNullable<ReturnType<typeof microsoftConfig>>;
 export const microsoftEnabled = () => microsoftConfig() !== null;
+
+// Organisation(s) Microsoft des domaines autorisés, retrouvées via l'annuaire public de Microsoft (mémorisées 6 h).
+const g = globalThis as unknown as { __msTenants?: Map<string, { at: number; tid: string | null }> };
+const tenantCache = (g.__msTenants ??= new Map());
+
+async function tenantOfDomain(cfg: MicrosoftConfig, domain: string): Promise<string | null> {
+  const hit = tenantCache.get(domain);
+  if (hit && Date.now() - hit.at < 6 * 3600e3) return hit.tid;
+  let tid: string | null = null;
+  try {
+    const res = await fetch(`${cfg.authority}/${encodeURIComponent(domain)}/v2.0/.well-known/openid-configuration`, { signal: AbortSignal.timeout(6000), cache: "no-store" });
+    if (res.ok) {
+      const issuer = ((await res.json()) as { issuer?: string }).issuer ?? "";
+      const m = /\/([0-9a-f-]{36})\/v2\.0\/?$/i.exec(issuer);
+      if (m && GUID.test(m[1]) && m[1].toLowerCase() !== CONSUMER_TENANT) tid = m[1].toLowerCase();
+    }
+  } catch {
+    tid = null;
+  }
+  // Un échec réseau n'est mémorisé que 1 minute (on réessaie vite), un succès 6 h.
+  tenantCache.set(domain, { at: tid ? Date.now() : Date.now() - 6 * 3600e3 + 60e3, tid });
+  return tid;
+}
+
+/** Organisations autorisées à se connecter (liste vide = Microsoft momentanément injoignable : personne n'entre). */
+export async function allowedTenants(cfg: MicrosoftConfig): Promise<string[]> {
+  const found = await Promise.all(cfg.domains.map((d) => tenantOfDomain(cfg, d)));
+  return [...new Set([...cfg.extraTenants, ...found.filter((t): t is string => !!t)])];
+}
+
+/** Point d'accès Microsoft à utiliser : celui de l'organisation s'il n'y en a qu'une, sinon « organizations ». */
+export const endpointTenant = (tenants: string[]) => (tenants.length === 1 ? tenants[0] : "organizations");
 
 /** Adresse publique du site. En production, APP_URL est obligatoire (l'en-tête Host ne doit pas décider d'une URL de retour). */
 export function appBaseUrl(req: Request): string | null {
@@ -50,7 +90,7 @@ export const b64url = (buf: Buffer) => buf.toString("base64url");
 export const newSecret = (bytes = 32) => b64url(randomBytes(bytes));
 export const challengeFor = (verifier: string) => b64url(createHash("sha256").update(verifier).digest());
 
-export function authorizeUrl(cfg: NonNullable<ReturnType<typeof microsoftConfig>>, base: string, s: { state: string; nonce: string; verifier: string }) {
+export function authorizeUrl(cfg: MicrosoftConfig, tenants: string[], base: string, s: { state: string; nonce: string; verifier: string }) {
   const q = new URLSearchParams({
     client_id: cfg.clientId,
     response_type: "code",
@@ -63,7 +103,7 @@ export function authorizeUrl(cfg: NonNullable<ReturnType<typeof microsoftConfig>
     code_challenge_method: "S256",
     prompt: "select_account",
   });
-  return `${cfg.authority}/${cfg.endpointTenant}/oauth2/v2.0/authorize?${q}`;
+  return `${cfg.authority}/${endpointTenant(tenants)}/oauth2/v2.0/authorize?${q}`;
 }
 
 // ---------- jeton d'identité ----------
@@ -82,20 +122,25 @@ export function decodeIdToken(idToken: string): Claims | null {
 
 export type Identity = { key: string; email: string; name: string };
 
+export type ClaimsCheck = { ok: true; identity: Identity } | { ok: false; code: "microsoft-echec" | "organisation-refusee" | "domaine-refuse"; reason: string };
+
 /**
  * Vérifie les revendications du jeton. La signature n'est pas revérifiée : le jeton vient directement du point
  * d'accès de Microsoft (HTTPS + secret de l'application), comme le prévoit OpenID Connect pour ce flux.
  */
-export function validateClaims(c: Claims, cfg: NonNullable<ReturnType<typeof microsoftConfig>>, nonce: string): { ok: true; identity: Identity } | { ok: false; reason: string } {
-  if (c.aud !== cfg.clientId) return { ok: false, reason: "Jeton destiné à une autre application" };
-  if (!c.exp || c.exp * 1000 < Date.now()) return { ok: false, reason: "Jeton expiré" };
-  if (!c.nonce || c.nonce !== nonce) return { ok: false, reason: "Jeton rejoué ou invalide" };
+export function validateClaims(c: Claims, cfg: MicrosoftConfig, tenants: string[], nonce: string): ClaimsCheck {
+  const fail = (code: "microsoft-echec" | "organisation-refusee" | "domaine-refuse", reason: string): ClaimsCheck => ({ ok: false, code, reason });
+  if (c.aud !== cfg.clientId) return fail("microsoft-echec", "Jeton destiné à une autre application");
+  if (!c.exp || c.exp * 1000 < Date.now()) return fail("microsoft-echec", "Jeton expiré");
+  if (!c.nonce || c.nonce !== nonce) return fail("microsoft-echec", "Jeton rejoué ou invalide");
   const tid = c.tid?.toLowerCase();
-  if (!tid || !cfg.tenants.includes(tid)) return { ok: false, reason: "Ton organisation n'est pas autorisée à utiliser Backstage" };
-  if (c.iss && !c.iss.endsWith(`/${tid}/v2.0`)) return { ok: false, reason: "Émetteur du jeton inattendu" };
+  if (!tid || !tenants.includes(tid)) return fail("organisation-refusee", "Organisation non autorisée");
+  if (c.iss && !c.iss.endsWith(`/${tid}/v2.0`)) return fail("microsoft-echec", "Émetteur du jeton inattendu");
   const oid = c.oid ?? c.sub;
+  // L'adresse de messagerie (« email ») prime sur l'identifiant de connexion (UPN), qui peut avoir un autre domaine.
   const email = (c.email ?? c.preferred_username ?? "").trim().toLowerCase();
-  if (!oid || !email.includes("@")) return { ok: false, reason: "Le compte Microsoft ne fournit pas d'adresse email" };
+  if (!oid || !email.includes("@")) return fail("microsoft-echec", "Le compte Microsoft ne fournit pas d'adresse email");
+  if (!emailInDomains(email, cfg.domains)) return fail("domaine-refuse", "Adresse hors des domaines autorisés");
   const name = (c.name ?? email.split("@")[0]).trim().slice(0, 120) || email;
   return { ok: true, identity: { key: `${tid}.${oid}`.slice(0, 80), email: email.slice(0, 190), name } };
 }

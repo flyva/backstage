@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { timingSafeEqual } from "node:crypto";
-import { appBaseUrl, decodeIdToken, microsoftConfig, redirectUri, signInWithMicrosoft, validateClaims } from "@/lib/microsoft";
+import { allowedTenants, appBaseUrl, decodeIdToken, endpointTenant, microsoftConfig, redirectUri, signInWithMicrosoft, validateClaims } from "@/lib/microsoft";
 
 const back = (req: Request, code: string) => {
   const res = NextResponse.redirect(new URL(`/login?erreur=${code}`, req.url));
@@ -33,10 +33,13 @@ export async function GET(req: Request) {
   }
   if (!code || !state || !saved || !same(state, saved.state)) return back(req, "session-expiree");
 
+  const tenants = await allowedTenants(cfg);
+  if (tenants.length === 0) return back(req, "microsoft-indisponible");
+
   // Échange du code contre le jeton d'identité (serveur à serveur, avec le secret de l'application).
   let idToken: string | undefined;
   try {
-    const res = await fetch(`${cfg.authority}/${cfg.endpointTenant}/oauth2/v2.0/token`, {
+    const res = await fetch(`${cfg.authority}/${endpointTenant(tenants)}/oauth2/v2.0/token`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
@@ -58,8 +61,8 @@ export async function GET(req: Request) {
 
   const claims = idToken ? decodeIdToken(idToken) : null;
   if (!claims) return back(req, "microsoft-echec");
-  const check = validateClaims(claims, cfg, saved.nonce);
-  if (!check.ok) return back(req, check.reason.includes("organisation") ? "organisation-refusee" : "microsoft-echec");
+  const check = validateClaims(claims, cfg, tenants, saved.nonce);
+  if (!check.ok) return back(req, check.code);
 
   const { created } = await signInWithMicrosoft(check.identity);
   const res = NextResponse.redirect(new URL(created ? "/profil?bienvenue=1" : "/", req.url));
