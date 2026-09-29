@@ -4,7 +4,6 @@ import { requireUser } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 
 const SOON = [
-  "Mobilité : tram/bus TBM, stations V³, temps de trajet",
   "Agenda synchronisé avec Ypareo",
   "Projets : conduite, checklists, fiches techniques",
   "Prêt de matériel de l'école",

@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, School, CircleHelp, Link2, User, Shield } from "lucide-react";
+import { Home, TramFront, School, CircleHelp, Link2, User, Shield } from "lucide-react";
 
 const ITEMS = [
   { href: "/", label: "Accueil", icon: Home },
+  { href: "/mobilite", label: "Mobilité", icon: TramFront },
   { href: "/ecole", label: "École", icon: School },
   { href: "/faq", label: "FAQ", icon: CircleHelp },
   { href: "/liens", label: "Liens utiles", icon: Link2 },

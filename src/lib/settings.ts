@@ -8,6 +8,8 @@ export const SETTING_KEYS = [
   "wifi_security", // WPA | WEP | nopass
   "school_map_file",
   "school_address",
+  "school_lat", // renseignés automatiquement à partir de l'adresse
+  "school_lng",
   "webmail_url",
   "ypareo_url",
   "studea_url",

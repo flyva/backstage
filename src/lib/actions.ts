@@ -15,6 +15,7 @@ import {
   requireUser, requireAdmin,
 } from "@/lib/auth";
 import { SETTING_KEYS } from "@/lib/settings";
+import { geocode } from "@/lib/mobility";
 
 export type FormState = { error?: string; ok?: string } | undefined;
 
@@ -83,9 +84,16 @@ export async function updateProfile(_: FormState, fd: FormData): Promise<FormSta
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const { name, homeAddress, icalUrl } = parsed.data;
+  let place = null;
+  if (homeAddress) {
+    place = await geocode(homeAddress);
+    if (!place) return { error: "Adresse introuvable : essaie avec numéro, rue et ville" };
+  }
   await db.update(users).set({
     name,
-    homeAddress: homeAddress || null,
+    homeAddress: place?.label ?? null,
+    homeLat: place?.lat ?? null,
+    homeLng: place?.lng ?? null,
     icalUrl: icalUrl ? icalUrl.replace(/^webcal:/i, "https:") : null,
     onboarded: true,
   }).where(eq(users.id, user.id));
@@ -160,6 +168,14 @@ export async function saveSettings(_: FormState, fd: FormData): Promise<FormStat
     if (key === "school_map_file" || !fd.has(key)) continue;
     const value = String(fd.get(key) ?? "").trim();
     await db.insert(settings).values({ key, value }).onDuplicateKeyUpdate({ set: { value } });
+  }
+  const schoolAddress = String(fd.get("school_address") ?? "").trim();
+  if (schoolAddress) {
+    const place = await geocode(schoolAddress);
+    if (!place) return { error: "Adresse de l'école introuvable" };
+    for (const [key, value] of [["school_lat", String(place.lat)], ["school_lng", String(place.lng)]]) {
+      await db.insert(settings).values({ key, value }).onDuplicateKeyUpdate({ set: { value } });
+    }
   }
   const map = fd.get("school_map");
   if (map instanceof File && map.size > 0) {
