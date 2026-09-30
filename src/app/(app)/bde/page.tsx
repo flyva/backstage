@@ -3,7 +3,7 @@ import { asc, eq, inArray } from "drizzle-orm";
 import { CalendarDays, MapPin, Trash2, Users } from "lucide-react";
 import { db } from "@/db";
 import { bdeEvents, bdeRegistrations, users } from "@/db/schema";
-import { requireUser } from "@/lib/auth";
+import { requireModule } from "@/lib/auth";
 import { canPublish } from "@/lib/news";
 import { toParisInput } from "@/lib/paris";
 import { deleteEvent, toggleRegistration } from "@/lib/bde-actions";
@@ -15,7 +15,7 @@ export const metadata = { title: "BDE · Évènements" };
 const dateFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
 
 export default async function BdeEventsPage() {
-  const user = await requireUser();
+  const user = await requireModule("bde");
   const manager = canPublish(user);
   const now = new Date();
 

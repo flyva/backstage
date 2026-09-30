@@ -3,14 +3,14 @@ import { desc, eq } from "drizzle-orm";
 import { Settings2 } from "lucide-react";
 import { db } from "@/db";
 import { equipmentItems, loans } from "@/db/schema";
-import { requireUser } from "@/lib/auth";
+import { requireModule } from "@/lib/auth";
 import { availabilityForAll, isManager, todayParis } from "@/lib/equipment";
 import { LoanCard } from "@/components/LoanCard";
 
 export const metadata = { title: "Matériel" };
 
 export default async function MaterielPage({ searchParams }: PageProps<"/materiel">) {
-  const user = await requireUser();
+  const user = await requireModule("materiel");
   const sp = await searchParams;
   const q = (typeof sp.q === "string" ? sp.q : "").trim().toLowerCase();
   const cat = typeof sp.cat === "string" ? sp.cat : "";

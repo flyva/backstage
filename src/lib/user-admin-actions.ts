@@ -30,6 +30,21 @@ const roleSchema = z.object({
   description: z.string().trim().max(200),
 });
 
+/** Niveaux Aucun / Voir / Gérer de chaque domaine → colonnes « voir » et « gérer ». */
+function levels(fd: FormData) {
+  const lv = (name: string) => {
+    const v = String(fd.get(name) ?? "view");
+    return { view: v === "view" || v === "manage", manage: v === "manage" };
+  };
+  const m = lv("level_materiel"), b = lv("level_bde"), a = lv("level_actus"), g = lv("level_galerie");
+  return {
+    viewMateriel: m.view, permMateriel: m.manage,
+    viewBde: b.view, permBde: b.manage,
+    viewActus: a.view, permActus: a.manage,
+    viewGalerie: g.view, permGalerie: g.manage,
+  };
+}
+
 export async function saveRole(_: FormState, fd: FormData): Promise<FormState> {
   await requireAdmin();
   const p = roleSchema.safeParse({ name: fd.get("name"), description: fd.get("description") ?? "" });
@@ -40,10 +55,7 @@ export async function saveRole(_: FormState, fd: FormData): Promise<FormState> {
     description: p.data.description || null,
     isAdmin: flag("isAdmin"),
     permAdministration: flag("permAdministration"),
-    permMateriel: flag("permMateriel"),
-    permBde: flag("permBde"),
-    permActus: flag("permActus"),
-    permGalerie: flag("permGalerie"),
+    ...levels(fd),
   };
   const raw = Number(fd.get("id") || 0);
   const [dup] = await db.select({ id: roles.id }).from(roles).where(eq(roles.name, values.name)).limit(1);

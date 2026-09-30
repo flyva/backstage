@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { ArrowLeft, Pencil } from "lucide-react";
 import { db } from "@/db";
 import { newsPosts, users } from "@/db/schema";
-import { requireUser } from "@/lib/auth";
+import { requireModule } from "@/lib/auth";
 import { canPublish, SCOPE_LABEL } from "@/lib/news";
 import { deleteNews } from "@/lib/news-actions";
 import { Markdown } from "@/components/Markdown";
@@ -13,7 +13,7 @@ import { ConfirmButton } from "@/components/ConfirmButton";
 const dateFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", dateStyle: "long", timeStyle: "short" });
 
 export default async function ActuPage({ params }: PageProps<"/actus/[id]">) {
-  const user = await requireUser();
+  const user = await requireModule("actus");
   const { id } = await params;
   const postId = Number(id);
   if (!Number.isInteger(postId)) notFound();

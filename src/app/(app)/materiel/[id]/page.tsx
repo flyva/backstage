@@ -7,7 +7,7 @@ import { ArrowLeft } from "lucide-react";
 import { headers } from "next/headers";
 import { db } from "@/db";
 import { loans, users } from "@/db/schema";
-import { requireUser } from "@/lib/auth";
+import { requireModule } from "@/lib/auth";
 import { availableQuantity, isManager, todayParis } from "@/lib/equipment";
 import { deleteItem } from "@/lib/equipment-actions";
 import { EditItemForm, RequestLoanForm } from "@/components/equipment-forms";
@@ -15,7 +15,7 @@ import { ConfirmButton } from "@/components/ConfirmButton";
 import { LoanCard } from "@/components/LoanCard";
 
 export default async function ItemPage({ params }: PageProps<"/materiel/[id]">) {
-  const user = await requireUser();
+  const user = await requireModule("materiel");
   const { id } = await params;
   const itemId = Number(id);
   if (!Number.isInteger(itemId)) notFound();

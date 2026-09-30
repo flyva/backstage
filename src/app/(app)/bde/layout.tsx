@@ -1,8 +1,8 @@
-import { requireUser } from "@/lib/auth";
+import { requireModule } from "@/lib/auth";
 import { ProjectTabs } from "@/components/ProjectTabs";
 
 export default async function BdeLayout({ children }: LayoutProps<"/bde">) {
-  await requireUser();
+  await requireModule("bde");
   return (
     <div className="space-y-5">
       <header>

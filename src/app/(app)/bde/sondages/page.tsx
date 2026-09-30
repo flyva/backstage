@@ -2,7 +2,7 @@ import { asc, desc, inArray } from "drizzle-orm";
 import { Trash2 } from "lucide-react";
 import { db } from "@/db";
 import { bdePollOptions, bdePolls, bdePollVotes } from "@/db/schema";
-import { requireUser } from "@/lib/auth";
+import { requireModule } from "@/lib/auth";
 import { canPublish } from "@/lib/news";
 import { deletePoll, vote } from "@/lib/bde-actions";
 import { PollForm } from "@/components/bde-forms";
@@ -13,7 +13,7 @@ export const metadata = { title: "BDE · Sondages" };
 const dateFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
 
 export default async function BdePollsPage() {
-  const user = await requireUser();
+  const user = await requireModule("bde");
   const manager = canPublish(user);
   const now = new Date();
 

@@ -3,13 +3,13 @@ import { desc, sql } from "drizzle-orm";
 import { Images } from "lucide-react";
 import { db } from "@/db";
 import { galleryAlbums, galleryItems } from "@/db/schema";
-import { requireUser } from "@/lib/auth";
+import { requireModule } from "@/lib/auth";
 import { AlbumForm } from "@/components/AlbumForm";
 
 export const metadata = { title: "Galerie" };
 
 export default async function GalleryPage() {
-  await requireUser();
+  await requireModule("galerie");
   const albums = await db
     .select({
       album: galleryAlbums,

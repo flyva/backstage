@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { Trash2 } from "lucide-react";
 import type { FormState } from "@/lib/actions";
 import { deleteRole, deleteUser, resetUserPassword, saveRole, updateUser } from "@/lib/user-admin-actions";
-import { PERM_FIELDS } from "@/lib/perms";
+import { ADMIN_PERM, LEVEL_FIELDS, LEVEL_LABEL, levelOf, type Level } from "@/lib/perms";
 import { PasswordField } from "@/components/PasswordField";
 
 function Feedback({ state }: { state: FormState }) {
@@ -13,7 +13,7 @@ function Feedback({ state }: { state: FormState }) {
   return null;
 }
 
-type RoleValues = { id?: number; name?: string; description?: string; isAdmin?: boolean; permAdministration?: boolean; permMateriel?: boolean; permBde?: boolean; permActus?: boolean; permGalerie?: boolean; system?: boolean };
+type RoleValues = { id?: number; name?: string; description?: string; isAdmin?: boolean; permAdministration?: boolean; system?: boolean } & Record<string, unknown>;
 
 export function RoleForm({ role = {} }: { role?: RoleValues }) {
   const [state, action, pending] = useActionState(saveRole, undefined);
@@ -33,13 +33,30 @@ export function RoleForm({ role = {} }: { role?: RoleValues }) {
           <span><strong>Administrateur</strong><span className="block text-xs text-muted">Tous les droits ci-dessous, y compris ceux qu&apos;on ajoutera plus tard. À réserver à peu de personnes.</span></span>
         </label>
         {role.system && role.isAdmin && <input type="hidden" name="isAdmin" value="on" />}
-        <div className="grid gap-2 sm:grid-cols-2">
-          {PERM_FIELDS.map((f) => (
-            <label key={f.field} className="flex items-start gap-3 rounded-xl border border-line p-3 text-sm has-[:checked]:border-accent has-[:checked]:bg-accent/5">
-              <input type="checkbox" name={f.field} defaultChecked={!!role[f.field]} className="mt-0.5 size-4 accent-[var(--accent)]" />
-              <span><strong>{f.label}</strong><span className="block text-xs text-muted">{f.hint}</span></span>
-            </label>
-          ))}
+        <label className="flex items-start gap-3 rounded-xl border border-line p-3 text-sm has-[:checked]:border-accent has-[:checked]:bg-accent/5">
+          <input type="checkbox" name={ADMIN_PERM.field} defaultChecked={!!role[ADMIN_PERM.field]} className="mt-0.5 size-4 accent-[var(--accent)]" />
+          <span><strong>{ADMIN_PERM.label}</strong><span className="block text-xs text-muted">{ADMIN_PERM.hint}</span></span>
+        </label>
+        <div className="space-y-2">
+          {LEVEL_FIELDS.map((f) => {
+            const cur = levelOf(role, f);
+            return (
+              <div key={f.module} className="rounded-xl border border-line p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <strong className="text-sm">{f.label}</strong>
+                  <div role="radiogroup" aria-label={f.label} className="flex overflow-hidden rounded-lg border border-line text-sm">
+                    {(["none", "view", "manage"] as Level[]).map((lv) => (
+                      <label key={lv} className="cursor-pointer border-l border-line px-3 py-1 first:border-l-0 has-[:checked]:bg-accent has-[:checked]:text-accent-fg">
+                        <input type="radio" name={`level_${f.module}`} value={lv} defaultChecked={role.id ? cur === lv : lv === "view"} className="sr-only" />
+                        {LEVEL_LABEL[lv]}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <p className="mt-1 text-xs text-muted">{f.hint}</p>
+              </div>
+            );
+          })}
         </div>
       </fieldset>
 

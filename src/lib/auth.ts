@@ -7,7 +7,7 @@ import { cache } from "react";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { roles, sessions, users, type User } from "@/db/schema";
-import { permsOf, type Perms } from "@/lib/perms";
+import { permsOf, type Module, type Perms } from "@/lib/perms";
 
 const scrypt = promisify(scryptCb) as (pw: string, salt: Buffer, len: number) => Promise<Buffer>;
 
@@ -94,6 +94,13 @@ export async function requireUser() {
   const user = await getSessionUser();
   if (!user) redirect("/login");
   if (user.status !== "active") redirect("/en-attente");
+  return user;
+}
+
+/** Personne connectée qui a au moins le niveau « Voir » sur ce domaine (sinon retour à l'accueil). */
+export async function requireModule(module: Module) {
+  const user = await requireUser();
+  if (!user.perms.view[module]) redirect("/");
   return user;
 }
 

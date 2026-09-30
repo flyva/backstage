@@ -3,7 +3,7 @@ import { count, desc, eq } from "drizzle-orm";
 import { Newspaper, Pin } from "lucide-react";
 import { db } from "@/db";
 import { newsPosts, users } from "@/db/schema";
-import { requireUser } from "@/lib/auth";
+import { requireModule } from "@/lib/auth";
 import { canPublish, SCOPE_LABEL } from "@/lib/news";
 
 export const metadata = { title: "Actualités" };
@@ -17,7 +17,7 @@ const plainExcerpt = (md: string) => {
 };
 
 export default async function ActusPage({ searchParams }: PageProps<"/actus">) {
-  const user = await requireUser();
+  const user = await requireModule("actus");
   const sp = await searchParams;
   const scope = sp.rubrique === "ecole" || sp.rubrique === "bde" ? sp.rubrique : undefined;
   const page = Math.max(1, Math.floor(Number(sp.p) || 1));

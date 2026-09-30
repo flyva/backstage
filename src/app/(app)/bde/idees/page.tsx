@@ -2,7 +2,7 @@ import { desc, eq, sql } from "drizzle-orm";
 import { ChevronUp, Trash2 } from "lucide-react";
 import { db } from "@/db";
 import { bdeIdeas, bdeIdeaVotes, IDEA_STATUSES, users, type IdeaStatus } from "@/db/schema";
-import { requireUser } from "@/lib/auth";
+import { requireModule } from "@/lib/auth";
 import { canPublish } from "@/lib/news";
 import { deleteIdea, setIdeaStatus, toggleIdeaVote } from "@/lib/bde-actions";
 import { IdeaForm } from "@/components/bde-forms";
@@ -13,7 +13,7 @@ const STATUS_LABEL: Record<IdeaStatus, string> = { new: "Nouvelle", planned: "Pr
 const dateFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", day: "numeric", month: "short" });
 
 export default async function BdeIdeasPage() {
-  const user = await requireUser();
+  const user = await requireModule("bde");
   const manager = canPublish(user);
 
   const ideas = await db

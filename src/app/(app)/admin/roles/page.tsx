@@ -2,7 +2,7 @@ import { asc, count } from "drizzle-orm";
 import { ShieldCheck } from "lucide-react";
 import { db } from "@/db";
 import { roles, users } from "@/db/schema";
-import { PERM_FIELDS } from "@/lib/perms";
+import { LEVEL_FIELDS, LEVEL_LABEL, levelOf } from "@/lib/perms";
 import { DeleteRoleForm, RoleForm } from "@/components/admin-user-forms";
 
 export const metadata = { title: "Rôles" };
@@ -30,7 +30,7 @@ export default async function RolesPage() {
         <h2 className="font-semibold">Rôles ({list.length})</h2>
         {list.map((r) => {
           const n = members.get(r.id) ?? 0;
-          const granted = r.isAdmin ? ["Tous les droits"] : PERM_FIELDS.filter((f) => r[f.field]).map((f) => f.label);
+          const granted = r.isAdmin ? ["Tous les droits"] : [...(r.permAdministration ? ["Administration"] : []), ...LEVEL_FIELDS.map((f) => ({ f, l: levelOf(r, f) })).filter((x) => x.l !== "view").map((x) => `${x.f.label} : ${LEVEL_LABEL[x.l]}`)];
           return (
             <details key={r.id} className="card p-0">
               <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 marker:hidden">
@@ -38,7 +38,7 @@ export default async function RolesPage() {
                 <span className="font-medium">{r.name}</span>
                 <span className="text-xs text-muted">{n} personne{n > 1 ? "s" : ""}</span>
                 <span className="ml-auto flex flex-wrap gap-1">
-                  {granted.length === 0 ? <span className="text-xs text-muted">Aucun droit particulier</span> : granted.map((g) => <span key={g} className="rounded-full bg-accent/15 px-2 py-0.5 text-xs">{g}</span>)}
+                  {granted.length === 0 ? <span className="text-xs text-muted">Lecture seule partout</span> : granted.map((g) => <span key={g} className="rounded-full bg-accent/15 px-2 py-0.5 text-xs">{g}</span>)}
                 </span>
               </summary>
               <div className="space-y-4 border-t border-line p-4">

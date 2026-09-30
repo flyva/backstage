@@ -4,14 +4,14 @@ import { desc, eq } from "drizzle-orm";
 import { ArrowLeft } from "lucide-react";
 import { db } from "@/db";
 import { galleryAlbums, galleryItems, users } from "@/db/schema";
-import { requireUser } from "@/lib/auth";
+import { requireModule } from "@/lib/auth";
 import { deleteAlbum } from "@/lib/gallery-actions";
 import { GalleryGrid } from "@/components/GalleryGrid";
 import { GalleryUploader } from "@/components/GalleryUploader";
 import { ConfirmButton } from "@/components/ConfirmButton";
 
 export default async function AlbumPage({ params }: PageProps<"/galerie/[id]">) {
-  const user = await requireUser();
+  const user = await requireModule("galerie");
   const { id } = await params;
   const albumId = Number(id);
   if (!Number.isInteger(albumId)) notFound();
