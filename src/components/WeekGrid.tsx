@@ -5,8 +5,9 @@ import type { AgendaEvent } from "@/lib/ical";
 
 // Planning de la semaine en grille horaire (une colonne par jour, une ligne par heure) : les cours sont placés selon leur heure.
 
-const HOUR_PX = 80; // hauteur d'une heure
-const MIN_EVENT_PX = 36;
+// Hauteur de la grille : s'adapte à l'écran (l'agenda tient sans faire défiler la page), entre 420 et 860 px.
+const GRID_HEIGHT = "clamp(420px, calc(100vh - 18.5rem), 860px)";
+const MIN_EVENT_PX = 28;
 const dayFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "UTC", weekday: "short", day: "numeric" });
 const timeFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit" });
 const partsFmt = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
@@ -51,7 +52,8 @@ export function WeekGrid({ days, byDay, kinds, today, nowMinutes }: {
   const last = timed.length ? Math.ceil(Math.max(...timed.map((e) => minutesOfDay(e.end))) / 60) : 18;
   const startH = Math.max(6, Math.min(first, 8));
   const endH = Math.min(23, Math.max(last, 18));
-  const height = (endH - startH) * HOUR_PX;
+  const span = (endH - startH) * 60; // minutes affichées
+  const pct = (minutes: number) => `${(minutes / span) * 100}%`;
   const hours = Array.from({ length: endH - startH + 1 }, (_, i) => startH + i);
 
   // Le week-end reste étroit tant qu'il n'y a rien dedans.
@@ -60,7 +62,7 @@ export function WeekGrid({ days, byDay, kinds, today, nowMinutes }: {
   const anyAllDay = days.some(({ key }) => (byDay.get(key) ?? []).some((e) => e.allDay));
 
   return (
-    <div className="card slim-scroll overflow-x-auto p-0">
+    <div className="card slim-scroll overflow-x-auto overflow-y-hidden p-0">
       <div className="min-w-[600px]">
         {/* En-têtes des jours */}
         <div className="grid border-b border-line bg-surface" style={{ gridTemplateColumns: template }}>
@@ -69,7 +71,7 @@ export function WeekGrid({ days, byDay, kinds, today, nowMinutes }: {
             const kind = kinds.get(key);
             return (
               <div key={key} className={`border-l border-line px-2 py-2 text-center ${key === today ? "bg-accent/10" : ""}`}>
-                <div className={`text-base font-semibold capitalize ${key === today ? "text-accent" : ""}`}>{dayFmt.format(date)}</div>
+                <div className={`text-sm font-semibold capitalize ${key === today ? "text-accent" : ""}`}>{dayFmt.format(date)}</div>
                 {kind && <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${KIND_CLASS[kind]}`}>{KIND_LABEL[kind]}</span>}
               </div>
             );
@@ -92,9 +94,9 @@ export function WeekGrid({ days, byDay, kinds, today, nowMinutes }: {
 
         {/* Grille horaire */}
         <div className="grid" style={{ gridTemplateColumns: template }}>
-          <div className="relative" style={{ height }}>
+          <div className="relative" style={{ height: GRID_HEIGHT }}>
             {hours.map((h) => (
-              <div key={h} className="absolute right-1.5 -translate-y-1/2 text-xs tabular-nums text-muted" style={{ top: (h - startH) * HOUR_PX }}>
+              <div key={h} className="absolute right-1.5 -translate-y-1/2 text-[11px] tabular-nums text-muted" style={{ top: pct((h - startH) * 60) }}>
                 {h > startH ? `${h} h` : ""}
               </div>
             ))}
@@ -102,28 +104,27 @@ export function WeekGrid({ days, byDay, kinds, today, nowMinutes }: {
           {days.map(({ key }) => {
             const placed = place((byDay.get(key) ?? []).filter((e) => !e.allDay));
             return (
-              <div key={key} className={`relative border-l border-line ${key === today ? "bg-accent/5" : ""}`} style={{ height }}>
+              <div key={key} className={`relative border-l border-line ${key === today ? "bg-accent/5" : ""}`} style={{ height: GRID_HEIGHT }}>
                 {hours.map((h) => (
-                  <div key={h} className="absolute inset-x-0 border-t border-line/70" style={{ top: (h - startH) * HOUR_PX }} />
+                  <div key={h} className="absolute inset-x-0 border-t border-line/70" style={{ top: pct((h - startH) * 60) }} />
                 ))}
                 {placed.map(({ e, s, en, lane, lanes }) => {
-                  const top = ((s - startH * 60) / 60) * HOUR_PX;
-                  const h = Math.max(((en - s) / 60) * HOUR_PX, MIN_EVENT_PX);
+                  const long = en - s >= 90; // assez haut pour afficher aussi la salle
                   return (
                     <div
                       key={e.id}
-                      className="absolute overflow-hidden rounded-lg border border-line border-l-4 border-l-accent bg-surface p-2 text-sm shadow-sm"
-                      style={{ top, height: h - 2, left: `calc(${(lane / lanes) * 100}% + 2px)`, width: `calc(${100 / lanes}% - 4px)` }}
+                      className="absolute overflow-hidden rounded-lg border border-line border-l-4 border-l-accent bg-surface p-1.5 text-xs shadow-sm"
+                      style={{ top: pct(s - startH * 60), height: `calc(${pct(en - s)} - 2px)`, minHeight: MIN_EVENT_PX, left: `calc(${(lane / lanes) * 100}% + 2px)`, width: `calc(${100 / lanes}% - 4px)` }}
                       title={`${e.title}\n${timeFmt.format(e.start)} – ${timeFmt.format(e.end)}${e.location ? `\n${e.location}` : ""}`}
                     >
-                      <div className="text-xs font-semibold leading-tight text-accent tabular-nums">{timeFmt.format(e.start)} – {timeFmt.format(e.end)}</div>
-                      <div className="mt-0.5 text-sm font-medium leading-snug">{e.title}</div>
-                      {e.location && h > 90 && <div className="mt-0.5 flex items-center gap-1 text-muted"><MapPin size={11} /> <span className="truncate">{e.location}</span></div>}
+                      <div className="font-semibold leading-tight text-accent tabular-nums">{timeFmt.format(e.start)} – {timeFmt.format(e.end)}</div>
+                      <div className="mt-0.5 text-[13px] font-medium leading-snug">{e.title}</div>
+                      {e.location && long && <div className="mt-0.5 flex items-center gap-1 text-muted"><MapPin size={11} /> <span className="truncate">{e.location}</span></div>}
                     </div>
                   );
                 })}
                 {key === today && nowMinutes >= startH * 60 && nowMinutes <= endH * 60 && (
-                  <div className="pointer-events-none absolute inset-x-0 z-10 border-t-2 border-danger" style={{ top: ((nowMinutes - startH * 60) / 60) * HOUR_PX }}>
+                  <div className="pointer-events-none absolute inset-x-0 z-10 border-t-2 border-danger" style={{ top: pct(nowMinutes - startH * 60) }}>
                     <span className="absolute -left-1 -top-[5px] size-2 rounded-full bg-danger" />
                   </div>
                 )}
