@@ -5,7 +5,8 @@ import { settings } from "@/db/schema";
 export const SETTING_KEYS = [
   "wifi_ssid",
   "wifi_password",
-  "wifi_security", // WPA | WEP | nopass
+  "wifi_security", // WPA | WEP | nopass | EAP
+  "wifi_qr_payload", // texte du QR Wi-Fi de l'école, lu depuis une photo (sert à refaire un QR propre)
   "school_map_file",
   "school_address",
   "school_lat", // renseignés automatiquement à partir de l'adresse
