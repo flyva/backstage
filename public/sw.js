@@ -1,9 +1,9 @@
 // Service worker de Backstage.
 // Volontairement minimal : il ne met JAMAIS en cache les pages, les API ni les médias
 // (ils dépendent de la session). Il sert seulement à l'installation, aux fichiers statiques
-// immuables, à une page « hors ligne » et aux notifications push.
-const CACHE = "backstage-static-v1";
-const PRECACHE = ["/offline.html", "/icon-192.png"];
+// immuables, à des pages « hors ligne » (dont le Jour J) et aux notifications push.
+const CACHE = "backstage-static-v2";
+const PRECACHE = ["/offline.html", "/jour-j-offline.html", "/icon-192.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(PRECACHE)).then(() => self.skipWaiting()));
@@ -34,9 +34,11 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Navigation : réseau, avec page de secours si l'appareil est hors ligne.
+  // Navigation : réseau, avec page de secours si l'appareil est hors ligne. Le Jour J d'un projet a sa propre page de
+  // secours (statique, sans donnée : elle lit la conduite enregistrée sur l'appareil quand il y avait du réseau).
   if (req.mode === "navigate") {
-    event.respondWith(fetch(req).catch(() => caches.match("/offline.html")));
+    const jourJ = /^\/projets\/\d+\/jour-j\/?$/.test(url.pathname);
+    event.respondWith(fetch(req).catch(() => caches.match(jourJ ? "/jour-j-offline.html" : "/offline.html")));
   }
 });
 

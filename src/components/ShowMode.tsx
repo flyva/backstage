@@ -113,6 +113,15 @@ export function ShowMode({ projectId, projectName, cues }: { projectId: number; 
     return () => window.removeEventListener("keydown", onKey);
   }, [go, back, togglePause]);
 
+  // Mode hors ligne : la conduite est gardée sur cet appareil, pour que le Jour J marche même sans réseau (voir jour-j-offline.html).
+  useEffect(() => {
+    try {
+      localStorage.setItem(`backstage:offline:jourj:${projectId}`, JSON.stringify({ name: projectName, cues, savedAt: Date.now() }));
+    } catch {
+      /* stockage indisponible : le mode hors ligne ne sera pas prêt */
+    }
+  }, [projectId, projectName, cues]);
+
   // Empêche l'écran de se mettre en veille pendant le spectacle.
   useEffect(() => {
     let lock: WakeLockSentinel | null = null;
@@ -181,7 +190,7 @@ export function ShowMode({ projectId, projectName, cues }: { projectId: number; 
         </button>
         <button onClick={reset} className="btn-ghost px-4 py-4" aria-label="Remise à zéro"><RotateCcw size={20} /></button>
       </div>
-      <p className="text-center text-xs text-muted">Espace ou → pour GO · ← pour revenir · P pour la pause</p>
+      <p className="text-center text-xs text-muted">Espace ou → pour GO · ← pour revenir · P pour la pause · la conduite est aussi enregistrée sur cet appareil : le Jour J s&apos;ouvre même sans réseau.</p>
 
       {next && (
         <section className="card flex items-center gap-3 p-3 text-sm">
