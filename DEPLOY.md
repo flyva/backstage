@@ -310,3 +310,13 @@ Sur un VPS OVH, le port 25 sortant est bloqué par défaut : on n'en a pas besoi
 Dès que `MAIL_HOST` **et** `APP_URL` sont définis, une nouvelle inscription n'est plus immédiate : la personne reçoit un lien (valable 24 h) et son compte n'est créé qu'après avoir cliqué sur « Activer mon compte ». Seul le tout premier compte (l'administrateur) en est dispensé. Sans mail configuré, l'inscription reste immédiate ; dans ce cas, garde `REGISTRATION_CODE`. Avec la confirmation par mail, le code n'est plus nécessaire.
 
 Quand le SMTP est configuré, les administrateurs reçoivent aussi un mail à chaque nouvelle demande d'accès (compte Google hors école en attente), puis un second quand la personne laisse son message.
+
+## 16. Profils, annuaire, annonces, calendrier et sondages
+
+Fonctions ajoutées (migrations 0033 et 0034, appliquées automatiquement par `install.sh`) :
+
+- **Profil** : photo, filière, présentation, réseaux, carte de visite publique (`/carte/<code>`), abonnement calendrier (`/api/feed/<jeton>.ics`). Les filières se gèrent dans Administration → Filières.
+- **Annuaire**, **carnet de réseau** (privé), **annonces** (publiées sans validation, 60 jours) et **disponibilités** (sondages avec invitations par notification).
+- **Météo** (Open-Meteo) et **alertes TBM** (SIRI Lite) : sans clé, aucune variable d'environnement à ajouter.
+- Photos de profil et d'annonces : `data/uploads/avatars` et `data/uploads/listings`. Elles sont déjà incluses dans la sauvegarde (`backup.sh`) et conservées entre deux versions.
+- Routes publiques (sans session) : `/carte/*`, `/api/avatar/*`, `/api/feed/*`. Leurs adresses sont des codes aléatoires non devinables.

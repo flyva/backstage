@@ -1,6 +1,6 @@
-import { and, count, desc, eq, inArray, lt, lte } from "drizzle-orm";
+import { and, count, desc, eq, inArray, lt, lte, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { bdeEvents, equipmentItems, galleryAlbums, loans, newsPosts, users } from "@/db/schema";
+import { bdeEvents, equipmentItems, galleryAlbums, loans, newsPosts, pollInvites, polls, users } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { STATUS_LABEL, daysBetween, isManager, todayParis } from "@/lib/equipment";
 import { ago } from "@/lib/relative-time";
@@ -22,7 +22,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   const manager = isManager(user);
   const admin = user.perms.administration;
 
-  const [mineDue, requested, lateAll, pendingUsers, news, events, albums, lastLoans, myCards] = await Promise.all([
+  const [mineDue, requested, lateAll, pendingUsers, news, events, albums, lastLoans, myCards, pollsToAnswer] = await Promise.all([
     // Mes prêts à rendre demain ou en retard (alertes à traiter)
     db
       .select({ id: loans.id, dueDate: loans.dueDate, name: equipmentItems.name })
@@ -45,6 +45,14 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
       .orderBy(desc(loans.requestedAt))
       .limit(2),
     dueCards(limit, user.id), // mes tâches kanban à échéance (aujourd'hui, demain ou en retard)
+    // Sondages de disponibilités ouverts auxquels j'ai été invité et que je n'ai pas encore remplis
+    db
+      .select({ id: polls.id, title: polls.title, at: polls.createdAt })
+      .from(pollInvites)
+      .innerJoin(polls, eq(polls.id, pollInvites.pollId))
+      .where(and(eq(pollInvites.userId, user.id), eq(polls.closed, false), sql`not exists (select 1 from poll_votes pv join poll_options po on po.id = pv.option_id where po.poll_id = ${polls.id} and pv.user_id = ${user.id})`))
+      .orderBy(desc(polls.createdAt))
+      .limit(4),
   ]);
 
   const loanBadge = mineDue.length + requested.length + Number(lateAll[0]?.n ?? 0);
@@ -83,6 +91,14 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
           unread: requested.some((r) => r.at.getTime() > seenAt), // nouvelle demande depuis la dernière ouverture
         }]
       : []),
+    ...pollsToAnswer.map((p) => ({
+      key: `poll-${p.id}`,
+      kind: "alert" as const,
+      text: `Sondage « ${p.title} » : donne tes disponibilités`,
+      when: "À répondre",
+      href: `/disponibilites/${p.id}`,
+      unread: p.at.getTime() > seenAt,
+    })),
     ...(pendingUsers.length > 0
       ? [{
           key: "approvals",
