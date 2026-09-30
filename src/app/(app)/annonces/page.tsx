@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { and, desc, eq, gt, like, lte, or } from "drizzle-orm";
+import { and, count, desc, eq, gt, inArray, like, lte, or } from "drizzle-orm";
 import { db } from "@/db";
-import { LISTING_CATEGORIES, listings, tracks, users, type ListingCategory } from "@/db/schema";
+import { LISTING_CATEGORIES, listingPhotos, listings, tracks, users, type ListingCategory } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { avatarUrl } from "@/lib/avatar-files";
 import { LISTING_LABEL, LISTING_PHOTO_PREFIX } from "@/lib/listing-shared";
@@ -39,6 +39,9 @@ export default async function AnnoncesPage({ searchParams }: PageProps<"/annonce
   ]);
   const trackName = new Map(trackRows.map((t) => [t.id, t.name]));
   const ratings = await ratingSummary(feed.map((f) => f.l.userId));
+  // Nombre de photos secondaires par annonce (badge « +N photos »)
+  const extraRows = feed.length ? await db.select({ id: listingPhotos.listingId, n: count() }).from(listingPhotos).where(inArray(listingPhotos.listingId, feed.map((f) => f.l.id))).groupBy(listingPhotos.listingId) : [];
+  const extra = new Map(extraRows.map((r) => [r.id, Number(r.n)]));
   const defaultContact = user.contactEmail || school3isEmail(user.email) || "";
   const isAdmin = user.perms.administration;
   const href = (c: string | null) => `/annonces${c || q ? `?${new URLSearchParams({ ...(c ? { c } : {}), ...(q ? { q } : {}) })}` : ""}`;
@@ -72,8 +75,11 @@ export default async function AnnoncesPage({ searchParams }: PageProps<"/annonce
           return (
             <li key={l.id} className="card flex flex-col gap-3 p-4">
               {l.photoFile && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={`${LISTING_PHOTO_PREFIX}${l.photoFile}`} alt="" className="h-44 w-full rounded-xl border border-line object-cover" loading="lazy" />
+                <Link href={`/annonces/${l.id}`} className="relative block" aria-label={`Voir les photos de ${l.title}`}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={`${LISTING_PHOTO_PREFIX}${l.photoFile}`} alt="" className="h-44 w-full rounded-xl border border-line object-cover" loading="lazy" />
+                  {(extra.get(l.id) ?? 0) > 0 && <span className="absolute bottom-2 right-2 rounded-full bg-black/70 px-2 py-0.5 text-[11px] font-semibold text-white">+{extra.get(l.id)} photo{(extra.get(l.id) ?? 0) > 1 ? "s" : ""}</span>}
+                </Link>
               )}
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-full border border-line px-2 py-0.5 text-[11px] font-semibold text-muted">{LISTING_LABEL[l.category]}</span>

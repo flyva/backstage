@@ -1,17 +1,18 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { and, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { conversations, listings, reviews, tracks, users } from "@/db/schema";
+import { conversations, listingPhotos, listings, reviews, tracks, users } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { avatarUrl } from "@/lib/avatar-files";
-import { LISTING_LABEL, LISTING_PHOTO_PREFIX } from "@/lib/listing-shared";
+import { LISTING_LABEL } from "@/lib/listing-shared";
 import { deleteReview } from "@/lib/message-actions";
 import { concludeListing, setListingStatus } from "@/lib/listing-actions";
 import { ratingSummary } from "@/lib/messaging";
 import { ago } from "@/lib/relative-time";
 import { Avatar } from "@/components/people-forms";
 import { StartConversationForm } from "@/components/message-forms";
+import { PhotoGallery, PhotoManager } from "@/components/listing-photos";
 import { RatingBadge, Stars } from "@/components/Stars";
 
 export async function generateMetadata({ params }: PageProps<"/annonces/[id]">) {
@@ -31,7 +32,7 @@ export default async function ListingPage({ params }: PageProps<"/annonces/[id]"
   const isOwner = l.userId === user.id;
   const live = l.status === "active" && l.expiresAt > new Date();
 
-  const [trackRow, ratings, sellerReviews, mine, mineAsSeller] = await Promise.all([
+  const [trackRow, ratings, sellerReviews, mine, mineAsSeller, secondary] = await Promise.all([
     row.trackId ? db.select({ name: tracks.name }).from(tracks).where(eq(tracks.id, row.trackId)).limit(1) : Promise.resolve([]),
     ratingSummary([l.userId]),
     db
@@ -47,18 +48,19 @@ export default async function ListingPage({ params }: PageProps<"/annonces/[id]"
           .from(conversations).innerJoin(users, eq(users.id, conversations.buyerId))
           .where(eq(conversations.listingId, id)).orderBy(desc(conversations.lastMessageAt))
       : Promise.resolve([]),
+    db.select({ file: listingPhotos.file }).from(listingPhotos).where(eq(listingPhotos.listingId, id)).orderBy(asc(listingPhotos.position), asc(listingPhotos.id)),
   ]);
   const rating = ratings.get(l.userId);
+  // Photo principale en premier, puis les secondaires
+  const photos = [l.photoFile, ...secondary.map((p) => p.file)].filter((f): f is string => !!f);
+  const canEdit = isOwner || user.perms.administration;
 
   return (
     <div className="max-w-3xl space-y-5">
       <p className="text-sm"><Link href="/annonces" className="text-muted underline">← Annonces</Link></p>
 
       <article className="card space-y-4 p-5">
-        {l.photoFile && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={`${LISTING_PHOTO_PREFIX}${l.photoFile}`} alt="" className="max-h-96 w-full rounded-xl border border-line object-cover" />
-        )}
+        <PhotoGallery files={photos} title={l.title} />
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-full border border-line px-2 py-0.5 text-[11px] font-semibold text-muted">{LISTING_LABEL[l.category]}</span>
           {l.price && <span className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-bold text-accent-fg">{l.price}</span>}
@@ -76,6 +78,13 @@ export default async function ListingPage({ params }: PageProps<"/annonces/[id]"
         </div>
         <p className="text-sm"><span className="text-muted">Autre moyen de contact :</span> <strong className="break-words">{l.contact}</strong></p>
       </article>
+
+      {canEdit && (
+        <section className="card space-y-3">
+          <h2 className="font-semibold">Photos de l&apos;annonce</h2>
+          <PhotoManager listingId={id} files={photos} />
+        </section>
+      )}
 
       {!isOwner && (
         <section className="card space-y-3">

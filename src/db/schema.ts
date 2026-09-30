@@ -900,3 +900,17 @@ export const reviews = mysqlTable(
   },
   (t) => [index("rev_subject_idx").on(t.subjectId), index("rev_author_listing_idx").on(t.authorId, t.listingId)],
 );
+
+// Photos secondaires d'une annonce (la photo principale reste dans listings.photoFile). Les fichiers sont dans data/uploads/listings
+// et servis par /api/listing-photo/<nom>, comme la photo principale.
+export const listingPhotos = mysqlTable(
+  "listing_photos",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    listingId: int("listing_id").notNull().references(() => listings.id, { onDelete: "cascade" }),
+    file: varchar("file", { length: 40 }).notNull(),
+    position: int("position").notNull().default(0),
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [index("lp_listing_idx").on(t.listingId, t.position)],
+);
