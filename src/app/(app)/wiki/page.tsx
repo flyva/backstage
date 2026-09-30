@@ -31,7 +31,7 @@ export default async function WikiIndexPage({ searchParams }: PageProps<"/wiki">
   const groups = Map.groupBy(pages, (p) => p.category);
 
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="space-y-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Wiki</h1>

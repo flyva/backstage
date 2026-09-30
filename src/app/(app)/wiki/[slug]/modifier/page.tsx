@@ -16,7 +16,7 @@ export default async function EditWikiPage({ params }: PageProps<"/wiki/[slug]/m
   const cats = await db.selectDistinct({ c: wikiPages.category }).from(wikiPages);
 
   return (
-    <div className="max-w-3xl space-y-4">
+    <div className="space-y-4">
       <Link href={`/wiki/${page.slug}`} className="text-sm text-muted hover:text-fg">← {page.title}</Link>
       <h1 className="text-2xl font-bold">Modifier la page</h1>
       <WikiEditor pageId={page.id} title={page.title} category={page.category} body={page.body} categories={cats.map((c) => c.c)} />

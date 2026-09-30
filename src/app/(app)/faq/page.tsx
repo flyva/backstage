@@ -11,7 +11,7 @@ export default async function FaqPage() {
   const groups = Map.groupBy(items, (i) => i.category);
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="space-y-6">
       <h1 className="text-2xl font-bold">FAQ</h1>
       {items.length === 0 && <p className="text-sm text-muted">Aucune question pour le moment.</p>}
       {[...groups].map(([category, list]) => (

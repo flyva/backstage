@@ -183,7 +183,7 @@ export default async function MobilitePage() {
   ];
 
   return (
-    <div className="max-w-5xl space-y-8">
+    <div className="space-y-8">
       <AutoRefresh seconds={30} />
       <header>
         <h1 className="text-2xl font-bold">Mobilité</h1>

@@ -38,7 +38,7 @@ export default async function MaterielPage({ searchParams }: PageProps<"/materie
   const past = mine.filter((m) => !active.includes(m)).slice(0, 5);
 
   return (
-    <div className="max-w-4xl space-y-8">
+    <div className="space-y-8">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Matériel de l&apos;école</h1>

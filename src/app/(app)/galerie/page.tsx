@@ -20,7 +20,7 @@ export default async function GalleryPage() {
     .orderBy(desc(galleryAlbums.createdAt));
 
   return (
-    <div className="max-w-5xl space-y-8">
+    <div className="space-y-8">
       <header>
         <h1 className="text-2xl font-bold">Galerie</h1>
         <p className="text-sm text-muted">Les photos et vidéos de la promo, rangées par album.</p>

@@ -53,7 +53,7 @@ export default async function SearchPage({ searchParams }: PageProps<"/recherche
   const total = groups.reduce((s, g) => s + g.hits.length, 0);
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="space-y-6">
       <header>
         <h1 className="text-2xl font-bold">Recherche</h1>
         <p className="text-sm text-muted">{q.length >= 2 ? `${total} résultat${total > 1 ? "s" : ""} pour « ${q} »` : "Tape au moins 2 caractères dans la barre du haut (Ctrl K)."}</p>

@@ -36,7 +36,7 @@ export default async function ActusPage({ searchParams }: PageProps<"/actus">) {
   const qs = (p: number) => `/actus?${new URLSearchParams({ ...(scope ? { rubrique: scope } : {}), ...(p > 1 ? { p: String(p) } : {}) })}`;
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="space-y-6">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Actualités</h1>

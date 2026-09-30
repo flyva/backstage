@@ -20,7 +20,7 @@ export default async function PrintPage({ params }: PageProps<"/projets/[id]/fic
   const conflicts = findConflicts(lights);
 
   return (
-    <div className="max-w-5xl space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between print:hidden">
         <Link href={`/projets/${project.id}/fiches`} className="text-sm text-muted hover:text-fg">← Fiches techniques</Link>
         <PrintButton />

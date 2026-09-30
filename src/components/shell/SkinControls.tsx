@@ -80,9 +80,9 @@ export function SkinControls({ initial }: { initial: Skin }) {
               title={ACCENT_INFO[a].label}
               onClick={() => change({ accent: a })}
               className="grid size-7 place-items-center rounded-full outline-offset-2"
-              style={{ background: ACCENT_INFO[a][current.theme], outline: current.accent === a ? `2px solid ${ACCENT_INFO[a][current.theme]}` : undefined }}
+              style={{ background: ACCENT_INFO[a][current.theme], boxShadow: "inset 0 0 0 1px rgba(128,128,128,.55)", outline: current.accent === a ? `2px solid ${ACCENT_INFO[a][current.theme]}` : undefined }}
             >
-              {current.accent === a && <Check size={14} className="text-white" />}
+              {current.accent === a && <Check size={14} className={a === "blanc" ? "text-black" : "text-white"} />}
             </button>
           ))}
         </div>

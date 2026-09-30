@@ -25,7 +25,7 @@ export default async function WikiHistoryPage({ params }: PageProps<"/wiki/[slug
     .limit(50);
 
   return (
-    <div className="max-w-3xl space-y-4">
+    <div className="space-y-4">
       <Link href={`/wiki/${page.slug}`} className="text-sm text-muted hover:text-fg">← {page.title}</Link>
       <h1 className="text-2xl font-bold">Historique</h1>
       <ul className="space-y-2">

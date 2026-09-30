@@ -38,7 +38,7 @@ export default async function AlbumPage({ params }: PageProps<"/galerie/[id]">) 
   }));
 
   return (
-    <div className="max-w-5xl space-y-6">
+    <div className="space-y-6">
       <Link href="/galerie" className="inline-flex items-center gap-1 text-sm text-muted hover:text-fg"><ArrowLeft size={14} /> Albums</Link>
       <header className="space-y-1">
         <h1 className="text-2xl font-bold">{album.title}</h1>

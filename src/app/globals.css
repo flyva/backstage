@@ -25,6 +25,8 @@
 :root[data-accent="indigo"] { --accent: #4f46e5; }
 :root[data-accent="vert"] { --accent: #047857; }
 :root[data-accent="rose"] { --accent: #be185d; }
+:root[data-accent="blanc"] { --accent: #ffffff; --accent-fg: #111111; }
+:root[data-accent="noir"] { --accent: #111111; --accent-fg: #ffffff; }
 
 :root.dark {
   --bg: #1f2428;
@@ -42,6 +44,8 @@
 :root.dark[data-accent="indigo"] { --accent: #8b93ff; --accent-fg: #0d0f2b; }
 :root.dark[data-accent="vert"] { --accent: #34d399; --accent-fg: #04140d; }
 :root.dark[data-accent="rose"] { --accent: #f472b6; --accent-fg: #1f0511; }
+:root.dark[data-accent="blanc"] { --accent: #ffffff; --accent-fg: #111111; }
+:root.dark[data-accent="noir"] { --accent: #111111; --accent-fg: #ffffff; }
 
 /* Menu blanc (option « Blanc » du panneau de personnalisation) */
 :root[data-sidebar="light"] {

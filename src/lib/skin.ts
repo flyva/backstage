@@ -1,5 +1,5 @@
 // Skin personnel : partagé entre serveur (cookies, layout) et client (panneau de droite).
-export const ACCENTS = ["ambre", "bleu", "indigo", "vert", "rose"] as const;
+export const ACCENTS = ["ambre", "bleu", "indigo", "vert", "rose", "blanc", "noir"] as const;
 export type Accent = (typeof ACCENTS)[number];
 
 export const ACCENT_INFO: Record<Accent, { label: string; light: string; dark: string }> = {
@@ -8,6 +8,8 @@ export const ACCENT_INFO: Record<Accent, { label: string; light: string; dark: s
   indigo: { label: "Indigo", light: "#4f46e5", dark: "#8b93ff" },
   vert: { label: "Émeraude", light: "#047857", dark: "#34d399" },
   rose: { label: "Rose", light: "#be185d", dark: "#f472b6" },
+  blanc: { label: "Blanc", light: "#ffffff", dark: "#ffffff" },
+  noir: { label: "Noir", light: "#111111", dark: "#111111" },
 };
 
 export type SidebarSkin = "dark" | "light";

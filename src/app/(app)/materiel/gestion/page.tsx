@@ -44,7 +44,7 @@ export default async function GestionPage() {
   ];
 
   return (
-    <div className="max-w-4xl space-y-8">
+    <div className="space-y-8">
       <header>
         <Link href="/materiel" className="text-sm text-muted hover:text-fg">← Catalogue</Link>
         <h1 className="text-2xl font-bold">Gestion du matériel</h1>

@@ -19,7 +19,7 @@ export default async function AdminPage() {
   ]);
 
   return (
-    <div className="max-w-4xl space-y-8">
+    <div className="space-y-8">
       <h1 className="text-2xl font-bold">Administration</h1>
 
       <section className="card space-y-3">

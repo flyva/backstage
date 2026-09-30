@@ -13,7 +13,7 @@ export default async function NewWikiPage({ searchParams }: PageProps<"/wiki/nou
   const cats = await db.selectDistinct({ c: wikiPages.category }).from(wikiPages);
 
   return (
-    <div className="max-w-3xl space-y-4">
+    <div className="space-y-4">
       <Link href="/wiki" className="text-sm text-muted hover:text-fg">← Wiki</Link>
       <h1 className="text-2xl font-bold">Nouvelle page</h1>
       <WikiEditor title={titre} categories={cats.map((c) => c.c)} />

@@ -28,7 +28,7 @@ export default async function ActuPage({ params }: PageProps<"/actus/[id]">) {
   const mine = canPublish(user) && (user.role === "admin" || post.authorId === user.id);
 
   return (
-    <article className="max-w-3xl space-y-4">
+    <article className="space-y-4">
       <Link href="/actus" className="inline-flex items-center gap-1 text-sm text-muted hover:text-fg"><ArrowLeft size={14} /> Actualités</Link>
       <header className="space-y-1">
         <div className="text-xs uppercase tracking-wide text-muted">{SCOPE_LABEL[post.scope]}</div>

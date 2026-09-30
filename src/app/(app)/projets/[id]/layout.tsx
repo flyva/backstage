@@ -18,7 +18,7 @@ export default async function ProjectLayout({ children, params }: LayoutProps<"/
     ...(role === "owner" ? [{ slug: "reglages", label: "Réglages" }] : []),
   ];
   return (
-    <div className="max-w-6xl space-y-5">
+    <div className="space-y-5">
       <Link href="/projets" className="print:hidden inline-flex items-center gap-1 text-sm text-muted hover:text-fg">
         <ArrowLeft size={14} /> Tous les projets
       </Link>

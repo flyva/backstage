@@ -41,7 +41,7 @@ export default async function ItemPage({ params }: PageProps<"/materiel/[id]">) 
     : [];
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="space-y-6">
       <Link href="/materiel" className="inline-flex items-center gap-1 text-sm text-muted hover:text-fg">
         <ArrowLeft size={14} /> Catalogue
       </Link>

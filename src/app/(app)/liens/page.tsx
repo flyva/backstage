@@ -12,7 +12,7 @@ export default async function LiensPage() {
   const groups = Map.groupBy(links, (l) => l.category);
 
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="space-y-6">
       <h1 className="text-2xl font-bold">Liens utiles</h1>
       {links.length === 0 && <p className="text-sm text-muted">Aucun lien pour le moment.</p>}
       {[...groups].map(([category, list]) => (
