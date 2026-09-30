@@ -10,6 +10,7 @@ const TABS = [
   { slug: "faq", label: "FAQ" },
   { slug: "liens", label: "Liens utiles" },
   { slug: "wiki", label: "Wiki" },
+  { slug: "sante", label: "Santé" },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
