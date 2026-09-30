@@ -6,6 +6,7 @@ import { cues } from "@/db/schema";
 import { can, requireProject } from "@/lib/projects";
 import { deleteCue, moveCue } from "@/lib/project-actions";
 import { CATEGORY_LABEL, formatDuration } from "@/lib/time";
+import { ProjectDownloads } from "@/components/ProjectDownloads";
 import { AddCueForm, EditCueForm } from "@/components/cue-forms";
 
 export const metadata = { title: "Conduite" };
@@ -33,6 +34,8 @@ export default async function CueListPage({ params }: PageProps<"/projets/[id]/c
       </div>
 
       {list.length === 0 && <p className="text-sm text-muted">Aucune cue pour le moment.</p>}
+
+      <ProjectDownloads projectId={project.id} />
 
       <ol className="space-y-2">
         {rows.map(({ c, i, startAt }) => (

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
-import { ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
+import { ChevronLeft, ChevronRight, Maximize, RotateCcw } from "lucide-react";
 
 export type ShowCue = {
   id: number;
@@ -125,7 +125,10 @@ export function ShowMode({ projectId, projectName, cues }: { projectId: number; 
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3 text-sm text-muted">
         <span className="truncate font-medium text-fg">{projectName}</span>
-        <span className="tabular-nums">Spectacle : <strong className="text-fg">{fmt(showElapsed)}</strong></span>
+        <span className="flex items-center gap-3">
+          <span className="tabular-nums">Spectacle : <strong className="text-fg">{fmt(showElapsed)}</strong></span>
+          <button type="button" className="btn-ghost px-2 py-1" aria-label="Plein écran" onClick={() => { if (document.fullscreenElement) void document.exitFullscreen(); else void document.documentElement.requestFullscreen?.(); }}><Maximize size={16} /></button>
+        </span>
       </div>
 
       <section className="card space-y-3 py-8 text-center" aria-live="polite">
