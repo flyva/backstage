@@ -9,7 +9,7 @@ import { Markdown } from "@/components/Markdown";
 
 type Msg = { from: "me"; text: string } | { from: "bot"; reply: AssistantReply };
 
-export function AssistantChat({ suggestions }: { suggestions: string[] }) {
+export function AssistantChat({ suggestions, compact = false }: { suggestions: string[]; compact?: boolean }) {
   const [msgs, setMsgs] = useState<Msg[]>([{ from: "bot", reply: { text: "Salut ! Pose-moi une question sur l'école (Wi-Fi, absences, matériel, contacts…) ou sur toi (prochain cours, tâches, prêts). Je ne suis pas une IA : je cherche dans Backstage.", sources: [] } }]);
   const [text, setText] = useState("");
   const [pending, start] = useTransition();
@@ -29,7 +29,7 @@ export function AssistantChat({ suggestions }: { suggestions: string[] }) {
   };
 
   return (
-    <div className="card flex min-h-[28rem] flex-col p-0">
+    <div className={compact ? "flex h-[26rem] max-h-[70vh] flex-col" : "card flex min-h-[28rem] flex-col p-0"}>
       <div className="flex-1 space-y-4 overflow-y-auto p-4" role="log" aria-live="polite" aria-label="Conversation avec l'assistant">
         {msgs.map((m, i) =>
           m.from === "me" ? (

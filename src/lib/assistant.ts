@@ -9,6 +9,7 @@ import { cardHref, dueCards } from "@/lib/reminders";
 import { todayParis } from "@/lib/equipment";
 import { KIND_LABEL, addDays } from "@/lib/alternance";
 import type { SessionUser } from "@/lib/auth";
+import { SUGGESTIONS } from "@/lib/assistant-suggestions";
 
 // Assistant SANS intelligence artificielle : il cherche dans les contenus de Backstage (FAQ, wiki, contacts, liens, actus,
 // évènements, matériel, réglages) avec un classement par mots-clés (BM25), et répond aux questions personnelles
@@ -278,16 +279,7 @@ async function personal(q: string, user: SessionUser): Promise<AssistantReply | 
   return null;
 }
 
-export const SUGGESTIONS = [
-  "Quel est le mot de passe du wifi ?",
-  "Quel est mon prochain cours ?",
-  "Qui contacter pour un stage ?",
-  "Comment emprunter du matériel ?",
-  "Où manger près de l'école ?",
-  "Que faire en cas d'absence ?",
-  "Quand passe le prochain tram ?",
-  "Quelles sont mes tâches à finir ?",
-];
+export { SUGGESTIONS } from "@/lib/assistant-suggestions";
 
 /** Répond à une question : d'abord les questions personnelles, sinon une recherche dans les contenus de Backstage. */
 export async function answer(question: string, user: SessionUser): Promise<AssistantReply> {

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Menu, Search } from "lucide-react";
+import { AssistantFab } from "@/components/AssistantFab";
 
 // Coquille de l'application : menu de gauche (tiroir sur mobile), barre du haut (recherche, cloche, paramètres) et contenu.
 export function AppShell({ sidebar, bell, menu, children }: { sidebar: ReactNode; bell: ReactNode; menu: ReactNode; children: ReactNode }) {
@@ -56,6 +57,7 @@ export function AppShell({ sidebar, bell, menu, children }: { sidebar: ReactNode
         </header>
         <main className="min-w-0 flex-1 p-4 md:p-6 print:p-0">{children}</main>
       </div>
+      <AssistantFab />
     </div>
   );
 }
