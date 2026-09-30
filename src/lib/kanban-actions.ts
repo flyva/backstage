@@ -1,10 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, asc, eq, max } from "drizzle-orm";
+import { and, asc, eq, inArray, max } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { kanbanCards, kanbanColumns, projectMembers } from "@/db/schema";
+import { kanbanCards, kanbanChecklist, kanbanColumns, kanbanComments, projectFiles, projectMembers } from "@/db/schema";
+import { removeProjectFile } from "@/lib/project-files";
+import { can } from "@/lib/projects";
 import { DEFAULT_KANBAN_COLUMNS, requireProject } from "@/lib/projects";
 import type { FormState } from "@/lib/actions";
 
@@ -24,6 +26,13 @@ async function cardWithProject(cardId: number) {
     .where(eq(kanbanCards.id, cardId))
     .limit(1);
   return r ?? null;
+}
+
+// Noms des fichiers (sur le disque) attachés à ces cartes : la base est nettoyée en cascade, pas le disque.
+async function cardFileNames(cardIds: number[]) {
+  if (cardIds.length === 0) return [];
+  const rows = await db.select({ file: projectFiles.file }).from(projectFiles).where(inArray(projectFiles.cardId, cardIds));
+  return rows.map((r) => r.file);
 }
 
 // ---------- Colonnes ----------
@@ -63,7 +72,10 @@ export async function deleteColumn(fd: FormData) {
   const pid = await projectOfColumn(cid);
   if (!pid) return;
   await requireProject(pid, "editor");
-  await db.delete(kanbanColumns).where(eq(kanbanColumns.id, cid)); // les cartes suivent (cascade)
+  const cardIds = (await db.select({ id: kanbanCards.id }).from(kanbanCards).where(eq(kanbanCards.columnId, cid))).map((c) => c.id);
+  const names = await cardFileNames(cardIds);
+  await db.delete(kanbanColumns).where(eq(kanbanColumns.id, cid)); // les cartes, leurs fichiers, tâches et commentaires suivent (cascade)
+  await Promise.all(names.map(removeProjectFile));
   touch(pid);
 }
 
@@ -102,8 +114,22 @@ const cardSchema = z.object({
   title: z.string().trim().min(1, "Titre requis").max(200),
   description: z.string().trim().max(4000),
   assigneeId: z.string(),
+  startDate: z.string().refine((v) => v === "" || /^\d{4}-\d{2}-\d{2}$/.test(v), "Date invalide"),
   dueDate: z.string().refine((v) => v === "" || /^\d{4}-\d{2}-\d{2}$/.test(v), "Date invalide"),
+  priority: z.enum(["low", "normal", "high", "urgent"]),
+  labels: z.string().trim().max(200),
 });
+
+/** « son, lumière , son » → « son,lumière » : sans doublons, 8 étiquettes de 24 caractères au plus. */
+function normalizeLabels(raw: string): string | null {
+  const seen = new Set<string>();
+  for (const l of raw.split(",")) {
+    const t = l.trim().slice(0, 24);
+    if (t) seen.add(t);
+  }
+  const out = [...seen].slice(0, 8).join(",");
+  return out || null;
+}
 
 export async function updateCard(_: FormState, fd: FormData): Promise<FormState> {
   const cardId = id.parse(fd.get("cardId"));
@@ -114,7 +140,10 @@ export async function updateCard(_: FormState, fd: FormData): Promise<FormState>
     title: fd.get("title"),
     description: fd.get("description") ?? "",
     assigneeId: fd.get("assigneeId") ?? "",
+    startDate: fd.get("startDate") ?? "",
     dueDate: fd.get("dueDate") ?? "",
+    priority: fd.get("priority") ?? "normal",
+    labels: fd.get("labels") ?? "",
   });
   if (!p.success) return { error: p.error.issues[0].message };
 
@@ -130,7 +159,10 @@ export async function updateCard(_: FormState, fd: FormData): Promise<FormState>
     title: p.data.title,
     description: p.data.description || null,
     assigneeId,
+    startDate: p.data.startDate || null,
     dueDate: p.data.dueDate || null,
+    priority: p.data.priority,
+    labels: normalizeLabels(p.data.labels),
   }).where(eq(kanbanCards.id, cardId));
   touch(found.projectId);
   return { ok: "Carte mise à jour" };
@@ -140,7 +172,9 @@ export async function deleteCard(fd: FormData) {
   const found = await cardWithProject(id.parse(fd.get("cardId")));
   if (!found) return;
   await requireProject(found.projectId, "editor");
+  const names = await cardFileNames([found.card.id]);
   await db.delete(kanbanCards).where(eq(kanbanCards.id, found.card.id));
+  await Promise.all(names.map(removeProjectFile));
   touch(found.projectId);
 }
 
@@ -165,4 +199,78 @@ export async function moveCard(cardId: number, toColumnId: number, index: number
     }
   });
   touch(found.projectId);
+}
+
+// ---------- Tâches (checklist), commentaires, fichiers d'une carte ----------
+
+async function itemWithProject(itemId: number) {
+  const [r] = await db
+    .select({ item: kanbanChecklist, projectId: kanbanColumns.projectId })
+    .from(kanbanChecklist)
+    .innerJoin(kanbanCards, eq(kanbanCards.id, kanbanChecklist.cardId))
+    .innerJoin(kanbanColumns, eq(kanbanColumns.id, kanbanCards.columnId))
+    .where(eq(kanbanChecklist.id, itemId))
+    .limit(1);
+  return r ?? null;
+}
+
+export async function addChecklistItem(cardId: number, text: string) {
+  const found = await cardWithProject(id.parse(cardId));
+  if (!found) return;
+  await requireProject(found.projectId, "editor");
+  const t = z.string().trim().min(1).max(200).safeParse(text);
+  if (!t.success) return;
+  const [r] = await db.select({ m: max(kanbanChecklist.position) }).from(kanbanChecklist).where(eq(kanbanChecklist.cardId, found.card.id));
+  await db.insert(kanbanChecklist).values({ cardId: found.card.id, text: t.data, position: (r.m ?? -1) + 1 });
+  touch(found.projectId);
+}
+
+export async function toggleChecklistItem(itemId: number, done: boolean) {
+  const found = await itemWithProject(id.parse(itemId));
+  if (!found) return;
+  await requireProject(found.projectId, "editor");
+  await db.update(kanbanChecklist).set({ done: !!done }).where(eq(kanbanChecklist.id, found.item.id));
+  touch(found.projectId);
+}
+
+export async function deleteChecklistItem(itemId: number) {
+  const found = await itemWithProject(id.parse(itemId));
+  if (!found) return;
+  await requireProject(found.projectId, "editor");
+  await db.delete(kanbanChecklist).where(eq(kanbanChecklist.id, found.item.id));
+  touch(found.projectId);
+}
+
+export async function addComment(cardId: number, body: string) {
+  const found = await cardWithProject(id.parse(cardId));
+  if (!found) return;
+  const { user } = await requireProject(found.projectId); // tous les membres peuvent commenter
+  const b = z.string().trim().min(1).max(2000).safeParse(body);
+  if (!b.success) return;
+  await db.insert(kanbanComments).values({ cardId: found.card.id, userId: user.id, body: b.data });
+  touch(found.projectId);
+}
+
+export async function deleteComment(commentId: number) {
+  const [c] = await db
+    .select({ c: kanbanComments, projectId: kanbanColumns.projectId })
+    .from(kanbanComments)
+    .innerJoin(kanbanCards, eq(kanbanCards.id, kanbanComments.cardId))
+    .innerJoin(kanbanColumns, eq(kanbanColumns.id, kanbanCards.columnId))
+    .where(eq(kanbanComments.id, id.parse(commentId)))
+    .limit(1);
+  if (!c) return;
+  const { user, role } = await requireProject(c.projectId);
+  if (c.c.userId !== user.id && !can(role, "owner")) return; // son propre commentaire, ou le propriétaire du projet
+  await db.delete(kanbanComments).where(eq(kanbanComments.id, c.c.id));
+  touch(c.projectId);
+}
+
+export async function deleteCardFile(fileId: number) {
+  const [f] = await db.select().from(projectFiles).where(eq(projectFiles.id, id.parse(fileId))).limit(1);
+  if (!f || f.cardId === null) return;
+  await requireProject(f.projectId, "editor");
+  await db.delete(projectFiles).where(eq(projectFiles.id, f.id));
+  await removeProjectFile(f.file);
+  touch(f.projectId);
 }

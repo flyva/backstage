@@ -255,12 +255,39 @@ export const kanbanCards = mysqlTable(
     title: varchar("title", { length: 200 }).notNull(),
     description: text("description"),
     assigneeId: int("assignee_id").references(() => users.id, { onDelete: "set null" }),
+    startDate: date("start_date", { mode: "string" }),
     dueDate: date("due_date", { mode: "string" }),
+    priority: mysqlEnum("priority", ["low", "normal", "high", "urgent"]).notNull().default("normal"),
+    labels: varchar("labels", { length: 200 }), // étiquettes séparées par des virgules
     position: int("position").notNull().default(0),
     createdBy: int("created_by").notNull().references(() => users.id),
     createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
   },
   (t) => [index("kcard_col_idx").on(t.columnId, t.position)],
+);
+
+export const kanbanChecklist = mysqlTable(
+  "kanban_checklist",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    cardId: int("card_id").notNull().references(() => kanbanCards.id, { onDelete: "cascade" }),
+    text: varchar("text", { length: 200 }).notNull(),
+    done: boolean("done").notNull().default(false),
+    position: int("position").notNull().default(0),
+  },
+  (t) => [index("kcl_card_idx").on(t.cardId, t.position)],
+);
+
+export const kanbanComments = mysqlTable(
+  "kanban_comments",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    cardId: int("card_id").notNull().references(() => kanbanCards.id, { onDelete: "cascade" }),
+    userId: int("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    body: text("body").notNull(),
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [index("kcm_card_idx").on(t.cardId, t.createdAt)],
 );
 
 // ---------- Actualités ----------
@@ -437,6 +464,7 @@ export const projectFiles = mysqlTable(
   {
     id: int("id").primaryKey().autoincrement(),
     projectId: int("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+    cardId: int("card_id").references(() => kanbanCards.id, { onDelete: "cascade" }), // pièce jointe d'une carte kanban (sinon fichier du projet)
     file: varchar("file", { length: 60 }).notNull(),
     originalName: varchar("original_name", { length: 200 }).notNull(),
     mime: varchar("mime", { length: 60 }).notNull(),

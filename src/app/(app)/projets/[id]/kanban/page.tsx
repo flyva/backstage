@@ -1,6 +1,6 @@
-import { asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull } from "drizzle-orm";
 import { db } from "@/db";
-import { kanbanCards, kanbanColumns, projectMembers, users } from "@/db/schema";
+import { kanbanCards, kanbanChecklist, kanbanColumns, kanbanComments, projectFiles, projectMembers, users } from "@/db/schema";
 import { can, requireProject } from "@/lib/projects";
 import { createDefaultColumns } from "@/lib/kanban-actions";
 import { todayParis } from "@/lib/equipment";
@@ -8,9 +8,10 @@ import { KanbanBoard, type BoardColumn } from "@/components/KanbanBoard";
 
 export const metadata = { title: "Kanban" };
 
-export default async function ProjectKanbanPage({ params }: PageProps<"/projets/[id]/kanban">) {
+export default async function ProjectKanbanPage({ params, searchParams }: PageProps<"/projets/[id]/kanban">) {
   const { id } = await params;
-  const { project, role } = await requireProject(Number(id));
+  const { vue } = await searchParams;
+  const { user, project, role } = await requireProject(Number(id));
   const canEdit = can(role, "editor");
 
   const cols = await db.select().from(kanbanColumns).where(eq(kanbanColumns.projectId, project.id)).orderBy(asc(kanbanColumns.position), asc(kanbanColumns.id));
@@ -29,6 +30,27 @@ export default async function ProjectKanbanPage({ params }: PageProps<"/projets/
     .where(eq(projectMembers.projectId, project.id))
     .orderBy(asc(users.name));
 
+  const cardIds = cards.map((c) => c.card.id);
+  const [checklist, comments, files] = cardIds.length
+    ? await Promise.all([
+        db.select().from(kanbanChecklist).where(inArray(kanbanChecklist.cardId, cardIds)).orderBy(asc(kanbanChecklist.position), asc(kanbanChecklist.id)),
+        db
+          .select({ c: kanbanComments, author: users.name })
+          .from(kanbanComments)
+          .innerJoin(users, eq(users.id, kanbanComments.userId))
+          .where(inArray(kanbanComments.cardId, cardIds))
+          .orderBy(asc(kanbanComments.createdAt), asc(kanbanComments.id)),
+        db
+          .select()
+          .from(projectFiles)
+          .where(and(eq(projectFiles.projectId, project.id), isNotNull(projectFiles.cardId)))
+          .orderBy(asc(projectFiles.createdAt)),
+      ])
+    : [[], [], []];
+  const checklistBy = Map.groupBy(checklist, (x) => x.cardId);
+  const commentsBy = Map.groupBy(comments, (x) => x.c.cardId);
+  const filesBy = Map.groupBy(files, (x) => x.cardId as number);
+
   const byCol = Map.groupBy(cards, (c) => c.card.columnId);
   const board: BoardColumn[] = cols.map((c) => ({
     id: c.id,
@@ -39,7 +61,13 @@ export default async function ProjectKanbanPage({ params }: PageProps<"/projets/
       description: card.description ?? "",
       assigneeId: card.assigneeId,
       assigneeName: assignee,
+      startDate: card.startDate,
       dueDate: card.dueDate,
+      priority: card.priority,
+      labels: card.labels ? card.labels.split(",") : [],
+      checklist: (checklistBy.get(card.id) ?? []).map((x) => ({ id: x.id, text: x.text, done: x.done })),
+      comments: (commentsBy.get(card.id) ?? []).map(({ c, author }) => ({ id: c.id, userId: c.userId, author, body: c.body, when: c.createdAt.toISOString() })),
+      files: (filesBy.get(card.id) ?? []).map((f) => ({ id: f.id, name: f.originalName, size: f.size, mime: f.mime })),
     })),
   }));
 
@@ -59,8 +87,7 @@ export default async function ProjectKanbanPage({ params }: PageProps<"/projets/
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-muted">Glisse les cartes entre les colonnes, ou utilise « Modifier / déplacer » sur mobile.</p>
-      <KanbanBoard projectId={project.id} columns={board} members={members} canEdit={canEdit} today={todayParis()} />
+      <KanbanBoard projectId={project.id} columns={board} members={members} canEdit={canEdit} today={todayParis()} view={vue === "tableau" ? "tableau" : "kanban"} currentUserId={user.id} isOwner={role === "owner"} />
     </div>
   );
 }

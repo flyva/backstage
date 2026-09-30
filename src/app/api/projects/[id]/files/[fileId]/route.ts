@@ -29,7 +29,7 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string; fileI
   return new Response(new Uint8Array(data), {
     headers: {
       "Content-Type": row.f.mime,
-      "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(safeName)}`,
+      "Content-Disposition": `${row.f.mime === "application/octet-stream" ? "attachment" : "inline"}; filename*=UTF-8''${encodeURIComponent(safeName)}`,
       "X-Content-Type-Options": "nosniff",
       // Le type est déterminé par les octets du fichier (jamais par le client) et « nosniff » interdit toute
       // réinterprétation. Pas de CSP « sandbox » ici : elle empêche l'affichage des PDF dans Chrome.

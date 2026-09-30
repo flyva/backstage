@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
 import { AlertTriangle, Download, FileText, Pencil, Printer, Trash2 } from "lucide-react";
 import { db } from "@/db";
 import { projectFiles, techInputs, techLights } from "@/db/schema";
@@ -20,7 +20,7 @@ export default async function TechSheetsPage({ params }: PageProps<"/projets/[id
   const [lights, inputs, files] = await Promise.all([
     db.select().from(techLights).where(eq(techLights.projectId, project.id)).orderBy(asc(techLights.channel), asc(techLights.universe), asc(techLights.address), asc(techLights.id)),
     db.select().from(techInputs).where(eq(techInputs.projectId, project.id)).orderBy(asc(techInputs.channel), asc(techInputs.id)),
-    db.select().from(projectFiles).where(eq(projectFiles.projectId, project.id)).orderBy(asc(projectFiles.createdAt)),
+    db.select().from(projectFiles).where(and(eq(projectFiles.projectId, project.id), isNull(projectFiles.cardId))).orderBy(asc(projectFiles.createdAt)),
   ]);
 
   const conflicts = findConflicts(lights);
