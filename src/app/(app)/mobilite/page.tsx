@@ -30,7 +30,7 @@ const TRAFFIC = {
 async function Place({ title, address, origin, plan, today }: { title: string; address: string; origin: LatLng; plan?: { trip: Trip; transit: TransitPlan | null; from: string }; today?: boolean }) {
   const [stops, bikes, alerts] = await Promise.all([nearbyStops(origin), nearbyBikeStations(origin), alertsNear([origin])]);
   return (
-    <section className="space-y-4">
+    <section className="min-w-0 space-y-4">
       <div>
         <h2 className="flex flex-wrap items-center gap-2 text-xl font-semibold">{title}{today && <span className="rounded-full bg-accent px-2.5 py-0.5 text-xs font-semibold text-accent-fg">Aujourd&apos;hui</span>}</h2>
         <p className="text-sm text-muted">{address}</p>

@@ -12,11 +12,12 @@ import { absoluteUrl } from "@/lib/base-url";
 export const metadata = { title: "Profil" };
 
 // Quatre onglets : la page était une longue suite de cartes. L'onglet se choisit par l'adresse (?onglet=…), sans JavaScript.
+// « short » : libellé court pour les téléphones, afin que les quatre onglets tiennent sans faire défiler la barre.
 const TABS = [
-  { id: "general", label: "Général" },
-  { id: "fiche", label: "Photo et fiche" },
-  { id: "reseaux", label: "Réseaux" },
-  { id: "partage", label: "Carte et calendrier" },
+  { id: "general", label: "Général", short: "Général" },
+  { id: "fiche", label: "Photo et fiche", short: "Fiche" },
+  { id: "reseaux", label: "Réseaux", short: "Réseaux" },
+  { id: "partage", label: "Carte et calendrier", short: "Carte" },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
 
@@ -35,7 +36,7 @@ export default async function ProfilPage({ searchParams }: PageProps<"/profil">)
         </div>
       )}
 
-      <nav className="slim-scroll flex gap-x-1 overflow-x-auto whitespace-nowrap border-b border-line" aria-label="Sections du profil">
+      <nav className="flex flex-wrap gap-x-1 border-b border-line" aria-label="Sections du profil">
         {TABS.map((t) => (
           <Link
             key={t.id}
@@ -43,7 +44,8 @@ export default async function ProfilPage({ searchParams }: PageProps<"/profil">)
             aria-current={t.id === tab ? "page" : undefined}
             className={`-mb-px border-b-2 px-3 py-2 text-sm ${t.id === tab ? "border-accent font-medium text-fg" : "border-transparent text-muted hover:text-fg"}`}
           >
-            {t.label}
+            <span className="sm:hidden">{t.short}</span>
+            <span className="hidden sm:inline">{t.label}</span>
           </Link>
         ))}
       </nav>

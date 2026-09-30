@@ -88,6 +88,10 @@
   body { background: #fff; }
 }
 
+/* Jamais de défilement horizontal de la page (téléphone) : un contenu trop large est coupé au lieu de faire glisser l'écran.
+   « clip » ne crée pas de conteneur de défilement : les éléments collants (en-tête) continuent de fonctionner. */
+html, body { max-width: 100%; overflow-x: clip; }
+
 body {
   background: var(--bg);
   color: var(--fg);
