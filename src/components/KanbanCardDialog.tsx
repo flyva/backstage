@@ -1,9 +1,8 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Download, Paperclip, Plus, Trash2, X } from "lucide-react";
-import type { FormState } from "@/lib/actions";
 import {
   addChecklistItem, addComment, deleteCard, deleteCardFile, deleteChecklistItem, deleteComment, toggleChecklistItem, updateCard,
 } from "@/lib/kanban-actions";
@@ -29,9 +28,35 @@ function Section({ title, children, aside }: { title: string; children: React.Re
 }
 
 function EditForm({ card, members }: { card: BoardCard; members: BoardMember[] }) {
-  const [state, action, pending] = useActionState<FormState, FormData>(updateCard, undefined);
+  // Enregistrement automatique : chaque modification est envoyée après une courte pause dans la saisie (et à la fermeture).
+  const form = useRef<HTMLFormElement>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dirty = useRef(false);
+  const [status, setStatus] = useState<"idle" | "saving" | "saved" | { error: string }>("idle");
+
+  const save = async () => {
+    if (timer.current) { clearTimeout(timer.current); timer.current = null; }
+    const el = form.current;
+    if (!el || !dirty.current) return;
+    if (!el.reportValidity()) return; // titre vide : on attend qu'il soit rempli
+    dirty.current = false;
+    setStatus("saving");
+    const res = await updateCard(undefined, new FormData(el));
+    setStatus(res?.error ? { error: res.error } : "saved");
+  };
+  const schedule = (delay = 800) => {
+    dirty.current = true;
+    setStatus("idle");
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => { void save(); }, delay);
+  };
+  const saveRef = useRef(save);
+  useEffect(() => { saveRef.current = save; });
+  // Fermeture de la fenêtre (ou changement de carte) : ce qui n'est pas encore parti est envoyé tout de suite.
+  useEffect(() => () => { void saveRef.current(); }, []);
+
   return (
-    <form action={action} className="space-y-3">
+    <form ref={form} onChange={() => schedule()} onBlur={() => { if (dirty.current) void save(); }} onSubmit={(e) => { e.preventDefault(); void save(); }} className="space-y-3">
       <input type="hidden" name="cardId" value={card.id} />
       <div>
         <label className="label" htmlFor={`t${card.id}`}>Titre</label>
@@ -39,12 +64,12 @@ function EditForm({ card, members }: { card: BoardCard; members: BoardMember[] }
       </div>
       <div>
         <label className="label">Description</label>
-        <MarkdownField name="description" defaultValue={card.description} rows={6} maxLength={4000} label="Description de la carte" placeholder="Détails, consignes, liens…" />
+        <MarkdownField name="description" defaultValue={card.description} rows={6} maxLength={4000} label="Description de la carte" onEdit={() => schedule()} placeholder="Détails, consignes, liens…" />
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <label className="label" htmlFor={`a${card.id}`}>Assigné à (une ou plusieurs personnes)</label>
-          <TagPicker id={`a${card.id}`} name="assigneeIds" options={members.map((m) => ({ value: m.id, label: m.name }))} defaultValue={card.assignees.map((a) => a.id)} placeholder="Tape un nom…" />
+          <TagPicker id={`a${card.id}`} name="assigneeIds" options={members.map((m) => ({ value: m.id, label: m.name }))} defaultValue={card.assignees.map((a) => a.id)} placeholder="Tape un nom…" onChange={() => schedule(200)} />
         </div>
         <div>
           <label className="label" htmlFor={`p${card.id}`}>Priorité</label>
@@ -65,9 +90,11 @@ function EditForm({ card, members }: { card: BoardCard; members: BoardMember[] }
         <label className="label" htmlFor={`l${card.id}`}>Étiquettes</label>
         <input id={`l${card.id}`} name="labels" defaultValue={card.labels.join(", ")} maxLength={200} placeholder="son, lumière, urgent (séparées par des virgules)" className="input" />
       </div>
-      {state?.error && <p className="text-sm text-danger" role="alert">{state.error}</p>}
-      {state?.ok && <p className="text-sm text-green-600 dark:text-green-400">{state.ok}</p>}
-      <button className="btn" disabled={pending}>{pending ? "Enregistrement…" : "Enregistrer la carte"}</button>
+      <p className="h-5 text-xs" role="status" aria-live="polite">
+        {status === "saving" && <span className="text-muted">Enregistrement…</span>}
+        {status === "saved" && <span className="text-green-600 dark:text-green-400">Enregistré automatiquement</span>}
+        {typeof status === "object" && <span className="text-danger">{status.error}</span>}
+      </p>
     </form>
   );
 }

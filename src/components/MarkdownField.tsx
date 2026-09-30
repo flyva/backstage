@@ -43,6 +43,7 @@ export function MarkdownField({
   placeholder,
   label,
   uploadUrl,
+  onEdit,
 }: {
   name?: string;
   defaultValue?: string;
@@ -52,6 +53,8 @@ export function MarkdownField({
   label?: string;
   /** Si renseigné : bouton « Image ou fichier » qui envoie le fichier à cette adresse et insère le lien. */
   uploadUrl?: string;
+  /** Appelé après une mise en forme ou une insertion faite par les boutons (qui ne déclenchent pas d'évènement de saisie). */
+  onEdit?: () => void;
 }) {
   const [text, setText] = useState(defaultValue);
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -64,6 +67,7 @@ export function MarkdownField({
     const next = text.slice(0, at) + snippet + text.slice(at);
     if (next.length > maxLength) return;
     setText(next);
+    onEdit?.();
     requestAnimationFrame(() => {
       el?.focus();
       el?.setSelectionRange(at + snippet.length, at + snippet.length);
@@ -101,6 +105,7 @@ export function MarkdownField({
     const next = text.slice(0, start) + r.text + text.slice(end);
     if (next.length > maxLength) return;
     setText(next);
+    onEdit?.();
     requestAnimationFrame(() => {
       el.focus();
       el.setSelectionRange(start + r.from, start + r.to);

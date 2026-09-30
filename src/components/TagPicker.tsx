@@ -15,12 +15,14 @@ export function TagPicker({
   options,
   defaultValue = [],
   placeholder = "Ajouter…",
+  onChange,
 }: {
   id: string;
   name: string;
   options: Option[];
   defaultValue?: number[];
   placeholder?: string;
+  onChange?: (values: number[]) => void;
 }) {
   const listId = useId();
   const [selected, setSelected] = useState<number[]>(defaultValue);
@@ -33,12 +35,18 @@ export function TagPicker({
   const matches = options.filter((o) => !selected.includes(o.value) && norm(o.label).includes(norm(query.trim())));
 
   const add = (value: number) => {
-    setSelected((s) => (s.includes(value) ? s : [...s, value]));
+    const next = selected.includes(value) ? selected : [...selected, value];
+    setSelected(next);
+    onChange?.(next);
     setQuery("");
     setActive(0);
     input.current?.focus();
   };
-  const remove = (value: number) => setSelected((s) => s.filter((v) => v !== value));
+  const remove = (value: number) => {
+    const next = selected.filter((v) => v !== value);
+    setSelected(next);
+    onChange?.(next);
+  };
 
   return (
     <div
