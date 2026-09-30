@@ -1,6 +1,4 @@
 import Link from "next/link";
-import { LogOut } from "lucide-react";
-import { logout } from "@/lib/actions";
 import { Nav } from "@/components/Nav";
 
 
@@ -29,12 +27,6 @@ export function Sidebar({ user, loanBadge }: { user: { name: string; email: stri
       <div className="slim-scroll flex-1 overflow-y-auto p-3">
         <Nav isAdmin={user.isAdmin} views={user.views} loanBadge={loanBadge} />
       </div>
-
-      <form action={logout} className="border-t border-side-line p-3">
-        <button className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-side-text hover:bg-side-hover hover:text-side-strong">
-          <LogOut size={18} /> Déconnexion
-        </button>
-      </form>
     </>
   );
 }

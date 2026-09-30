@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { Bell, KeyRound, LogOut, Palette, Settings, User } from "lucide-react";
+import { Bell, KeyRound, LogOut, Palette, Settings, Shield, User } from "lucide-react";
 import { logout } from "@/lib/actions";
 
 const ITEMS: { href: string; label: string; icon: typeof User; hint?: string }[] = [
@@ -12,8 +12,10 @@ const ITEMS: { href: string; label: string; icon: typeof User; hint?: string }[]
   { href: "/parametres/securite", label: "Sécurité", icon: KeyRound, hint: "Mot de passe" },
 ];
 
+const ADMIN_ITEM = { href: "/admin", label: "Administration", icon: Shield, hint: "Utilisateurs, rôles, réglages" };
+
 // Bouton « Paramètres » (engrenage) avec menu déroulant, et lien vers la page complète.
-export function UserMenu({ name, email, footer }: { name: string; email: string; footer?: ReactNode }) {
+export function UserMenu({ name, email, footer, isAdmin = false }: { name: string; email: string; footer?: ReactNode; isAdmin?: boolean }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
 
@@ -45,7 +47,7 @@ export function UserMenu({ name, email, footer }: { name: string; email: string;
             <div className="truncate text-xs text-muted">{email}</div>
           </div>
           <ul className="p-1.5">
-            {ITEMS.map(({ href, label, icon: Icon, hint }) => (
+            {(isAdmin ? [...ITEMS, ADMIN_ITEM] : ITEMS).map(({ href, label, icon: Icon, hint }) => (
               <li key={href}>
                 <Link href={href} role="menuitem" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm hover:bg-bg">
                   <Icon size={16} className="shrink-0 text-accent" />
