@@ -4,6 +4,7 @@ import { FilePlus2, Search } from "lucide-react";
 import { db } from "@/db";
 import { wikiPages } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
+import { childrenMap, type TreePage } from "@/lib/wiki";
 
 export const metadata = { title: "Wiki" };
 
@@ -28,7 +29,19 @@ export default async function WikiIndexPage({ searchParams }: PageProps<"/wiki">
     ? await db.select().from(wikiPages).where(or(sql`${wikiPages.title} like ${like}`, sql`${wikiPages.body} like ${like}`)).orderBy(asc(wikiPages.title)).limit(50)
     : await db.select().from(wikiPages).orderBy(asc(wikiPages.category), asc(wikiPages.title));
   const recent = q ? [] : [...pages].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()).slice(0, 5);
-  const groups = Map.groupBy(pages, (p) => p.category);
+  const kids = childrenMap(pages);
+  const ids = new Set(pages.map((p) => p.id));
+  // Pages de premier niveau d'une catégorie : sans parent (ou dont le parent n'est pas dans la liste).
+  const roots = pages.filter((p) => p.parentId === null || !ids.has(p.parentId));
+  const groups = Map.groupBy(roots, (p) => p.category);
+  const node = (p: TreePage, depth: number): React.ReactNode => (
+    <li key={p.id}>
+      <Link href={`/wiki/${p.slug}`} className={depth === 0 ? "card block p-3 text-sm font-medium hover:border-accent" : "block rounded-lg px-2 py-1 text-sm hover:bg-bg hover:text-accent"}>{p.title}</Link>
+      {(kids.get(p.id) ?? []).length > 0 && (
+        <ul className="ml-4 mt-1 space-y-0.5 border-l border-line pl-2">{(kids.get(p.id) ?? []).map((c) => node(c, depth + 1))}</ul>
+      )}
+    </li>
+  );
 
   return (
     <div className="space-y-6">
@@ -82,13 +95,7 @@ export default async function WikiIndexPage({ searchParams }: PageProps<"/wiki">
           {[...groups].map(([category, list]) => (
             <section key={category} className="space-y-2">
               <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">{category}</h2>
-              <ul className="grid gap-2 sm:grid-cols-2">
-                {list.map((p) => (
-                  <li key={p.id}>
-                    <Link href={`/wiki/${p.slug}`} className="card block p-3 text-sm font-medium hover:border-accent">{p.title}</Link>
-                  </li>
-                ))}
-              </ul>
+              <ul className="grid items-start gap-2 sm:grid-cols-2">{list.map((p) => node(p, 0))}</ul>
             </section>
           ))}
         </>

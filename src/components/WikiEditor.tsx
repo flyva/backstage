@@ -4,9 +4,17 @@ import { useActionState } from "react";
 import { savePage } from "@/lib/wiki-actions";
 import { MarkdownField } from "@/components/MarkdownField";
 
-type Props = { pageId?: number; title?: string; category?: string; body?: string; categories: string[] };
+type Props = {
+  pageId?: number;
+  title?: string;
+  category?: string;
+  body?: string;
+  categories: string[];
+  parentId?: number | null;
+  parentOptions?: { id: number; label: string }[];
+};
 
-export function WikiEditor({ pageId, title = "", category = "", body = "", categories }: Props) {
+export function WikiEditor({ pageId, title = "", category = "", body = "", categories, parentId = null, parentOptions = [] }: Props) {
   const [state, action, pending] = useActionState(savePage, undefined);
 
   return (
@@ -24,7 +32,15 @@ export function WikiEditor({ pageId, title = "", category = "", body = "", categ
         </div>
       </div>
 
-      <MarkdownField defaultValue={body} rows={18} placeholder="Écris ta page ici. Lie une autre page avec [[Titre de la page]]." label="Contenu de la page" />
+      <div>
+        <label className="label" htmlFor="parentId">Page parente (facultatif)</label>
+        <select id="parentId" name="parentId" defaultValue={parentId ?? ""} className="input">
+          <option value="">Aucune : page de premier niveau</option>
+          {parentOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+        </select>
+      </div>
+
+      <MarkdownField uploadUrl="/api/wiki/files" defaultValue={body} rows={18} placeholder="Écris ta page ici. Lie une autre page avec [[Titre de la page]]." label="Contenu de la page" />
 
       {state?.error && <p className="text-sm text-danger" role="alert">{state.error}</p>}
       <button className="btn" disabled={pending}>{pending ? "Enregistrement…" : "Enregistrer la page"}</button>

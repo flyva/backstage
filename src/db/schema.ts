@@ -221,11 +221,23 @@ export const wikiPages = mysqlTable("wiki_pages", {
   slug: varchar("slug", { length: 160 }).notNull().unique(),
   title: varchar("title", { length: 200 }).notNull(),
   category: varchar("category", { length: 80 }).notNull().default("Général"),
+  parentId: int("parent_id"), // page parente (sous-page), null = page de premier niveau de sa catégorie
   body: mediumtext("body").notNull(),
   createdBy: int("created_by").notNull().references(() => users.id),
   updatedBy: int("updated_by").notNull().references(() => users.id),
   createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
   updatedAt: datetime("updated_at").notNull().$defaultFn(() => new Date()),
+});
+
+// Images et fichiers joints aux pages du wiki (et aux articles) : le nom sur disque est aléatoire.
+export const wikiFiles = mysqlTable("wiki_files", {
+  id: int("id").primaryKey().autoincrement(),
+  file: varchar("file", { length: 60 }).notNull().unique(),
+  originalName: varchar("original_name", { length: 200 }).notNull(),
+  mime: varchar("mime", { length: 60 }).notNull(),
+  size: int("size").notNull(),
+  uploadedBy: int("uploaded_by").notNull().references(() => users.id),
+  createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
 });
 
 // Chaque enregistrement crée une révision : un vandalisme se répare en un clic.

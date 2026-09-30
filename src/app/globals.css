@@ -113,6 +113,7 @@ body {
   .prose-wiki h2 { @apply mt-5 border-b border-line pb-1 text-xl font-semibold; }
   .prose-wiki h3 { @apply mt-4 text-lg font-semibold; }
   .prose-wiki a { @apply text-accent underline; }
+  .prose-wiki img { @apply h-auto max-w-full rounded-lg border border-line; }
   .prose-wiki ul { @apply list-inside list-disc space-y-1; }
   .prose-wiki ol { @apply list-inside list-decimal space-y-1; }
   .prose-wiki blockquote { @apply border-l-4 border-accent pl-3 text-muted; }

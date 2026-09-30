@@ -7,7 +7,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { wikiPages, wikiRevisions } from "@/db/schema";
 import { requireAdmin, requireUser } from "@/lib/auth";
-import { slugify } from "@/lib/wiki";
+import { descendantIds, slugify } from "@/lib/wiki";
 import type { FormState } from "@/lib/actions";
 
 const pageSchema = z.object({
@@ -35,9 +35,19 @@ export async function savePage(_: FormState, fd: FormData): Promise<FormState> {
   const pageId = Number(fd.get("pageId") || 0);
   const now = new Date();
 
+  // Page parente : doit exister, ne peut être ni la page elle-même ni une de ses sous-pages (pas de boucle).
+  const rawParent = Number(fd.get("parentId") || 0);
+  let parentId: number | null = null;
+  if (rawParent) {
+    const all = await db.select({ id: wikiPages.id, slug: wikiPages.slug, title: wikiPages.title, category: wikiPages.category, parentId: wikiPages.parentId }).from(wikiPages);
+    if (!all.some((x) => x.id === rawParent)) return { error: "Page parente introuvable" };
+    if (pageId && (rawParent === pageId || descendantIds(all, pageId).has(rawParent))) return { error: "Une page ne peut pas être placée sous elle-même" };
+    parentId = rawParent;
+  }
+
   if (!pageId) {
     const slug = await uniqueSlug(title);
-    const [res] = await db.insert(wikiPages).values({ slug, title, category, body, createdBy: user.id, updatedBy: user.id, createdAt: now, updatedAt: now });
+    const [res] = await db.insert(wikiPages).values({ slug, title, category, parentId, body, createdBy: user.id, updatedBy: user.id, createdAt: now, updatedAt: now });
     await db.insert(wikiRevisions).values({ pageId: res.insertId, title, body, editorId: user.id, createdAt: now });
     revalidatePath("/wiki", "layout");
     redirect(`/wiki/${slug}`);
@@ -45,7 +55,7 @@ export async function savePage(_: FormState, fd: FormData): Promise<FormState> {
 
   const [page] = await db.select().from(wikiPages).where(eq(wikiPages.id, pageId)).limit(1);
   if (!page) return { error: "Page introuvable" };
-  await db.update(wikiPages).set({ title, category, body, updatedBy: user.id, updatedAt: now }).where(eq(wikiPages.id, pageId));
+  await db.update(wikiPages).set({ title, category, parentId, body, updatedBy: user.id, updatedAt: now }).where(eq(wikiPages.id, pageId));
   await db.insert(wikiRevisions).values({ pageId, title, body, editorId: user.id, createdAt: now });
   revalidatePath("/wiki", "layout");
   redirect(`/wiki/${page.slug}`);
@@ -67,7 +77,11 @@ export async function restoreRevision(fd: FormData) {
 
 export async function deletePage(fd: FormData) {
   await requireAdmin();
-  await db.delete(wikiPages).where(eq(wikiPages.id, Number(fd.get("pageId"))));
+  const pid = Number(fd.get("pageId"));
+  const [page] = await db.select({ parentId: wikiPages.parentId }).from(wikiPages).where(eq(wikiPages.id, pid)).limit(1);
+  // Les sous-pages remontent d'un niveau au lieu de disparaître.
+  await db.update(wikiPages).set({ parentId: page?.parentId ?? null }).where(eq(wikiPages.parentId, pid));
+  await db.delete(wikiPages).where(eq(wikiPages.id, pid));
   revalidatePath("/wiki", "layout");
   redirect("/wiki");
 }

@@ -148,6 +148,13 @@
       "when": 1790727937865,
       "tag": "0020_odd_mister_sinister",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "5",
+      "when": 1790730652972,
+      "tag": "0021_talented_ironclad",
+      "breakpoints": true
     }
   ]
 }

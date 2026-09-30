@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Bold, Code, Heading2, Italic, Link2, List, ListOrdered, Quote } from "lucide-react";
+import { Bold, Code, Heading2, ImagePlus, Italic, Link2, List, ListOrdered, Quote } from "lucide-react";
 import { Markdown } from "@/components/Markdown";
 
 type Tool = { label: string; icon: typeof Bold; run: (sel: string) => { text: string; from: number; to: number } };
@@ -44,6 +44,7 @@ export function MarkdownField({
   maxLength = 100000,
   placeholder,
   label,
+  uploadUrl,
 }: {
   name?: string;
   defaultValue?: string;
@@ -51,10 +52,48 @@ export function MarkdownField({
   maxLength?: number;
   placeholder?: string;
   label?: string;
+  /** Si renseigné : bouton « Image ou fichier » qui envoie le fichier à cette adresse et insère le lien. */
+  uploadUrl?: string;
 }) {
   const [text, setText] = useState(defaultValue);
   const [tab, setTab] = useState<"write" | "preview">("write");
   const ref = useRef<HTMLTextAreaElement>(null);
+  const picker = useRef<HTMLInputElement>(null);
+  const [uploadState, setUploadState] = useState<{ busy: boolean; error: string | null }>({ busy: false, error: null });
+
+  const insert = (snippet: string) => {
+    const el = ref.current;
+    const at = el ? el.selectionEnd : text.length;
+    const next = text.slice(0, at) + snippet + text.slice(at);
+    if (next.length > maxLength) return;
+    setText(next);
+    requestAnimationFrame(() => {
+      el?.focus();
+      el?.setSelectionRange(at + snippet.length, at + snippet.length);
+    });
+  };
+
+  const upload = async (file: File) => {
+    if (!uploadUrl) return;
+    setUploadState({ busy: true, error: null });
+    const fd = new FormData();
+    fd.set("file", file);
+    try {
+      const res = await fetch(uploadUrl, { method: "POST", body: fd });
+      const data = (await res.json().catch(() => ({}))) as { error?: string; url?: string; name?: string; image?: boolean };
+      if (!res.ok || !data.url) {
+        setUploadState({ busy: false, error: data.error ?? "Envoi impossible" });
+      } else {
+        const alt = (data.name ?? "fichier").replace(/\.[^.]+$/, "");
+        insert(`${data.image ? "!" : ""}[${data.image ? alt : (data.name ?? "fichier")}](${data.url})\n`);
+        setUploadState({ busy: false, error: null });
+      }
+    } catch {
+      setUploadState({ busy: false, error: "Envoi impossible" });
+    } finally {
+      if (picker.current) picker.current.value = "";
+    }
+  };
 
   const apply = (tool: Tool) => {
     const el = ref.current;
@@ -103,9 +142,36 @@ export function MarkdownField({
                 <t.icon size={16} />
               </button>
             ))}
+            {uploadUrl && (
+              <>
+                <button
+                  type="button"
+                  title="Image ou fichier"
+                  aria-label="Insérer une image ou un fichier"
+                  disabled={uploadState.busy}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => picker.current?.click()}
+                  className="grid size-8 place-items-center rounded-md text-muted hover:bg-bg hover:text-fg disabled:opacity-50"
+                >
+                  <ImagePlus size={16} />
+                </button>
+                <input
+                  ref={picker}
+                  type="file"
+                  hidden
+                  accept="image/jpeg,image/png,image/gif,image/webp,application/pdf,.docx,.xlsx,.pptx,.odt,.ods,.odp,.zip"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) void upload(f); }}
+                />
+              </>
+            )}
           </div>
         )}
       </div>
+      {(uploadState.busy || uploadState.error) && (
+        <p className={`mb-1 text-xs ${uploadState.error ? "text-danger" : "text-muted"}`} role={uploadState.error ? "alert" : undefined}>
+          {uploadState.busy ? "Envoi en cours…" : uploadState.error}
+        </p>
+      )}
       <textarea
         ref={ref}
         name={name}

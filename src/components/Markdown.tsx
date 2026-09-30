@@ -11,6 +11,14 @@ export function Markdown({ children, breaks = false }: { children: string; break
       <ReactMarkdown
         remarkPlugins={breaks ? [remarkGfm, remarkBreaks] : [remarkGfm]}
         components={{
+          // Seules les images envoyées sur Backstage s'affichent (pas d'image externe : pas de pistage, pas de contenu tiers).
+          img: ({ src, alt }) =>
+            typeof src === "string" && src.startsWith("/api/wiki/files/") ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={src} alt={alt ?? ""} loading="lazy" />
+            ) : (
+              <span className="text-muted">[image externe non affichée{alt ? ` : ${alt}` : ""}]</span>
+            ),
           a: ({ href, children }) => {
             const external = !!href && /^https?:\/\//i.test(href);
             return (
