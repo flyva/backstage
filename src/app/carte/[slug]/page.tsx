@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { Download, Mail, Phone } from "lucide-react";
 import { getCard } from "@/lib/card";
 import { LINK_LABEL } from "@/lib/people-shared";
-import { Avatar } from "@/components/people-forms";
+import { Avatar, CopyChip } from "@/components/people-forms";
 
 // Carte de visite publique : accessible sans compte avec le lien secret, jamais indexée par les moteurs de recherche.
 export const metadata: Metadata = { title: "Carte de visite", robots: { index: false, follow: false } };
@@ -23,6 +23,7 @@ export default async function CardPage({ params }: PageProps<"/carte/[slug]">) {
         </div>
         <div className="space-y-2">
           {c.email && <a href={`mailto:${c.email}`} className="btn w-full"><Mail size={16} aria-hidden /> {c.email}</a>}
+          {c.discord && <div className="flex justify-center"><CopyChip value={c.discord} prefix="Discord : " className="px-3 py-1.5 text-sm" /></div>}
           {c.phone && <a href={`tel:${c.phone.replace(/[^\d+]/g, "")}`} className="btn-ghost w-full"><Phone size={16} aria-hidden /> {c.phone}</a>}
         </div>
         {c.links.length > 0 && (

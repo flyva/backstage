@@ -84,7 +84,7 @@ export function AvatarForm({ name, url }: { name: string; url: string | null }) 
 
 export function FicheForm(props: {
   tracks: { id: number; name: string }[]; trackId: number | null; headline: string; phone: string; contactEmail: string;
-  showInDirectory: boolean; showPhone: boolean; cardShowPhone: boolean; loginEmail: string;
+  showInDirectory: boolean; showPhone: boolean; cardShowPhone: boolean; discord: string; cardShowDiscord: boolean; loginEmail: string;
 }) {
   const [state, action, pending] = useActionState(saveFiche, undefined);
   return (
@@ -110,10 +110,16 @@ export function FicheForm(props: {
           <input id="contactEmail" name="contactEmail" type="email" defaultValue={props.contactEmail} maxLength={190} placeholder="Facultatif : sinon ton adresse 3IS" className="input" />
         </div>
       </div>
+      <div>
+        <label className="label" htmlFor="discord">Pseudo Discord (facultatif)</label>
+        <input id="discord" name="discord" defaultValue={props.discord} maxLength={40} autoComplete="off" placeholder="ton_pseudo" className="input sm:max-w-xs" />
+        <p className="mt-1 text-xs text-muted">Sans le @. Il apparaît dans l&apos;annuaire de la promo ; la case ci-dessous décide s&apos;il figure aussi sur ta carte de visite publique.</p>
+      </div>
       <div className="space-y-2 text-sm">
         <label className="flex items-start gap-2"><input type="checkbox" name="showInDirectory" defaultChecked={props.showInDirectory} className="mt-1" /> <span>Apparaître dans l&apos;annuaire de la promo</span></label>
         <label className="flex items-start gap-2"><input type="checkbox" name="showPhone" defaultChecked={props.showPhone} className="mt-1" /> <span>Afficher mon téléphone dans l&apos;annuaire de la promo</span></label>
         <label className="flex items-start gap-2"><input type="checkbox" name="cardShowPhone" defaultChecked={props.cardShowPhone} className="mt-1" /> <span>Afficher mon téléphone sur ma carte de visite (publique)</span></label>
+        <label className="flex items-start gap-2"><input type="checkbox" name="cardShowDiscord" defaultChecked={props.cardShowDiscord} className="mt-1" /> <span>Afficher mon Discord sur ma carte de visite (publique)</span></label>
       </div>
       <p className="text-xs text-muted">
         L&apos;annuaire montre ton adresse <strong className="text-fg">{props.loginEmail}</strong> seulement si elle se termine par @3is.fr. Il est réservé aux personnes connectées à Backstage.
@@ -159,6 +165,22 @@ export function LinksEditor({ links }: { links: { id: number; kind: LinkKind; ur
 }
 
 // ---------- Carte de visite ----------
+
+/** Petite pastille qui copie un texte au clic (Discord n'a pas de lien direct par pseudo). */
+export function CopyChip({ value, prefix, className = "" }: { value: string; prefix?: string; className?: string }) {
+  const [done, setDone] = useState(false);
+  return (
+    <button
+      type="button"
+      title="Copier le pseudo"
+      className={`inline-flex items-center gap-1.5 rounded-full border border-line px-2 py-0.5 text-xs hover:bg-bg ${className}`}
+      onClick={async () => { try { await navigator.clipboard.writeText(value); setDone(true); setTimeout(() => setDone(false), 1500); } catch { /* presse-papiers indisponible */ } }}
+    >
+      {done ? <Check size={12} aria-hidden /> : <Copy size={12} aria-hidden />}
+      <span>{done ? "Copié" : <>{prefix}<strong className="font-semibold">{value}</strong></>}</span>
+    </button>
+  );
+}
 
 export function CopyButton({ value, label = "Copier le lien" }: { value: string; label?: string }) {
   const [done, setDone] = useState(false);

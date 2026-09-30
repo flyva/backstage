@@ -9,7 +9,7 @@ import { db } from "@/db";
 import { LINK_KINDS, networkContacts, tracks, userLinks, users, type LinkKind } from "@/db/schema";
 import { requireAdmin, requireUser } from "@/lib/auth";
 import { AVATAR_NAME, MAX_AVATAR_BYTES, avatarDir, ensureAvatarDir, newAvatarName, sniffAvatar } from "@/lib/avatar-files";
-import { PHONE_RE, normalizeUrl } from "@/lib/people-shared";
+import { PHONE_RE, normalizeDiscord, normalizeUrl } from "@/lib/people-shared";
 import { allow } from "@/lib/rate-limit";
 import type { FormState } from "@/lib/actions";
 
@@ -31,11 +31,15 @@ export async function saveFiche(_: FormState, fd: FormData): Promise<FormState> 
   const headline = text(fd, "headline", 120);
   const phone = text(fd, "phone", 30);
   if (phone && !PHONE_RE.test(phone)) return { error: "Numéro de téléphone invalide (chiffres, espaces, + . - ( ) uniquement)" };
+  const discordRaw = text(fd, "discord", 40);
+  const discord = discordRaw ? normalizeDiscord(discordRaw) : null;
+  if (discordRaw && !discord) return { error: "Pseudo Discord invalide (lettres, chiffres, « . », « _ » ou « - », sans espace)" };
   const contactEmail = text(fd, "contactEmail", 190).toLowerCase();
   if (contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) return { error: "Adresse e-mail de contact invalide" };
   await db.update(users).set({
     trackId, headline: headline || null, phone: phone || null, contactEmail: contactEmail || null,
     showInDirectory: fd.get("showInDirectory") === "on", showPhone: fd.get("showPhone") === "on", cardShowPhone: fd.get("cardShowPhone") === "on",
+    discord, cardShowDiscord: fd.get("cardShowDiscord") === "on",
   }).where(eq(users.id, user.id));
   revalidatePath("/profil");
   revalidatePath("/annuaire");

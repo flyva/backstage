@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Mail, Phone } from "lucide-react";
-import { Avatar } from "@/components/people-forms";
+import { Avatar, CopyChip } from "@/components/people-forms";
 import { LINK_LABEL } from "@/lib/people-shared";
 import type { LinkKind } from "@/db/schema";
 
@@ -15,6 +15,7 @@ export type Person = {
   headline: string | null;
   email3is: string | null;
   phone: string | null;
+  discord: string | null;
   links: { kind: LinkKind; url: string; label: string | null }[];
   cardUrl: string | null;
 };
@@ -29,7 +30,7 @@ export function Directory({ people, tracks }: { people: Person[]; tracks: { id: 
     return people.filter((p) => {
       if (track === "none" ? p.trackId !== null : track && String(p.trackId) !== track) return false;
       if (!n) return true;
-      return [p.name, p.track, p.headline, p.email3is, ...p.links.map((l) => `${LINK_LABEL[l.kind]} ${l.label ?? ""}`)].some((v) => v && norm(v).includes(n));
+      return [p.name, p.track, p.headline, p.email3is, p.discord, ...p.links.map((l) => `${LINK_LABEL[l.kind]} ${l.label ?? ""}`)].some((v) => v && norm(v).includes(n));
     });
   }, [people, q, track]);
 
@@ -59,6 +60,7 @@ export function Directory({ people, tracks }: { people: Person[]; tracks: { id: 
               {p.headline && <div className="text-sm text-muted">{p.headline}</div>}
               {p.email3is && <a href={`mailto:${p.email3is}`} className="flex items-center gap-1.5 truncate text-sm underline"><Mail size={13} aria-hidden /> {p.email3is}</a>}
               {p.phone && <a href={`tel:${p.phone.replace(/[^\d+]/g, "")}`} className="flex items-center gap-1.5 text-sm underline"><Phone size={13} aria-hidden /> {p.phone}</a>}
+              {p.discord && <div className="pt-0.5"><CopyChip value={p.discord} prefix="Discord : " /></div>}
               {p.links.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 pt-1">
                   {p.links.map((l, i) => (

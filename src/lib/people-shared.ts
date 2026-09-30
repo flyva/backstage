@@ -33,6 +33,15 @@ export function normalizeUrl(raw: string): string | null {
 /** 3IS : l'adresse du compte compte comme adresse 3IS si elle est en @3is.fr. */
 export const school3isEmail = (email: string) => (/@3is\.fr$/i.test(email) ? email.toLowerCase() : null);
 
+/**
+ * Pseudo Discord : lettres, chiffres, « . », « _ » et « - » (2 à 32 caractères), avec un « # » et 4 chiffres pour l'ancien format.
+ * Le « @ » saisi en tête est retiré. Renvoie null si le pseudo est invalide.
+ */
+export function normalizeDiscord(raw: string): string | null {
+  const t = raw.trim().replace(/^@/, "");
+  return /^[A-Za-z0-9_.-]{2,32}(#\d{4})?$/.test(t) ? t : null;
+}
+
 export const PHONE_RE = /^[+0-9][0-9 .()-]{5,24}$/;
 export const initialsOf = (name: string) =>
   name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join("") || "?";

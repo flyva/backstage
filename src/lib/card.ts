@@ -7,7 +7,7 @@ import { school3isEmail } from "@/lib/people-shared";
 
 export type CardData = {
   name: string; firstName: string; lastName: string; avatar: string | null; headline: string | null; track: string | null;
-  email: string | null; phone: string | null; links: { kind: LinkKind; url: string; label: string | null }[];
+  email: string | null; phone: string | null; discord: string | null; links: { kind: LinkKind; url: string; label: string | null }[];
 };
 
 /** Carte de visite publique à partir de son adresse secrète (null si elle n'existe pas ou a été désactivée). */
@@ -21,6 +21,7 @@ export async function getCard(slug: string): Promise<CardData | null> {
     name: u.name, firstName: u.firstName, lastName: u.lastName, avatar: avatarUrl(u.avatarFile), headline: u.headline, track: t?.name ?? null,
     email: u.contactEmail || school3isEmail(u.email), // jamais l'adresse personnelle de connexion
     phone: u.cardShowPhone ? u.phone : null, // choix propre à la carte, indépendant de l'annuaire
+    discord: u.cardShowDiscord ? u.discord : null,
     links: links.map((l) => ({ kind: l.kind, url: l.url, label: l.label })),
   };
 }
@@ -30,7 +31,8 @@ const esc = (s: string) => s.replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replac
 export function toVCard(c: CardData): string {
   const lines = ["BEGIN:VCARD", "VERSION:3.0", `N:${esc(c.lastName)};${esc(c.firstName)};;;`, `FN:${esc(c.name)}`];
   if (c.headline) lines.push(`TITLE:${esc(c.headline)}`);
-  if (c.track) lines.push(`NOTE:${esc(`Filière : ${c.track}`)}`);
+  const note = [c.track && `Filière : ${c.track}`, c.discord && `Discord : ${c.discord}`].filter(Boolean).join("\n");
+  if (note) lines.push(`NOTE:${esc(note)}`);
   if (c.email) lines.push(`EMAIL;TYPE=INTERNET:${c.email}`);
   if (c.phone) lines.push(`TEL;TYPE=CELL:${c.phone.replace(/[^\d+]/g, "")}`);
   for (const l of c.links) lines.push(`URL:${l.url}`);

@@ -25,6 +25,7 @@ export default async function AnnuairePage() {
     headline: u.headline,
     email3is: school3isEmail(u.email), // adresse 3IS seulement si le compte en a une
     phone: u.showPhone ? u.phone : null,
+    discord: u.discord, // visible dans l'annuaire dès qu'il est renseigné
     links: links.filter((l) => l.userId === u.id).map((l) => ({ kind: l.kind, url: l.url, label: l.label })),
     cardUrl: u.cardEnabled && u.cardSlug ? `/carte/${u.cardSlug}` : null,
   }));

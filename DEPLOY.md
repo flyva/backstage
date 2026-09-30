@@ -336,3 +336,5 @@ La **messagerie des annonces** (migration 0035) met en relation acheteur et vend
   La ligne indique par exemple `cookie … absent (… hôte : …)`, `état différent`, ou `échange du code refusé par Google : HTTP 400` (alors, vérifie l'URI de redirection dans Google Cloud et le secret du client).
 - **Redirection vers `https://localhost:3000/…`** : corrigé. Derrière le tunnel, le serveur ne connaît que son adresse interne ; les redirections utilisent désormais `APP_URL`. Si tu vois encore cette adresse, `APP_URL` n'est pas défini.
 - Chaque tentative de connexion a son propre cookie : un double clic, un deuxième onglet ou un préchargement du lien ne peuvent plus annuler une connexion en cours.
+
+**Discord** (migration 0038) : champ « pseudo Discord » dans le profil ; il apparaît dans l'annuaire dès qu'il est renseigné (un clic le copie, Discord n'ayant pas de lien direct par pseudo), et sur la carte de visite publique seulement si la case correspondante est cochée.
