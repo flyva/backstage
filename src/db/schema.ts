@@ -791,6 +791,7 @@ export const listings = mysqlTable(
     contact: varchar("contact", { length: 160 }).notNull(), // comment joindre la personne
     photoFile: varchar("photo_file", { length: 40 }),
     status: mysqlEnum("status", ["active", "closed"]).notNull().default("active"), // « closed » : vendu, pourvu…
+    soldToId: int("sold_to_id").references(() => users.id, { onDelete: "set null" }), // personne à qui l'annonce a été conclue (vente, don, mission) : seule elle peut échanger des avis avec l'auteur
     createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
     expiresAt: datetime("expires_at").notNull(), // l'annonce disparaît d'elle-même (60 jours)
   },

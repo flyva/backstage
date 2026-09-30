@@ -93,7 +93,7 @@ export default async function AnnoncesPage({ searchParams }: PageProps<"/annonce
                 </div>
                 {can && (
                   <div className="flex flex-wrap gap-3 text-xs">
-                    <form action={setListingStatus}><input type="hidden" name="id" value={l.id} /><input type="hidden" name="status" value="closed" /><button className="underline">Marquer comme terminée</button></form>
+                    <Link href={`/annonces/${l.id}`} className="underline">Conclure (vendu, donné…)</Link>
                     <form action={deleteListing}><input type="hidden" name="id" value={l.id} /><button className="text-danger underline">Supprimer</button></form>
                   </div>
                 )}

@@ -322,3 +322,5 @@ Fonctions ajoutées (migrations 0033 et 0034, appliquées automatiquement par `i
 - Routes publiques (sans session) : `/carte/*`, `/api/avatar/*`, `/api/feed/*`. Leurs adresses sont des codes aléatoires non devinables.
 
 La **messagerie des annonces** (migration 0035) met en relation acheteur et vendeur : conversations privées (visibles seulement par les deux personnes, pas même par un administrateur), notifications push et pastille « non lus », avis de 1 à 5 étoiles après un échange. Le téléphone a deux cases distinctes : annuaire et carte de visite.
+
+**Messages en direct** : les nouveaux messages arrivent par un flux (Server-Sent Events, `/api/messages/<id>/stream`) sans recharger la page, en moins d'une demi-seconde. Le flux passe par le tunnel Cloudflare ; s'il est coupé, la page interroge le serveur toutes les 4 secondes en attendant. **Avis** : seulement après une vente, lorsque l'auteur a conclu l'annonce avec l'acheteur (seuls ces deux-là peuvent se noter).

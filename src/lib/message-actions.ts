@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { conversations, listings, messages, reviews } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { messageCountsBySender } from "@/lib/messaging";
+import { emitMessage } from "@/lib/message-bus";
 import { notifyUser } from "@/lib/push";
 import { allow } from "@/lib/rate-limit";
 import type { FormState } from "@/lib/actions";
@@ -34,8 +35,9 @@ export async function startConversation(_: FormState, fd: FormData): Promise<For
     const [res] = await db.insert(conversations).values({ listingId: l.id, buyerId: user.id, sellerId: l.userId, buyerReadAt: now, lastMessageAt: now });
     [conv] = await db.select().from(conversations).where(eq(conversations.id, res.insertId)).limit(1);
   }
-  await db.insert(messages).values({ conversationId: conv.id, senderId: user.id, body: text, createdAt: now });
+  const [ins] = await db.insert(messages).values({ conversationId: conv.id, senderId: user.id, body: text, createdAt: now });
   await db.update(conversations).set({ lastMessageAt: now, buyerReadAt: now }).where(eq(conversations.id, conv.id));
+  emitMessage(conv.id, { id: ins.insertId, senderId: user.id, body: text, createdAt: now.toISOString() }); // arrive tout de suite chez l'autre personne
   await pushNew(l.userId, user.name, l.title, conv.id, text);
   revalidatePath("/messages");
   redirect(`/messages/${conv.id}`);
@@ -52,13 +54,22 @@ export async function sendMessage(_: FormState, fd: FormData): Promise<FormState
 
   const now = new Date();
   const mine = conv.buyerId === user.id;
-  await db.insert(messages).values({ conversationId: conv.id, senderId: user.id, body: text, createdAt: now });
+  const [ins] = await db.insert(messages).values({ conversationId: conv.id, senderId: user.id, body: text, createdAt: now });
   await db.update(conversations).set({ lastMessageAt: now, ...(mine ? { buyerReadAt: now } : { sellerReadAt: now }) }).where(eq(conversations.id, conv.id));
+  emitMessage(conv.id, { id: ins.insertId, senderId: user.id, body: text, createdAt: now.toISOString() });
   const [l] = await db.select({ title: listings.title }).from(listings).where(eq(listings.id, conv.listingId)).limit(1);
   await pushNew(mine ? conv.sellerId : conv.buyerId, user.name, l?.title ?? "Annonce", conv.id, text);
   revalidatePath(`/messages/${conv.id}`);
   revalidatePath("/messages");
   return { ok: "Envoyé" };
+}
+
+/** Marque la conversation comme lue (appelé quand un message arrive pendant qu'elle est ouverte). */
+export async function markConversationRead(conversationId: number) {
+  const user = await requireUser();
+  const [conv] = await db.select().from(conversations).where(eq(conversations.id, conversationId)).limit(1);
+  if (!conv || (conv.buyerId !== user.id && conv.sellerId !== user.id)) return;
+  await db.update(conversations).set(conv.buyerId === user.id ? { buyerReadAt: new Date() } : { sellerReadAt: new Date() }).where(eq(conversations.id, conv.id));
 }
 
 /** Avis sur l'autre personne de la conversation : il faut que chacune ait écrit au moins une fois. */
@@ -70,6 +81,9 @@ export async function saveReview(_: FormState, fd: FormData): Promise<FormState>
   const comment = String(fd.get("comment") ?? "").trim().slice(0, 500);
   const [conv] = await db.select().from(conversations).where(eq(conversations.id, id)).limit(1);
   if (!conv || (conv.buyerId !== user.id && conv.sellerId !== user.id)) return { error: "Conversation introuvable" };
+  // Les avis ne suivent qu'une vente réelle : l'annonce doit avoir été conclue avec l'acheteur de cette conversation.
+  const [deal] = await db.select({ status: listings.status, soldToId: listings.soldToId }).from(listings).where(eq(listings.id, conv.listingId)).limit(1);
+  if (!deal || deal.status !== "closed" || deal.soldToId !== conv.buyerId) return { error: "Les avis sont possibles une fois l'annonce conclue avec l'acheteur." };
   const counts = await messageCountsBySender(conv.id);
   if ((counts.get(conv.buyerId) ?? 0) < 1 || (counts.get(conv.sellerId) ?? 0) < 1) return { error: "Vous devez chacun avoir écrit au moins un message avant de laisser un avis." };
   if (!allow(`review:${user.id}`, 20, 24 * 3600e3)) return { error: "Trop d'avis aujourd'hui : réessaie demain." };

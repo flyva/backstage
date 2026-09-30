@@ -1,0 +1,2 @@
+ALTER TABLE `listings` ADD `sold_to_id` int;--> statement-breakpoint
+ALTER TABLE `listings` ADD CONSTRAINT `listings_sold_to_id_users_id_fk` FOREIGN KEY (`sold_to_id`) REFERENCES `users`(`id`) ON DELETE set null ON UPDATE no action;

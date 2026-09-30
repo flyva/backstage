@@ -5,7 +5,8 @@ import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { and, eq, gt, count } from "drizzle-orm";
 import { db } from "@/db";
-import { LISTING_CATEGORIES, listings, type ListingCategory } from "@/db/schema";
+import { LISTING_CATEGORIES, conversations, listings, type ListingCategory } from "@/db/schema";
+import { notifyUser } from "@/lib/push";
 import { requireUser } from "@/lib/auth";
 import { sniffAvatar } from "@/lib/avatar-files";
 import { ensureListingDir, listingDir, newListingPhotoName, removeListingPhoto } from "@/lib/listing-files";
@@ -60,12 +61,35 @@ async function ownListing(id: number) {
   return l;
 }
 
+/** Republie une annonce terminée ou expirée pour 60 jours (la mention « conclue avec… » est retirée). */
 export async function setListingStatus(fd: FormData) {
   const l = await ownListing(Number(fd.get("id")));
   if (!l) return;
-  const closed = fd.get("status") === "closed";
-  await db.update(listings).set({ status: closed ? "closed" : "active", ...(closed ? {} : { expiresAt: new Date(Date.now() + LISTING_TTL_DAYS * 864e5) }) }).where(eq(listings.id, l.id));
-  revalidatePath("/annonces");
+  await db.update(listings).set({ status: "active", soldToId: null, expiresAt: new Date(Date.now() + LISTING_TTL_DAYS * 864e5) }).where(eq(listings.id, l.id));
+  revalidatePath("/annonces", "layout");
+}
+
+/**
+ * Conclut l'annonce (vendue, donnée, pourvue) : soit avec une personne qui a écrit sur l'annonce, soit sans (retirée).
+ * Seul l'acheteur ainsi désigné pourra échanger des avis avec l'auteur.
+ */
+export async function concludeListing(fd: FormData) {
+  const l = await ownListing(Number(fd.get("id")));
+  if (!l) return;
+  const buyerId = Number(fd.get("buyerId"));
+  let soldToId: number | null = null;
+  if (Number.isInteger(buyerId) && buyerId > 0) {
+    const [c] = await db.select({ id: conversations.id }).from(conversations).where(and(eq(conversations.listingId, l.id), eq(conversations.buyerId, buyerId))).limit(1);
+    if (!c) return;
+    soldToId = buyerId;
+  }
+  await db.update(listings).set({ status: "closed", soldToId }).where(eq(listings.id, l.id));
+  if (soldToId) {
+    const [conv] = await db.select({ id: conversations.id }).from(conversations).where(and(eq(conversations.listingId, l.id), eq(conversations.buyerId, soldToId))).limit(1);
+    await notifyUser(soldToId, { title: `Annonce conclue : ${l.title}`, body: "Tu peux maintenant laisser un avis sur l'échange.", url: `/messages/${conv.id}`, tag: `sold-${l.id}` }).catch(() => 0);
+  }
+  revalidatePath("/annonces", "layout");
+  revalidatePath("/messages", "layout");
 }
 
 export async function deleteListing(fd: FormData) {

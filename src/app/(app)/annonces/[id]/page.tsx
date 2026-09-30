@@ -7,6 +7,7 @@ import { requireUser } from "@/lib/auth";
 import { avatarUrl } from "@/lib/avatar-files";
 import { LISTING_LABEL, LISTING_PHOTO_PREFIX } from "@/lib/listing-shared";
 import { deleteReview } from "@/lib/message-actions";
+import { concludeListing, setListingStatus } from "@/lib/listing-actions";
 import { ratingSummary } from "@/lib/messaging";
 import { ago } from "@/lib/relative-time";
 import { Avatar } from "@/components/people-forms";
@@ -42,7 +43,7 @@ export default async function ListingPage({ params }: PageProps<"/annonces/[id]"
     // Conversations ouvertes sur mon annonce
     isOwner
       ? db
-          .select({ id: conversations.id, buyer: users.name, at: conversations.lastMessageAt })
+          .select({ id: conversations.id, buyerId: conversations.buyerId, buyer: users.name, at: conversations.lastMessageAt })
           .from(conversations).innerJoin(users, eq(users.id, conversations.buyerId))
           .where(eq(conversations.listingId, id)).orderBy(desc(conversations.lastMessageAt))
       : Promise.resolve([]),
@@ -61,7 +62,7 @@ export default async function ListingPage({ params }: PageProps<"/annonces/[id]"
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-full border border-line px-2 py-0.5 text-[11px] font-semibold text-muted">{LISTING_LABEL[l.category]}</span>
           {l.price && <span className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-bold text-accent-fg">{l.price}</span>}
-          {!live && <span className="rounded-full border border-line px-2 py-0.5 text-[11px] font-semibold text-muted">{l.status === "closed" ? "Terminée" : "Expirée"}</span>}
+          {!live && <span className="rounded-full border border-line px-2 py-0.5 text-[11px] font-semibold text-muted">{l.status === "closed" ? (l.soldToId ? "Conclue" : "Retirée") : "Expirée"}</span>}
         </div>
         <h1 className="text-2xl font-bold leading-snug">{l.title}</h1>
         <p className="whitespace-pre-line text-sm">{l.description}</p>
@@ -87,6 +88,32 @@ export default async function ListingPage({ params }: PageProps<"/annonces/[id]"
         <section className="card space-y-3">
           <h2 className="font-semibold">Conversations sur ton annonce ({mineAsSeller.length})</h2>
           {mineAsSeller.length === 0 && <p className="text-sm text-muted">Personne ne t&apos;a encore écrit.</p>}
+          {l.status === "closed" ? (
+            <div className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-bg p-3 text-sm">
+              <span className="min-w-0 flex-1">
+                {l.soldToId ? <>Conclue avec <strong>{mineAsSeller.find((c) => c.buyerId === l.soldToId)?.buyer ?? "un acheteur"}</strong> : vous pouvez vous noter depuis la conversation.</> : "Annonce retirée sans vente."}
+              </span>
+              <form action={setListingStatus}><input type="hidden" name="id" value={l.id} /><button className="underline">Republier 60 jours</button></form>
+            </div>
+          ) : live ? (
+            <div className="space-y-3 rounded-xl border border-line bg-bg p-3">
+              <p className="text-sm font-medium">C&apos;est vendu, donné ou pourvu ?</p>
+              <form action={concludeListing} className="flex flex-wrap items-center gap-2">
+                <input type="hidden" name="id" value={l.id} />
+                <select name="buyerId" className="input w-auto max-w-full" defaultValue="" aria-label="À qui ?" required>
+                  <option value="" disabled>Choisis la personne…</option>
+                  {mineAsSeller.map((c) => <option key={c.id} value={c.buyerId}>{c.buyer}</option>)}
+                </select>
+                <button className="btn" disabled={mineAsSeller.length === 0}>Conclure avec cette personne</button>
+              </form>
+              <p className="text-xs text-muted">Seule la personne choisie pourra échanger un avis avec toi. {mineAsSeller.length === 0 && "Il faut qu'au moins une personne t'ait écrit."}</p>
+              <form action={concludeListing} className="text-xs">
+                <input type="hidden" name="id" value={l.id} />
+                <input type="hidden" name="buyerId" value="0" />
+                <button className="underline">Retirer l&apos;annonce sans vente (vendu ailleurs, plus disponible)</button>
+              </form>
+            </div>
+          ) : null}
           <ul className="divide-y divide-line text-sm">
             {mineAsSeller.map((c) => (
               <li key={c.id}><Link href={`/messages/${c.id}`} className="flex items-center gap-3 py-2 hover:text-accent"><span className="min-w-0 flex-1 truncate font-medium">{c.buyer}</span><span className="text-xs text-muted">{ago(c.at)}</span></Link></li>

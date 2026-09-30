@@ -35,7 +35,7 @@ export function MessageComposer({ conversationId }: { conversationId: number }) 
   const [state, action, pending] = useActionState(sendMessage, undefined);
   const form = useRef<HTMLFormElement>(null);
   return (
-    <form ref={form} action={async (fd) => { await action(fd); form.current?.reset(); }} className="space-y-2">
+    <form ref={form} action={async (fd) => { await action(fd); form.current?.reset(); window.dispatchEvent(new Event("conv-sync")); }} className="space-y-2">
       <input type="hidden" name="conversationId" value={conversationId} />
       <textarea name="body" required rows={2} maxLength={2000} onKeyDown={submitOnCtrlEnter} className="input" placeholder="Ton message… (Ctrl + Entrée pour envoyer)" aria-label="Ton message" />
       {state?.error && <Feedback state={state} />}
