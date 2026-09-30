@@ -1,6 +1,10 @@
 import Link from "next/link";
+import { and, eq } from "drizzle-orm";
 import { Bike, Car, ExternalLink, TramFront } from "lucide-react";
+import { db } from "@/db";
+import { workDays } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
+import { todayParis } from "@/lib/equipment";
 import { getSettings } from "@/lib/settings";
 import { nearbyStops, nearbyBikeStations, tripEstimates, type LatLng } from "@/lib/mobility";
 import { bestTransitCached, type TransitPlan } from "@/lib/transit";
@@ -19,17 +23,18 @@ const TRAFFIC = {
   bouchons: { label: "Embouteillages", cls: "bg-[#dc3545] text-white" },
 } as const;
 
-async function Place({ title, address, origin }: { title: string; address: string; origin: LatLng }) {
+async function Place({ title, address, origin, plan, today }: { title: string; address: string; origin: LatLng; plan?: { trip: Trip; transit: TransitPlan | null; from: string }; today?: boolean }) {
   const [stops, bikes] = await Promise.all([nearbyStops(origin), nearbyBikeStations(origin)]);
   return (
     <section className="space-y-4">
       <div>
-        <h2 className="text-xl font-semibold">{title}</h2>
+        <h2 className="flex flex-wrap items-center gap-2 text-xl font-semibold">{title}{today && <span className="rounded-full bg-accent px-2.5 py-0.5 text-xs font-semibold text-accent-fg">Aujourd&apos;hui</span>}</h2>
         <p className="text-sm text-muted">{address}</p>
       </div>
 
       <div className="card space-y-5 p-6">
         <h3 className="flex items-center gap-2 text-base font-semibold"><TramFront size={20} className="text-accent" /> Bus et tram à proximité</h3>
+        {plan && <BestRoute plan={plan} />}
         {stops.length === 0 && <p className="text-base text-muted">Aucun arrêt TBM à moins de 800 m.</p>}
         {stops.map((s) => (
           <div key={s.name} className="space-y-2.5 rounded-xl border border-line bg-bg p-4">
@@ -89,6 +94,44 @@ async function Place({ title, address, origin }: { title: string; address: strin
 }
 
 type Trip = Awaited<ReturnType<typeof tripEstimates>>;
+
+// Durée totale de porte à porte en transport depuis l'adresse de départ, avec le meilleur trajet (lignes, marche, attente),
+// comparée à la voiture et au vélo comme dans les cartes de trajet.
+function BestRoute({ plan }: { plan: { trip: Trip; transit: TransitPlan | null; from: string } }) {
+  const { trip, transit, from } = plan;
+  const others = [trip.car?.minutes, trip.bike?.minutes].filter((x): x is number => typeof x === "number");
+  const fastest = transit !== null && (others.length === 0 || transit.totalMin <= Math.min(...others));
+  return (
+    <div className="rounded-xl border border-accent/60 bg-accent/5 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted">
+        <span>En transport depuis {from}</span>
+        {fastest && <span className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-semibold text-accent-fg">Le plus rapide</span>}
+      </div>
+      {transit ? (
+        <>
+          <div className="mt-1 text-3xl font-bold tabular-nums">{fmtTrip(transit.totalMin)}</div>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
+            {transit.lines.map((l) => (
+              <span key={l.code} title={l.name} className={`inline-flex min-w-9 justify-center rounded-lg px-2 py-0.5 font-bold ${l.tram ? "bg-accent text-accent-fg" : "border border-line bg-surface"}`}>{l.code}</span>
+            ))}
+            <span className="text-muted">{transit.transfers > 0 ? `${transit.transfers} correspondance${transit.transfers > 1 ? "s" : ""} · ` : "direct · "}{transit.departsInMin <= 0 ? "départ imminent" : `départ dans ${transit.departsInMin} min`}</span>
+          </div>
+          <p className="mt-2 text-xs leading-relaxed text-muted">
+            {transit.walkStartMin} min à pied jusqu&apos;à <strong className="text-fg">{transit.from}</strong>
+            {transit.waitMin > 0 && <>, {transit.waitMin} min d&apos;attente</>}, {transit.rideMin} min à bord jusqu&apos;à <strong className="text-fg">{transit.to}</strong>, puis {transit.walkEndMin} min à pied.
+          </p>
+        </>
+      ) : (
+        <p className="mt-1 text-sm text-muted">Pas de trajet en transport en commun disponible pour le moment.</p>
+      )}
+      {(trip.car || trip.bike) && (
+        <p className="mt-2 text-xs text-muted">
+          À comparer : {[trip.car && `voiture ${fmtTrip(trip.car.minutes)}`, trip.bike && `vélo ${fmtTrip(trip.bike.minutes)}`].filter(Boolean).join(" · ")}
+        </p>
+      )}
+    </div>
+  );
+}
 
 const FASTEST = (
   <span className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-semibold text-accent-fg">Le plus rapide</span>
@@ -185,21 +228,27 @@ export default async function MobilitePage() {
   const plan = async (dest: LatLng | null) =>
     home && dest ? { trip: await tripEstimates(home, dest), transit: await bestTransitCached(home, dest).catch(() => null) } : null;
   const [toSchool, toCompany] = await Promise.all([plan(school), plan(company)]);
-  const trips = [
-    ...(toSchool ? [{ title: "Domicile → École", ...toSchool }] : []),
-    ...(toCompany ? [{ title: `Domicile → ${companyLabel}`, ...toCompany }] : []),
-  ];
+
+  // Aujourd'hui : école → le trajet et les arrêts de l'école d'abord ; sinon → ceux de l'entreprise (ou de l'école s'il n'y en a pas).
+  const [dayRow] = await db.select({ kind: workDays.kind }).from(workDays).where(and(eq(workDays.userId, user.id), eq(workDays.day, todayParis()))).limit(1);
+  const primary: "school" | "company" = dayRow?.kind === "ecole" && school ? "school" : company ? "company" : "school";
+  const tripSchool = toSchool ? [{ id: "school", title: "Domicile → École", ...toSchool }] : [];
+  const tripCompany = toCompany ? [{ id: "company", title: `Domicile → ${companyLabel}`, ...toCompany }] : [];
+  const trips = primary === "school" ? [...tripSchool, ...tripCompany] : [...tripCompany, ...tripSchool];
 
   return (
     <div className="space-y-8">
       <AutoRefresh seconds={30} />
       <header>
         <h1 className="text-2xl font-bold">Mobilité</h1>
-        <p className="text-sm text-muted">Horaires en temps réel TBM et disponibilité des vélos, autour de chez toi et de l&apos;école.</p>
+        <p className="text-sm text-muted">
+          {dayRow?.kind === "ecole" ? "Aujourd'hui : école. " : dayRow?.kind === "entreprise" ? "Aujourd'hui : entreprise. " : ""}
+          Horaires en temps réel TBM et disponibilité des vélos, autour de chez toi et de {primary === "school" ? "l'école" : "ton entreprise"}.
+        </p>
       </header>
 
       {trips.map((t) => (
-        <TripCard key={t.title} title={t.title} trip={t.trip} transit={t.transit} isAdmin={user.perms.administration} />
+        <TripCard key={t.id} title={t.title} trip={t.trip} transit={t.transit} isAdmin={user.perms.administration} />
       ))}
 
       {!home && (
@@ -219,9 +268,19 @@ export default async function MobilitePage() {
       )}
 
       <div className="grid gap-8 xl:grid-cols-2">
-        {home && <Place title="Près de chez toi" address={user.homeAddress ?? ""} origin={home} />}
-        {school && <Place title="Près de l'école" address={s.school_address ?? ""} origin={school} />}
-        {company && <Place title={`Près de ${companyLabel}`} address={user.companyAddress ?? ""} origin={company} />}
+        {primary === "school" ? (
+          <>
+            {school && <Place title="Près de l'école" address={s.school_address ?? ""} origin={school} plan={toSchool ? { ...toSchool, from: "chez toi" } : undefined} today={!!dayRow} />}
+            {home && <Place title="Près de chez toi" address={user.homeAddress ?? ""} origin={home} />}
+            {company && <Place title={`Près de ${companyLabel}`} address={user.companyAddress ?? ""} origin={company} plan={toCompany ? { ...toCompany, from: "chez toi" } : undefined} />}
+          </>
+        ) : (
+          <>
+            {company && <Place title={`Près de ${companyLabel}`} address={user.companyAddress ?? ""} origin={company} plan={toCompany ? { ...toCompany, from: "chez toi" } : undefined} today={!!dayRow} />}
+            {home && <Place title="Près de chez toi" address={user.homeAddress ?? ""} origin={home} />}
+            {school && <Place title="Près de l'école" address={s.school_address ?? ""} origin={school} plan={toSchool ? { ...toSchool, from: "chez toi" } : undefined} />}
+          </>
+        )}
       </div>
 
       <p className="text-xs text-muted">

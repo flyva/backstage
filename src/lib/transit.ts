@@ -153,11 +153,7 @@ export async function bestTransit(a: LatLng, b: LatLng): Promise<TransitPlan | n
 type MotisLeg = { mode: string; duration: number; startTime: string; routeShortName?: string; displayName?: string; routeLongName?: string; from: { name: string }; to: { name: string } };
 type MotisItinerary = { startTime: string; endTime: string; transfers: number; legs: MotisLeg[] };
 
-// Les heures de l'API (TBM, Transitous) sont des heures locales étiquetées « Z » : on compare donc avec l'heure locale de Bordeaux.
-function parisWallNow(): number {
-  const p = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Paris", hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }).formatToParts(new Date()).map((x) => [x.type, x.value]));
-  return Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second);
-}
+// Transitous renvoie de vraies heures UTC (suffixe « Z ») : on les compare directement à l'heure actuelle.
 
 /**
  * Itinéraire complet, avec correspondances, calculé par Transitous (MOTIS, service public gratuit qui agrège les horaires
@@ -169,7 +165,7 @@ export async function bestTransitous(a: LatLng, b: LatLng): Promise<TransitPlan 
   const res = await fetch(url, { headers: { "User-Agent": "Backstage-school-dashboard" }, signal: AbortSignal.timeout(8000), cache: "no-store" });
   if (!res.ok) throw new Error(`transitous ${res.status}`);
   const data = (await res.json()) as { itineraries?: MotisItinerary[] };
-  const now = parisWallNow();
+  const now = Date.now();
   const lineInfo = await getLines().catch(() => new Map());
   let best: TransitPlan | null = null;
   for (const it of data.itineraries ?? []) {
