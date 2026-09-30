@@ -70,7 +70,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
 
       {(localRegistration || microsoft || google) && (
         <p className="text-center text-sm text-muted">
-          Pas encore de compte ? <Link href="/register" className="text-accent underline">S&apos;inscrire</Link>
+          Pas encore de compte ? <Link href="/register" className="font-medium text-fg underline">S&apos;inscrire</Link>
         </p>
       )}
     </main>

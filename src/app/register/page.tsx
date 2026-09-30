@@ -60,7 +60,7 @@ export default async function RegisterPage() {
       </div>
 
       <p className="text-center text-sm text-muted">
-        Déjà inscrit ? <Link href="/login" className="text-accent underline">Se connecter</Link>
+        Déjà inscrit ? <Link href="/login" className="font-medium text-fg underline">Se connecter</Link>
       </p>
     </main>
   );

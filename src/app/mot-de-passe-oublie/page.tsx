@@ -14,7 +14,7 @@ export default function ForgotPasswordPage() {
         <p className="text-sm text-muted">Entre l&apos;adresse de ton compte : tu reçois un lien pour choisir un nouveau mot de passe.</p>
         <ForgotForm />
       </div>
-      <p className="text-center text-sm text-muted"><Link href="/login" className="text-accent underline">Retour à la connexion</Link></p>
+      <p className="text-center text-sm text-muted"><Link href="/login" className="font-medium text-fg underline">Retour à la connexion</Link></p>
     </main>
   );
 }

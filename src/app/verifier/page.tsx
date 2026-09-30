@@ -16,10 +16,10 @@ export default async function VerifyPage({ searchParams }: PageProps<"/verifier"
         {token ? (
           <VerifyForm token={token} />
         ) : (
-          <p className="text-sm text-danger" role="alert">Ce lien est invalide. <Link href="/register" className="text-accent underline">Refaire l&apos;inscription</Link>.</p>
+          <p className="text-sm text-danger" role="alert">Ce lien est invalide. <Link href="/register" className="font-medium text-fg underline">Refaire l&apos;inscription</Link>.</p>
         )}
       </div>
-      <p className="text-center text-sm text-muted"><Link href="/login" className="text-accent underline">Retour à la connexion</Link></p>
+      <p className="text-center text-sm text-muted"><Link href="/login" className="font-medium text-fg underline">Retour à la connexion</Link></p>
     </main>
   );
 }

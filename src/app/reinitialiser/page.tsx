@@ -16,10 +16,10 @@ export default async function ResetPasswordPage({ searchParams }: PageProps<"/re
         {token ? (
           <ResetForm token={token} />
         ) : (
-          <p className="text-sm text-danger" role="alert">Ce lien est invalide. <Link href="/mot-de-passe-oublie" className="text-accent underline">Refaire une demande</Link>.</p>
+          <p className="text-sm text-danger" role="alert">Ce lien est invalide. <Link href="/mot-de-passe-oublie" className="font-medium text-fg underline">Refaire une demande</Link>.</p>
         )}
       </div>
-      <p className="text-center text-sm text-muted"><Link href="/login" className="text-accent underline">Retour à la connexion</Link></p>
+      <p className="text-center text-sm text-muted"><Link href="/login" className="font-medium text-fg underline">Retour à la connexion</Link></p>
     </main>
   );
 }

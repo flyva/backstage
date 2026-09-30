@@ -28,6 +28,10 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       // Des extensions (LanguageTool, etc.) ajoutent des attributs sur <html>/<body> avant React : sans cela, alerte d'hydratation.
       suppressHydrationWarning
     >
+      {!jar.has("theme") && (
+        // Visiteur sans préférence enregistrée (page de connexion avant le premier login) : on suit le réglage clair/sombre de l'appareil.
+        <head><script dangerouslySetInnerHTML={{ __html: "if(matchMedia('(prefers-color-scheme: dark)').matches)document.documentElement.classList.add('dark')" }} /></head>
+      )}
       <body className="min-h-full" suppressHydrationWarning>
         {children}
         <PwaRegister />
