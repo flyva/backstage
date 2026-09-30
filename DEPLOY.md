@@ -289,3 +289,13 @@ Redémarre le serveur. Si TomTom est injoignable ou si le quota est dépassé, l
 - **Fichiers du wiki, des articles et des mémoires** : dossier `data/uploads/wiki` (inclus dans la sauvegarde nocturne), quota `WIKI_FILES_MAX_MB` (512 par défaut).
 - **Migrations** : `npm run db:migrate` (ou le script d'installation) applique les migrations 0017 à 0027 (dont les rôles : les comptes existants gardent leur rôle d'origine).
 - **Guide de rentrée** : après la mise à jour, ouvrir Administration → Général → « Importer le guide de rentrée 2026-2027 » (une fois, sur le Pi) : ça remplit l'annuaire, la FAQ, les liens, le wiki et les réglages de l'école, sans rien écraser. Migrations jusqu'à 0028.
+
+## 15. E-mails : mot de passe oublié
+
+Backstage n'envoie qu'un type de mail : le lien « Mot de passe oublié » (valable 1 heure, à usage unique, ferme tous les appareils une fois utilisé). Il faut un SMTP :
+
+1. Crée un compte gratuit chez un service d'envoi (**Brevo**, **Mailjet** ou **Resend** : quelques centaines de mails par jour gratuits, largement assez), ou utilise le SMTP de ton hébergeur.
+2. Sur ton domaine, ajoute les enregistrements DNS que le service te demande (**SPF** et **DKIM**, idéalement **DMARC**) : sans eux, les mails finissent en indésirables.
+3. Renseigne `MAIL_HOST`, `MAIL_PORT` (587), `MAIL_USER`, `MAIL_PASS` et `MAIL_FROM` (par exemple `Backstage <noreply@ton-domaine.fr>`) dans le fichier d'environnement, et `APP_URL` avec l'adresse publique du site. Redémarre le service.
+
+Sur un VPS OVH, le port 25 sortant est bloqué par défaut : on n'en a pas besoin, on utilise le port 587 d'un service d'envoi. N'installe pas de serveur de mail sur le VPS. Sans `MAIL_HOST`, aucun mail n'est envoyé (en développement, le lien s'affiche dans la console du serveur). Migration : 0029.

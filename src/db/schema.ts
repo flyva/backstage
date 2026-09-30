@@ -689,3 +689,18 @@ export const contacts = mysqlTable(
   },
   (t) => [index("contact_group_idx").on(t.groupName, t.position)],
 );
+
+// ---------- Mot de passe oublié ----------
+
+export const passwordResets = mysqlTable(
+  "password_resets",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    userId: int("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    tokenHash: varchar("token_hash", { length: 64 }).notNull().unique(), // sha256 du jeton envoyé par mail (jamais le jeton lui-même)
+    expiresAt: datetime("expires_at").notNull(),
+    usedAt: datetime("used_at"),
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [index("pr_user_idx").on(t.userId)],
+);
