@@ -71,7 +71,10 @@ export async function geocode(address: string): Promise<(LatLng & { label: strin
 // ---------- bus / tram ----------
 
 export type StopPoint = { ref: string; name: string; lat: number; lng: number; lines: string[] };
-export type LineInfo = { code: string; name: string; tram: boolean };
+export type LineInfo = { code: string; name: string; tram: boolean; boat: boolean };
+
+/** Les navettes fluviales s'appellent « LE BATO 1/2/3 » (lignes 951 à 953). */
+export const isBoatName = (name: string) => /^le bato|bat[³3]|navette fluviale/i.test(name);
 
 export async function getStopPoints(): Promise<StopPoint[]> {
   const list = await cached("stops", 24 * 3600e3, async () => {
@@ -97,13 +100,13 @@ export async function getLines(): Promise<Map<string, LineInfo>> {
     }>(`${SIRI}/lines-discovery.json?AccountKey=${KEY}`);
     return j.Siri.LinesDelivery.AnnotatedLineRef.map((l) => {
       const name = l.LineName[0]?.value ?? l.LineRef.value;
-      return [l.LineRef.value, { code: l.LineCode?.value ?? name, name, tram: /^tram /i.test(name) }] as const;
+      return [l.LineRef.value, { code: l.LineCode?.value ?? name, name, tram: /^tram /i.test(name), boat: isBoatName(name) }] as const;
     });
   });
   return new Map(list ?? []);
 }
 
-export type Departure = { line: string; lineName: string; tram: boolean; destination: string; minutes: number[] };
+export type Departure = { line: string; lineName: string; tram: boolean; boat: boolean; destination: string; minutes: number[] };
 export type StopResult = { name: string; distance: number; departures: Departure[] };
 
 export async function fetchVisits(ref: string) {
@@ -157,6 +160,7 @@ export async function nearbyStops(origin: LatLng, opts: { maxDistance?: number; 
           line: info?.code ?? j.LineRef.value.split(":")[2],
           lineName: info?.name ?? "",
           tram: info?.tram ?? false,
+          boat: info?.boat ?? false,
           destination,
           minutes: [],
         };

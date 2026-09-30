@@ -5,7 +5,7 @@ import { KEY, SIRI, cached, distanceM, fetchVisits, getJson, getLines, getStopPo
 // (lignes de chaque arrêt, horaires théoriques des courses, prochains passages en direct).
 
 export type TransitPlan = {
-  lines: { code: string; name: string; tram: boolean }[];
+  lines: { code: string; name: string; tram: boolean; boat: boolean }[];
   from: string; // arrêt de montée
   to: string; // arrêt de descente
   walkStartMin: number;
@@ -133,7 +133,7 @@ export async function bestTransit(a: LatLng, b: LatLng): Promise<TransitPlan | n
       if (!best || total < best.totalMin) {
         const info = lineInfo.get(c.line);
         best = {
-          lines: [{ code: info?.code ?? c.line.split(":")[2], name: info?.name ?? "", tram: info?.tram ?? false }],
+          lines: [{ code: info?.code ?? c.line.split(":")[2], name: info?.name ?? "", tram: info?.tram ?? false, boat: info?.boat ?? false }],
           from: o.s.name,
           to: d.s.name,
           walkStartMin: walkStart,
@@ -182,8 +182,8 @@ export async function bestTransitous(a: LatLng, b: LatLng): Promise<TransitPlan 
       best = {
         lines: transit.map((l) => {
           const code = l.routeShortName ?? l.displayName ?? "?";
-          const info = [...lineInfo.values()].find((x: { code: string }) => x.code === code) as { name: string; tram: boolean } | undefined;
-          return { code, name: info?.name ?? l.routeLongName ?? "", tram: info?.tram ?? l.mode === "TRAM" };
+          const info = [...lineInfo.values()].find((x: { code: string }) => x.code === code) as { name: string; tram: boolean; boat: boolean } | undefined;
+          return { code, name: info?.name ?? l.routeLongName ?? "", tram: info?.tram ?? l.mode === "TRAM", boat: l.mode === "FERRY" || (info?.boat ?? false) };
         }),
         from: transit[0].from.name,
         to: transit[transit.length - 1].to.name,

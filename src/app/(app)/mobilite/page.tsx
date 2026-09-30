@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { and, eq } from "drizzle-orm";
-import { Bike, Car, ExternalLink, TramFront } from "lucide-react";
+import { Bike, Car, ExternalLink, Ship, TramFront } from "lucide-react";
 import { db } from "@/db";
 import { workDays } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
@@ -33,7 +33,7 @@ async function Place({ title, address, origin, plan, today }: { title: string; a
       </div>
 
       <div className="card space-y-5 p-6">
-        <h3 className="flex items-center gap-2 text-base font-semibold"><TramFront size={20} className="text-accent" /> Bus et tram à proximité</h3>
+        <h3 className="flex items-center gap-2 text-base font-semibold"><TramFront size={20} className="text-accent" /> Bus, tram et bateau à proximité</h3>
         {plan && <BestRoute plan={plan} />}
         {stops.length === 0 && <p className="text-base text-muted">Aucun arrêt TBM à moins de 800 m.</p>}
         {stops.map((s) => (
@@ -48,14 +48,7 @@ async function Place({ title, address, origin, plan, today }: { title: string; a
               <div key={line}>
                 {gi > 0 && <hr className="mb-2.5 border-line" />}
                 <div className="flex items-start gap-3">
-                  <span
-                    title={list[0].lineName}
-                    className={`inline-flex min-w-11 shrink-0 justify-center rounded-lg px-2.5 py-1 text-base font-bold ${
-                      list[0].tram ? "bg-accent text-accent-fg" : "border border-line bg-surface text-fg"
-                    }`}
-                  >
-                    {line}
-                  </span>
+                  <LineBadge code={line} name={list[0].lineName} tram={list[0].tram} boat={list[0].boat} className="min-w-11 shrink-0 px-2.5 py-1 text-base" />
                   <ul className="min-w-0 flex-1 space-y-1.5">
                     {list.map((d) => (
                       <li key={d.destination} className="flex items-center gap-3">
@@ -97,6 +90,15 @@ type Trip = Awaited<ReturnType<typeof tripEstimates>>;
 
 // Durée totale de porte à porte en transport depuis l'adresse de départ, avec le meilleur trajet (lignes, marche, attente),
 // comparée à la voiture et au vélo comme dans les cartes de trajet.
+/** Pastille de ligne : tram plein, bus contour, bateau (LE BATO) contour avec icône de bateau. */
+function LineBadge({ code, name, tram, boat, className }: { code: string; name: string; tram: boolean; boat: boolean; className: string }) {
+  if (boat) {
+    const label = name.replace(/^le /i, "").toUpperCase() || code;
+    return <span title={name || label} className={`inline-flex items-center justify-center gap-1 rounded-lg border border-accent bg-accent/10 font-bold text-fg ${className}`}><Ship size={14} aria-hidden /> {label}</span>;
+  }
+  return <span title={name} className={`inline-flex justify-center rounded-lg font-bold ${tram ? "bg-accent text-accent-fg" : "border border-line bg-surface text-fg"} ${className}`}>{code}</span>;
+}
+
 function BestRoute({ plan }: { plan: { trip: Trip; transit: TransitPlan | null; from: string } }) {
   const { trip, transit, from } = plan;
   const others = [trip.car?.minutes, trip.bike?.minutes].filter((x): x is number => typeof x === "number");
@@ -112,7 +114,7 @@ function BestRoute({ plan }: { plan: { trip: Trip; transit: TransitPlan | null; 
           <div className="mt-1 text-3xl font-bold tabular-nums">{fmtTrip(transit.totalMin)}</div>
           <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
             {transit.lines.map((l) => (
-              <span key={l.code} title={l.name} className={`inline-flex min-w-9 justify-center rounded-lg px-2 py-0.5 font-bold ${l.tram ? "bg-accent text-accent-fg" : "border border-line bg-surface"}`}>{l.code}</span>
+              <LineBadge key={l.code} code={l.code} name={l.name} tram={l.tram} boat={l.boat} className="min-w-9 px-2 py-0.5" />
             ))}
             <span className="text-muted">{transit.transfers > 0 ? `${transit.transfers} correspondance${transit.transfers > 1 ? "s" : ""} · ` : "direct · "}{transit.departsInMin <= 0 ? "départ imminent" : `départ dans ${transit.departsInMin} min`}</span>
           </div>
@@ -188,7 +190,7 @@ function TripCard({ title, trip, transit, isAdmin }: { title: string; trip: Trip
               <div className="mt-1 text-2xl font-bold tabular-nums">{fmtTrip(transit.totalMin)}</div>
               <div className="flex flex-wrap items-center gap-2 text-sm">
                 {transit.lines.map((l) => (
-                  <span key={l.code} title={l.name} className={`inline-flex min-w-9 justify-center rounded-lg px-2 py-0.5 text-sm font-bold ${l.tram ? "bg-accent text-accent-fg" : "border border-line bg-surface"}`}>{l.code}</span>
+                  <LineBadge key={l.code} code={l.code} name={l.name} tram={l.tram} boat={l.boat} className="min-w-9 px-2 py-0.5 text-sm" />
                 ))}
                 <span className="text-muted">
                   {transit.transfers > 0 ? `${transit.transfers} correspondance${transit.transfers > 1 ? "s" : ""} · ` : "direct · "}{transit.departsInMin <= 0 ? "départ imminent" : `départ dans ${transit.departsInMin} min`}
