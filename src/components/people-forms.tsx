@@ -3,6 +3,7 @@
 import { useActionState, useRef, useState } from "react";
 import { Check, Copy, ExternalLink, Trash2 } from "lucide-react";
 import type { FormState } from "@/lib/actions";
+import { Toggle } from "@/components/Toggle";
 import { LINK_KINDS, type LinkKind } from "@/db/schema";
 import { LINK_LABEL, initialsOf } from "@/lib/people-shared";
 import {
@@ -84,7 +85,7 @@ export function AvatarForm({ name, url }: { name: string; url: string | null }) 
 
 export function FicheForm(props: {
   tracks: { id: number; name: string }[]; trackId: number | null; headline: string; phone: string; contactEmail: string;
-  showInDirectory: boolean; showPhone: boolean; cardShowPhone: boolean; discord: string; cardShowDiscord: boolean; showCompany: boolean; companyName: string; loginEmail: string;
+  showInDirectory: boolean; showPhone: boolean; cardShowPhone: boolean; discord: string; cardShowDiscord: boolean; cardShowSchool: boolean; showCompany: boolean; companyName: string; loginEmail: string;
 }) {
   const [state, action, pending] = useActionState(saveFiche, undefined);
   return (
@@ -113,21 +114,23 @@ export function FicheForm(props: {
       <div>
         <label className="label" htmlFor="discord">Pseudo Discord (facultatif)</label>
         <input id="discord" name="discord" defaultValue={props.discord} maxLength={40} autoComplete="off" placeholder="ton_pseudo" className="input sm:max-w-xs" />
-        <p className="mt-1 text-xs text-muted">Sans le @. Il apparaît dans l&apos;annuaire de la promo ; la case ci-dessous décide s&apos;il figure aussi sur ta carte de visite publique.</p>
+        <p className="mt-1 text-xs text-muted">Sans le @. Il apparaît dans l&apos;annuaire de la promo ; un interrupteur ci-dessous décide s&apos;il figure aussi sur ta carte de visite publique.</p>
       </div>
-      <div className="space-y-2 text-sm">
-        <label className="flex items-start gap-2"><input type="checkbox" name="showInDirectory" defaultChecked={props.showInDirectory} className="mt-1" /> <span>Apparaître dans l&apos;annuaire de la promo</span></label>
-        <label className="flex items-start gap-2"><input type="checkbox" name="showPhone" defaultChecked={props.showPhone} className="mt-1" /> <span>Afficher mon téléphone dans l&apos;annuaire de la promo</span></label>
-        <label className="flex items-start gap-2"><input type="checkbox" name="cardShowPhone" defaultChecked={props.cardShowPhone} className="mt-1" /> <span>Afficher mon téléphone sur ma carte de visite (publique)</span></label>
-        <label className="flex items-start gap-2"><input type="checkbox" name="cardShowDiscord" defaultChecked={props.cardShowDiscord} className="mt-1" /> <span>Afficher mon Discord sur ma carte de visite (publique)</span></label>
-        <label className="flex items-start gap-2">
-          <input type="checkbox" name="showCompany" defaultChecked={props.showCompany} className="mt-1" />
-          <span>
-            Afficher mon entreprise d&apos;alternance dans l&apos;annuaire et sur ma fiche
-            <span className="block text-xs text-muted">{props.companyName ? <>Seul le nom est montré : « {props.companyName} ». L&apos;adresse reste privée.</> : "Renseigne d'abord « Entreprise d'alternance » dans les informations de ton profil, plus haut."}</span>
-          </span>
-        </label>
-      </div>
+      <fieldset className="space-y-2">
+        <legend className="mb-1 text-sm font-semibold">Dans l&apos;annuaire de la promo</legend>
+        <Toggle name="showInDirectory" defaultChecked={props.showInDirectory} title="Apparaître dans l'annuaire" hint="Réservé aux personnes connectées à Backstage. Sans ça, tu n'as pas de fiche visible." />
+        <Toggle name="showPhone" defaultChecked={props.showPhone} title="Afficher mon téléphone" />
+        <Toggle
+          name="showCompany" defaultChecked={props.showCompany} title="Afficher mon entreprise d'alternance"
+          hint={props.companyName ? <>Seul le nom est montré : « {props.companyName} ». L&apos;adresse reste privée.</> : "Renseigne d'abord « Entreprise d'alternance » dans les informations de ton profil, plus haut."}
+        />
+      </fieldset>
+      <fieldset className="space-y-2">
+        <legend className="mb-1 text-sm font-semibold">Sur ma carte de visite publique</legend>
+        <Toggle name="cardShowPhone" defaultChecked={props.cardShowPhone} title="Afficher mon téléphone" />
+        <Toggle name="cardShowDiscord" defaultChecked={props.cardShowDiscord} title="Afficher mon Discord" hint="Il figure toujours dans l'annuaire : cette case ne concerne que la carte partageable." />
+        <Toggle name="cardShowSchool" defaultChecked={props.cardShowSchool} title="Afficher l'école (3iS Bègles)" hint="Un bouton vers le site de l'école sur ta carte." />
+      </fieldset>
       <p className="text-xs text-muted">
         L&apos;annuaire montre ton adresse <strong className="text-fg">{props.loginEmail}</strong> seulement si elle se termine par @3is.fr. Il est réservé aux personnes connectées à Backstage.
       </p>

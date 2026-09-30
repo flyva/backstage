@@ -128,6 +128,7 @@ export function SettingsForm({ values }: { values: Record<string, string> }) {
         {field("ypareo_url", "Lien Ypareo", "https://…")}
         {field("studea_url", "Lien Studea", "https://…")}
         {field("school_instagram_url", "Instagram de l'école", "https://instagram.com/…")}
+        {field("school_website_url", "Site web de l'école (carte de visite)", "https://www.3is.fr")}
         {field("instagram_feed_url", "Flux Instagram (URL JSON)", "https://feeds.behold.so/…")}
       </div>
       <div>

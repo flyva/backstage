@@ -15,6 +15,7 @@ export const SETTING_KEYS = [
   "ypareo_url",
   "studea_url",
   "school_instagram_url",
+  "school_website_url", // site de l'école, proposé sur la carte de visite (https://www.3is.fr par défaut)
   "instagram_feed_url", // flux JSON public (ex. Behold), voir /instagram
 ] as const;
 export type SettingKey = (typeof SETTING_KEYS)[number];

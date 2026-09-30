@@ -105,6 +105,9 @@ body {
 .slim-scroll::-webkit-scrollbar-thumb { background: transparent; border-radius: 999px; }
 .slim-scroll:hover::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--side-muted, #8b949e) 55%, transparent); }
 
+/* Cases à cocher et boutons radio natifs : couleur d'accent du thème. */
+input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
+
 /* Accent « noir » : la couleur d'accent se confond avec le fond (noir sur noir en sombre, gris clair sur blanc en clair).
    Les textes et bordures d'accent reprennent la couleur du texte, et les boutons pleins reçoivent un contour. */
 :root[data-accent="noir"] .text-accent,

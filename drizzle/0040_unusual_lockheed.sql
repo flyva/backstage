@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD `card_show_school` boolean DEFAULT false NOT NULL;

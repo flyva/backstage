@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Download, Mail, Phone } from "lucide-react";
+import { Download, GraduationCap, Mail, Phone } from "lucide-react";
 import { getCard } from "@/lib/card";
 import { LINK_LABEL } from "@/lib/people-shared";
 import { Avatar, CopyChip } from "@/components/people-forms";
@@ -26,6 +26,9 @@ export default async function CardPage({ params }: PageProps<"/carte/[slug]">) {
           {c.discord && <div className="flex justify-center"><CopyChip value={c.discord} prefix="Discord : " className="px-3 py-1.5 text-sm" /></div>}
           {c.phone && <a href={`tel:${c.phone.replace(/[^\d+]/g, "")}`} className="btn-ghost w-full"><Phone size={16} aria-hidden /> {c.phone}</a>}
         </div>
+        {c.school && (
+          <a href={c.school.url} target="_blank" rel="noopener noreferrer" className="btn-ghost w-full"><GraduationCap size={16} aria-hidden /> {c.school.label}</a>
+        )}
         {c.links.length > 0 && (
           <ul className="space-y-2">
             {c.links.map((l, i) => (
@@ -37,7 +40,7 @@ export default async function CardPage({ params }: PageProps<"/carte/[slug]">) {
         )}
         <a href={`/carte/${slug}/vcf`} className="inline-flex items-center gap-1.5 text-sm text-muted underline"><Download size={14} aria-hidden /> Ajouter à mes contacts</a>
       </div>
-      <p className="text-center text-xs text-muted">Carte créée avec Backstage · le hub de la promo 3IS</p>
+      <p className="text-center text-xs text-muted">Carte créée avec Backstage</p>
     </main>
   );
 }

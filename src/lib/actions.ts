@@ -303,6 +303,8 @@ export async function saveSettings(_: FormState, fd: FormData): Promise<FormStat
   await requireAdmin();
   const feed = String(fd.get("instagram_feed_url") ?? "").trim();
   if (feed && !feed.toLowerCase().startsWith("https://")) return { error: "Le flux Instagram doit être un lien https://" };
+  const site = String(fd.get("school_website_url") ?? "").trim();
+  if (site && !/^https:\/\/[^\s]+\.[^\s]+$/i.test(site)) return { error: "Le site de l'école doit être un lien https://" };
   for (const key of SETTING_KEYS) {
     if (key === "school_map_file" || !fd.has(key)) continue;
     const value = String(fd.get(key) ?? "").trim();

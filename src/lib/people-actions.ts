@@ -39,7 +39,7 @@ export async function saveFiche(_: FormState, fd: FormData): Promise<FormState> 
   await db.update(users).set({
     trackId, headline: headline || null, phone: phone || null, contactEmail: contactEmail || null,
     showInDirectory: fd.get("showInDirectory") === "on", showPhone: fd.get("showPhone") === "on", cardShowPhone: fd.get("cardShowPhone") === "on",
-    discord, cardShowDiscord: fd.get("cardShowDiscord") === "on", showCompany: fd.get("showCompany") === "on",
+    discord, cardShowDiscord: fd.get("cardShowDiscord") === "on", showCompany: fd.get("showCompany") === "on", cardShowSchool: fd.get("cardShowSchool") === "on",
   }).where(eq(users.id, user.id));
   revalidatePath("/profil");
   revalidatePath("/annuaire");

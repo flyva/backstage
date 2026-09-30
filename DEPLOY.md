@@ -342,3 +342,5 @@ La **messagerie des annonces** (migration 0035) met en relation acheteur et vend
 **Fiche dans Backstage** : chaque personne visible dans l'annuaire a une fiche (`/annuaire/<n>`), réservée aux membres connectés : coordonnées choisies pour l'annuaire, liens, annonces en cours et avis reçus. Elle est accessible depuis l'annuaire, les annonces et les messages ; le profil permet de la voir « comme les autres ».
 
 **Entreprise d'alternance** (migration 0039) : le nom de l'entreprise saisi dans le profil peut être affiché dans l'annuaire et sur la fiche si la personne coche la case correspondante (désactivée par défaut). L'adresse de l'entreprise n'est jamais montrée.
+
+**Carte de visite : école** (migration 0040) : un interrupteur « Afficher l'école (3iS Bègles) » ajoute un bouton vers le site de l'école sur la carte publique. L'adresse se règle dans Administration → Général (« Site web de l'école », `https://www.3is.fr` par défaut). Les cases du profil sont désormais des interrupteurs regroupés : « Dans l'annuaire » et « Sur ma carte de visite ».
