@@ -1,12 +1,16 @@
 import Link from "next/link";
 import { and, eq } from "drizzle-orm";
-import { Bike, Car, ExternalLink, Ship, TramFront } from "lucide-react";
+import { Bike, Car, ExternalLink, Route, Ship, TramFront } from "lucide-react";
 import { db } from "@/db";
 import { workDays } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { todayParis } from "@/lib/equipment";
 import { getSettings } from "@/lib/settings";
-import { nearbyStops, nearbyBikeStations, tripEstimates, type LatLng } from "@/lib/mobility";
+import { geocode, nearbyStops, nearbyBikeStations, tripEstimates, type LatLng } from "@/lib/mobility";
+import { alertsNear } from "@/lib/alerts";
+import { allow } from "@/lib/rate-limit";
+import { TransitAlerts } from "@/components/TransitAlerts";
+import { AddressField } from "@/components/AddressField";
 import { bestTransitCached, type TransitPlan } from "@/lib/transit";
 import { AutoRefresh } from "@/components/AutoRefresh";
 
@@ -24,7 +28,7 @@ const TRAFFIC = {
 } as const;
 
 async function Place({ title, address, origin, plan, today }: { title: string; address: string; origin: LatLng; plan?: { trip: Trip; transit: TransitPlan | null; from: string }; today?: boolean }) {
-  const [stops, bikes] = await Promise.all([nearbyStops(origin), nearbyBikeStations(origin)]);
+  const [stops, bikes, alerts] = await Promise.all([nearbyStops(origin), nearbyBikeStations(origin), alertsNear([origin])]);
   return (
     <section className="space-y-4">
       <div>
@@ -35,6 +39,7 @@ async function Place({ title, address, origin, plan, today }: { title: string; a
       <div className="card space-y-5 p-6">
         <h3 className="flex items-center gap-2 text-base font-semibold"><TramFront size={20} className="text-accent" /> Bus, tram et bateau à proximité</h3>
         {plan && <BestRoute plan={plan} />}
+        <TransitAlerts alerts={alerts} title="Alertes TBM près d'ici" />
         {stops.length === 0 && <p className="text-base text-muted">Aucun arrêt TBM à moins de 800 m.</p>}
         {stops.map((s) => (
           <div key={s.name} className="space-y-2.5 rounded-xl border border-line bg-bg p-4">
@@ -218,8 +223,13 @@ function TripCard({ title, trip, transit, isAdmin }: { title: string; trip: Trip
   );
 }
 
-export default async function MobilitePage() {
+const param = (v: string | string[] | undefined) => (typeof v === "string" ? v.trim().slice(0, 200) : "");
+
+export default async function MobilitePage({ searchParams }: PageProps<"/mobilite">) {
   const user = await requireUser();
+  const sp = await searchParams;
+  const fromQ = param(sp.de);
+  const toQ = param(sp.vers);
   const s = await getSettings();
 
   const home: LatLng | null = user.homeLat != null && user.homeLng != null ? { lat: user.homeLat, lng: user.homeLng } : null;
@@ -238,6 +248,21 @@ export default async function MobilitePage() {
   const tripCompany = toCompany ? [{ id: "company", title: `Domicile → ${companyLabel}`, ...toCompany }] : [];
   const trips = primary === "school" ? [...tripSchool, ...tripCompany] : [...tripCompany, ...tripSchool];
 
+  // Calculateur libre : d'une adresse quelconque à une autre (le départ vide = chez toi).
+  let free: { title: string; trip: Trip; transit: TransitPlan | null } | { error: string } | null = null;
+  if (toQ) {
+    if (!allow(`trip:${user.id}`, 60, 10 * 60e3)) {
+      free = { error: "Trop de recherches : réessaie dans quelques minutes." };
+    } else {
+      const [a, b] = await Promise.all([fromQ ? geocode(fromQ) : Promise.resolve(home ? { ...home, label: "chez toi" } : null), geocode(toQ)]);
+      if (!a || !b) {
+        free = { error: !a && !fromQ ? "Renseigne ton adresse dans ton profil ou indique un départ." : "Adresse introuvable : choisis une suggestion dans la liste." };
+      } else {
+        free = { title: `${a.label} → ${b.label}`, trip: await tripEstimates(a, b), transit: await bestTransitCached(a, b).catch(() => null) };
+      }
+    }
+  }
+
   return (
     <div className="space-y-8">
       <AutoRefresh seconds={30} />
@@ -248,6 +273,17 @@ export default async function MobilitePage() {
           Horaires en temps réel TBM et disponibilité des vélos, autour de chez toi et de {primary === "school" ? "l'école" : "ton entreprise"}.
         </p>
       </header>
+
+      <section className="card space-y-4 p-6">
+        <h2 className="flex items-center gap-2 text-lg font-semibold"><Route size={20} className="text-accent" /> Calculer un trajet</h2>
+        <form action="/mobilite" method="get" className="grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
+          <AddressField id="de" name="de" label="Départ" defaultValue={fromQ} placeholder={home ? "Vide = chez toi" : "12 rue Exemple, Bordeaux"} />
+          <AddressField id="vers" name="vers" label="Arrivée" defaultValue={toQ} placeholder="Une adresse, un lieu, une salle…" />
+          <button className="btn">Calculer</button>
+        </form>
+        {free && "error" in free && <p className="text-sm text-danger" role="alert">{free.error}</p>}
+      </section>
+      {free && !("error" in free) && <TripCard title={free.title} trip={free.trip} transit={free.transit} isAdmin={user.perms.administration} />}
 
       {trips.map((t) => (
         <TripCard key={t.id} title={t.title} trip={t.trip} transit={t.transit} isAdmin={user.perms.administration} />

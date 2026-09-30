@@ -1,15 +1,18 @@
 import Link from "next/link";
 import { and, eq } from "drizzle-orm";
-import { CalendarCheck, Clock, ListChecks, Route } from "lucide-react";
+import { AlertTriangle, CalendarCheck, Clock, CloudDrizzle, CloudFog, CloudLightning, CloudRain, CloudSun, Cloud, ListChecks, Moon, Route, Snowflake, Sun } from "lucide-react";
 import { db } from "@/db";
 import { workDays } from "@/db/schema";
 import { KIND_CLASS, KIND_LABEL } from "@/lib/alternance";
 import { cardHref, dueCards } from "@/lib/reminders";
 import { tripEstimates, type LatLng } from "@/lib/mobility";
 import { bestTransitCached } from "@/lib/transit";
+import { getWeather, type Weather } from "@/lib/weather";
+import { alertsForCodes } from "@/lib/alerts";
 import type { AgendaEvent } from "@/lib/ical";
 
 const timeFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit" });
+const WEATHER_ICON: Record<Weather["icon"], typeof Sun> = { sun: Sun, "cloud-sun": CloudSun, cloud: Cloud, fog: CloudFog, drizzle: CloudDrizzle, rain: CloudRain, snow: Snowflake, storm: CloudLightning, moon: Moon };
 const withTimeout = <T,>(p: Promise<T>, ms: number): Promise<T | null> => Promise.race([p, new Promise<null>((r) => setTimeout(() => r(null), ms))]).catch(() => null);
 
 type Props = {
@@ -26,7 +29,7 @@ export async function MyDay({ userId, today, events, home, school }: Props) {
   const timed = (events ?? []).filter((e) => !e.allDay).sort((a, b) => a.start.getTime() - b.start.getTime());
   const nextCourse = timed.find((e) => e.end >= now);
 
-  const [dayRow, tasks, leave] = await Promise.all([
+  const [dayRow, tasks, leave, weather, routeAlerts] = await Promise.all([
     db.select({ kind: workDays.kind }).from(workDays).where(and(eq(workDays.userId, userId), eq(workDays.day, today))).limit(1),
     dueCards(today, userId),
     (async () => {
@@ -40,6 +43,13 @@ export async function MyDay({ userId, today, events, home, school }: Props) {
       if (min === null) return null;
       const by = transit ? "en transport" : "en voiture";
       return { at: new Date(nextCourse.start.getTime() - (min + 5) * 60000), min, by };
+    })(),
+    withTimeout(getWeather(home ?? school), 3500),
+    // Alertes TBM sur les lignes du trajet domicile → école.
+    (async () => {
+      if (!home || !school) return [];
+      const plan = await withTimeout(bestTransitCached(home, school), 3500);
+      return plan ? (await withTimeout(alertsForCodes(plan.lines.map((l) => l.code)), 3500)) ?? [] : [];
     })(),
   ]);
   const kind = dayRow[0]?.kind;
@@ -99,6 +109,30 @@ export async function MyDay({ userId, today, events, home, school }: Props) {
           </ul>
         )}
       </div>
+
+      {(weather || routeAlerts.length > 0) && (
+        <div className="space-y-2 border-t border-line pt-3 text-sm lg:col-span-3">
+          {weather && (() => {
+            const Icon = WEATHER_ICON[weather.icon];
+            return (
+              <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span className="flex items-center gap-2 font-medium"><Icon size={18} className="text-accent" aria-hidden /> {weather.temp}° · {weather.label}</span>
+                <span className="text-muted">min {weather.min}° / max {weather.max}°</span>
+                {weather.advice && <span className="font-medium">{weather.advice}</span>}
+              </p>
+            );
+          })()}
+          {routeAlerts.length > 0 && (
+            <p className="flex flex-wrap items-start gap-2">
+              <AlertTriangle size={16} className="mt-0.5 shrink-0 text-[#f59e0b]" aria-hidden />
+              <span className="min-w-0 flex-1">
+                <strong>{routeAlerts.length} alerte{routeAlerts.length > 1 ? "s" : ""} TBM sur ton trajet</strong> : {routeAlerts[0].title}
+                {routeAlerts.length > 1 ? ` (+${routeAlerts.length - 1})` : ""}. <Link href="/mobilite" className="text-accent underline">Voir le détail</Link>
+              </span>
+            </p>
+          )}
+        </div>
+      )}
     </section>
   );
 }
