@@ -6,10 +6,11 @@ import { and, asc, count, eq, max } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import {
-  checklistItems, checklists, cues, CUE_CATEGORIES, kanbanColumns, projectMembers, projects, users, type ProjectRole,
+  checklistItems, checklists, checklistTemplates, cues, CUE_CATEGORIES, kanbanColumns, projectMembers, projects, users, type ProjectRole,
 } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
-import { CHECKLIST_TEMPLATES, DEFAULT_KANBAN_COLUMNS, requireProject } from "@/lib/projects";
+import { DEFAULT_KANBAN_COLUMNS, requireProject } from "@/lib/projects";
+import { templateItems } from "@/lib/checklist-templates";
 import type { FormState } from "@/lib/actions";
 import { parseDuration } from "@/lib/time";
 
@@ -152,7 +153,9 @@ async function nextPosition(table: "checklists" | "items", parentId: number) {
 export async function addChecklist(fd: FormData) {
   const pid = id.parse(fd.get("projectId"));
   await requireProject(pid, "editor");
-  const template = CHECKLIST_TEMPLATES[String(fd.get("template") ?? "")];
+  const tid = Number(fd.get("template"));
+  const [tpl] = Number.isInteger(tid) && tid > 0 ? await db.select().from(checklistTemplates).where(eq(checklistTemplates.id, tid)).limit(1) : [];
+  const template = tpl ? { title: tpl.title, items: templateItems(tpl.items) } : undefined;
   const parsed = z.string().trim().min(1).max(150).safeParse(fd.get("title"));
   const title = template?.title ?? (parsed.success ? parsed.data : null);
   if (!title) return; // ni modèle ni titre : rien à créer

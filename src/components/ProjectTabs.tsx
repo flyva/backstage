@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-export function ProjectTabs({ base, tabs }: { base: string; tabs: { slug: string; label: string }[] }) {
+export function ProjectTabs({ base, tabs, label = "Sections du projet" }: { base: string; tabs: { slug: string; label: string }[]; label?: string }) {
   const pathname = usePathname();
   return (
-    <nav className="flex flex-wrap gap-x-1 border-b border-line" aria-label="Sections du projet">
-      {tabs.map(({ slug, label }) => {
+    <nav className="flex flex-wrap gap-x-1 border-b border-line" aria-label={label}>
+      {tabs.map(({ slug, label: text }) => {
         const href = slug ? `${base}/${slug}` : base;
         const active = pathname === href;
         return (
@@ -19,7 +19,7 @@ export function ProjectTabs({ base, tabs }: { base: string; tabs: { slug: string
               active ? "border-accent font-medium text-accent" : "border-transparent text-muted hover:text-fg"
             }`}
           >
-            {label}
+            {text}
           </Link>
         );
       })}

@@ -220,14 +220,14 @@ export async function addFaq(fd: FormData) {
   const p = faqSchema.safeParse(Object.fromEntries(fd));
   if (p.success) await db.insert(faqItems).values(p.data);
   revalidatePath("/faq");
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }
 
 export async function deleteFaq(fd: FormData) {
   await requireAdmin();
   await db.delete(faqItems).where(eq(faqItems.id, Number(fd.get("id"))));
   revalidatePath("/faq");
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }
 
 const linkSchema = z.object({
@@ -242,14 +242,14 @@ export async function addLink(fd: FormData) {
   const p = linkSchema.safeParse(Object.fromEntries(fd));
   if (p.success) await db.insert(usefulLinks).values(p.data);
   revalidatePath("/liens");
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }
 
 export async function deleteLink(fd: FormData) {
   await requireAdmin();
   await db.delete(usefulLinks).where(eq(usefulLinks.id, Number(fd.get("id"))));
   revalidatePath("/liens");
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }
 
 export async function setRole(fd: FormData) {

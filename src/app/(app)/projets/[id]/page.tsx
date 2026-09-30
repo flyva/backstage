@@ -2,7 +2,8 @@ import { asc, eq, inArray } from "drizzle-orm";
 import { Trash2 } from "lucide-react";
 import { db } from "@/db";
 import { checklistItems, checklists } from "@/db/schema";
-import { can, CHECKLIST_TEMPLATES, requireProject } from "@/lib/projects";
+import { can, requireProject } from "@/lib/projects";
+import { getChecklistTemplates } from "@/lib/checklist-templates";
 import { addChecklist, addItem, deleteChecklist } from "@/lib/project-actions";
 import { ChecklistItemRow } from "@/components/project-forms";
 
@@ -11,6 +12,7 @@ export default async function ProjectChecklistsPage({ params }: PageProps<"/proj
   const { project, role } = await requireProject(Number(id));
   const canEdit = can(role, "editor");
 
+  const templates = await getChecklistTemplates();
   const lists = await db.select().from(checklists).where(eq(checklists.projectId, project.id)).orderBy(asc(checklists.position), asc(checklists.id));
   const items = lists.length
     ? await db.select().from(checklistItems).where(inArray(checklistItems.checklistId, lists.map((l) => l.id))).orderBy(asc(checklistItems.position), asc(checklistItems.id))
@@ -68,8 +70,8 @@ export default async function ProjectChecklistsPage({ params }: PageProps<"/proj
             <input type="hidden" name="projectId" value={project.id} />
             <select name="template" defaultValue="" aria-label="Modèle" className="input w-auto">
               <option value="">Checklist vide…</option>
-              {Object.entries(CHECKLIST_TEMPLATES).map(([key, t]) => (
-                <option key={key} value={key}>Modèle : {t.title}</option>
+              {templates.map((t) => (
+                <option key={t.id} value={t.id}>Modèle : {t.title}</option>
               ))}
             </select>
             <input name="title" placeholder="Titre (si checklist vide)" aria-label="Titre" className="input min-w-48 flex-1" />

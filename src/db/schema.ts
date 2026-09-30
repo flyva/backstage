@@ -141,6 +141,14 @@ export const checklistItems = mysqlTable(
   (t) => [index("ci_checklist_idx").on(t.checklistId)],
 );
 
+// Modèles de checklists proposés à la création d'une checklist de projet (gérés par les admins).
+export const checklistTemplates = mysqlTable("checklist_templates", {
+  id: int("id").primaryKey().autoincrement(),
+  title: varchar("title", { length: 150 }).notNull(),
+  items: text("items").notNull(), // un élément par ligne
+  position: int("position").notNull().default(0),
+});
+
 export type ProjectRole = "owner" | "editor" | "viewer";
 
 // ---------- Conduite de spectacle ----------

@@ -2,6 +2,7 @@ import { asc } from "drizzle-orm";
 import { db } from "@/db";
 import { faqItems } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
+import { Markdown } from "@/components/Markdown";
 
 export const metadata = { title: "FAQ" };
 
@@ -20,7 +21,7 @@ export default async function FaqPage() {
           {list.map((i) => (
             <details key={i.id} className="card group p-0">
               <summary className="cursor-pointer list-none px-5 py-3 font-medium marker:hidden">{i.question}</summary>
-              <p className="whitespace-pre-line border-t border-line px-5 py-3 text-sm text-muted">{i.answer}</p>
+              <div className="border-t border-line px-5 py-3 text-sm"><Markdown breaks>{i.answer}</Markdown></div>
             </details>
           ))}
         </section>
