@@ -4,7 +4,7 @@ import { techInputs, techLights } from "@/db/schema";
 import { requireProject } from "@/lib/projects";
 import { toCsv } from "@/lib/csv";
 import { slugify } from "@/lib/wiki";
-import { checklistsCsv, conduiteCsv, dossierHtml, equipeCsv, loadDossier } from "@/lib/dossier";
+import { chargeCsv, checklistsCsv, conduiteCsv, planningCsv, dossierHtml, equipeCsv, loadDossier } from "@/lib/dossier";
 
 // Téléchargements d'un projet : fiches (lights, inputs), conduite, équipe, checklists (CSV) et dossier complet (HTML).
 export async function GET(_: Request, ctx: { params: Promise<{ id: string; type: string }> }) {
@@ -29,10 +29,12 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string; type:
       rows.map((r) => [r.channel, r.source, r.mic, r.stand, r.phantom ? "oui" : "", r.notes]),
     );
     name = `${base}-entrees-son.csv`;
-  } else if (type === "conduite" || type === "equipe" || type === "checklists" || type === "complet") {
+  } else if (type === "conduite" || type === "equipe" || type === "checklists" || type === "planning" || type === "charge" || type === "complet") {
     const d = await loadDossier(project, role);
     if (type === "conduite") { body = conduiteCsv(d); name = `${base}-conduite.csv`; }
     else if (type === "equipe") { body = equipeCsv(d); name = `${base}-equipe.csv`; }
+    else if (type === "planning") { body = planningCsv(d); name = `${base}-planning-montage.csv`; }
+    else if (type === "charge") { body = chargeCsv(d); name = `${base}-charge-electrique.csv`; }
     else if (type === "checklists") { body = checklistsCsv(d); name = `${base}-checklists.csv`; }
     else { body = dossierHtml(project, d); name = `${base}-dossier-complet.html`; mime = "text/html; charset=utf-8"; }
   } else {

@@ -6,6 +6,8 @@ const FILES = [
   { type: "inputs", label: "Fiche son" },
   { type: "equipe", label: "Équipe" },
   { type: "checklists", label: "Checklists" },
+  { type: "planning", label: "Planning de montage" },
+  { type: "charge", label: "Charge électrique" },
 ];
 
 // Téléchargements du projet : chaque partie en CSV (Excel), et le dossier complet en un seul fichier.

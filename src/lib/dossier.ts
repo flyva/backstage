@@ -2,11 +2,12 @@ import "server-only";
 import { asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import {
-  checklistItems, checklists, cues, kanbanCardAssignees, kanbanCards, kanbanColumns, projectMembers, techInputs, techLights, users, type ProjectRole,
+  buildSlotAssignees, buildSlots, checklistItems, checklists, cues, powerCircuits, powerItems, kanbanCardAssignees, kanbanCards, kanbanColumns, projectMembers, techInputs, techLights, users, type ProjectRole,
 } from "@/db/schema";
 import { toCsv } from "@/lib/csv";
 import { ROLE_LABEL } from "@/lib/projects";
 import { findConflicts, patchLabel } from "@/lib/tech";
+import { circuitLoads, fmtAmps, fmtWatts } from "@/lib/power";
 import { CATEGORY_LABEL, formatDuration } from "@/lib/time";
 
 type Project = { id: number; name: string; description: string | null; eventDate: string | null };
@@ -15,7 +16,7 @@ const PRIORITY: Record<string, string> = { low: "Basse", normal: "Normale", high
 
 /** Toutes les données d'un projet nécessaires aux exports. Les e-mails de l'équipe ne sont donnés qu'au propriétaire. */
 export async function loadDossier(project: Project, role: ProjectRole) {
-  const [cueRows, memberRows, lists, lights, inputs, columns] = await Promise.all([
+  const [cueRows, memberRows, lists, lights, inputs, columns, slotRows, circuitRows, powerRows] = await Promise.all([
     db.select().from(cues).where(eq(cues.projectId, project.id)).orderBy(asc(cues.position), asc(cues.id)),
     db
       .select({ name: users.name, email: users.email, role: projectMembers.role })
@@ -27,7 +28,15 @@ export async function loadDossier(project: Project, role: ProjectRole) {
     db.select().from(techLights).where(eq(techLights.projectId, project.id)).orderBy(asc(techLights.channel), asc(techLights.universe), asc(techLights.address)),
     db.select().from(techInputs).where(eq(techInputs.projectId, project.id)).orderBy(asc(techInputs.channel)),
     db.select().from(kanbanColumns).where(eq(kanbanColumns.projectId, project.id)).orderBy(asc(kanbanColumns.position), asc(kanbanColumns.id)),
+    db.select().from(buildSlots).where(eq(buildSlots.projectId, project.id)).orderBy(asc(buildSlots.day), asc(buildSlots.startTime), asc(buildSlots.id)),
+    db.select().from(powerCircuits).where(eq(powerCircuits.projectId, project.id)).orderBy(asc(powerCircuits.position), asc(powerCircuits.id)),
+    db.select().from(powerItems).where(eq(powerItems.projectId, project.id)).orderBy(asc(powerItems.name)),
   ]);
+  const slotLinks = slotRows.length
+    ? await db.select({ slotId: buildSlotAssignees.slotId, name: users.name }).from(buildSlotAssignees).innerJoin(users, eq(users.id, buildSlotAssignees.userId)).where(inArray(buildSlotAssignees.slotId, slotRows.map((x) => x.id))).orderBy(asc(users.name))
+    : [];
+  const slotNames = Map.groupBy(slotLinks, (l) => l.slotId);
+  const loads = circuitLoads(circuitRows, powerRows);
   const items = lists.length
     ? await db.select().from(checklistItems).where(inArray(checklistItems.checklistId, lists.map((l) => l.id))).orderBy(asc(checklistItems.position), asc(checklistItems.id))
     : [];
@@ -58,6 +67,12 @@ export async function loadDossier(project: Project, role: ProjectRole) {
     lights,
     inputs,
     conflicts: findConflicts(lights),
+    slots: slotRows.map((x) => ({ day: x.day, start: x.startTime, end: x.endTime, title: x.title, who: (slotNames.get(x.id) ?? []).map((n) => n.name).join(", "), notes: x.notes })),
+    power: {
+      circuits: loads.map((l) => ({ name: l.circuit.name, breaker: l.circuit.breakerAmps, phase: l.circuit.phase, watts: l.watts, amps: l.amps, pct: Math.round(l.pct), level: l.level })),
+      items: powerRows.map((i) => ({ name: i.name, qty: i.qty, watts: i.watts, circuit: circuitRows.find((c) => c.id === i.circuitId)?.name ?? "" })),
+      total: powerRows.reduce((sum, i) => sum + i.watts * i.qty, 0),
+    },
     tasks: cards.map(({ card }) => ({
       title: card.title, status: colTitle.get(card.columnId) ?? "", priority: PRIORITY[card.priority], assignee: (assigneesBy.get(card.id) ?? []).map((a) => a.name).join(", "), due: card.dueDate, labels: card.labels,
     })),
@@ -72,6 +87,15 @@ export const conduiteCsv = (d: Dossier) =>
 
 export const equipeCsv = (d: Dossier) =>
   toCsv(["Nom", "Rôle", "E-mail"], d.members.map((m) => [m.name, m.role, m.email]));
+
+export const planningCsv = (d: Dossier) =>
+  toCsv(["Jour", "Début", "Fin", "Tâche", "Qui", "Notes"], d.slots.map((x) => [x.day, x.start, x.end, x.title, x.who, x.notes]));
+
+export const chargeCsv = (d: Dossier) =>
+  toCsv(
+    ["Circuit", "Calibre (A)", "Phase", "Puissance (W)", "Intensité (A)", "Charge (%)"],
+    d.power.circuits.map((c) => [c.name, c.breaker, `L${c.phase}`, c.watts, fmtAmps(c.amps), c.pct]),
+  );
 
 export const checklistsCsv = (d: Dossier) =>
   toCsv(["Checklist", "Point", "Fait"], d.checklists.flatMap((l) => (l.items.length ? l.items.map((i) => [l.title, i.label, i.done ? "oui" : "non"]) : [[l.title, "", ""]])));
@@ -139,7 +163,7 @@ export function dossierHtml(project: Project, d: Dossier): string {
 ${project.description ? `<p>${esc(project.description).replace(/\n/g, "<br>")}</p>` : ""}
 <p class="toc muted">
   <a href="#equipe">Équipe (${d.members.length})</a> · <a href="#conduite">Conduite (${d.cues.length})</a> · <a href="#checklists">Checklists (${d.checklists.length})</a> ·
-  <a href="#lumiere">Lumière (${d.lights.length})</a> · <a href="#son">Son (${d.inputs.length})</a> · <a href="#taches">Tâches (${d.tasks.length})</a>
+  <a href="#planning">Planning (${d.slots.length})</a> · <a href="#charge">Charge</a> · <a href="#lumiere">Lumière (${d.lights.length})</a> · <a href="#son">Son (${d.inputs.length})</a> · <a href="#taches">Tâches (${d.tasks.length})</a>
 </p>
 
 <h2 id="equipe">Équipe</h2>
@@ -151,6 +175,14 @@ ${table(["N°", "Type", "Cue", "Départ (T+)", "Durée", "Notes"], d.cues.map((c
 
 <h2 id="checklists">Checklists</h2>
 ${checklistHtml}
+
+<h2 id="planning">Planning de montage</h2>
+${table(["Jour", "Début", "Fin", "Tâche", "Qui", "Notes"], d.slots.map((x) => [x.day, x.start, x.end, x.title, x.who, x.notes]), "Aucun créneau.")}
+
+<h2 id="charge">Charge électrique</h2>
+<p class="muted">Total : ${esc(fmtWatts(d.power.total))} (estimation monophasée 230 V)</p>
+${table(["Circuit", "Calibre", "Phase", "Puissance", "Intensité", "Charge"], d.power.circuits.map((c) => [c.name, `${c.breaker} A`, `L${c.phase}`, fmtWatts(c.watts), `${fmtAmps(c.amps)} A`, `${c.pct} %${c.level === "over" ? " ⚠ surcharge" : c.level === "warn" ? " ⚠" : ""}`]), "Aucun circuit.")}
+${table(["Appareil", "Qté", "Watts", "Circuit"], d.power.items.map((i) => [i.name, i.qty, i.watts, i.circuit]), "Aucun appareil.")}
 
 <h2 id="lumiere">Patch lumière</h2>
 ${conflictCount ? `<p class="warn">⚠ ${conflictCount} projecteur${conflictCount > 1 ? "s" : ""} avec un conflit d'adresse.</p>` : ""}
