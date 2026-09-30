@@ -85,6 +85,7 @@ export const settings = mysqlTable("settings", {
 });
 
 export type User = typeof users.$inferSelect;
+export type Project = typeof projects.$inferSelect;
 
 // ---------- Projets ----------
 
@@ -93,6 +94,8 @@ export const projects = mysqlTable("projects", {
   name: varchar("name", { length: 150 }).notNull(),
   description: text("description"),
   eventDate: varchar("event_date", { length: 10 }), // AAAA-MM-JJ, facultatif
+  // Kanban personnel : projet caché à un seul membre, créé automatiquement pour cette personne.
+  personalOf: int("personal_of").unique().references(() => users.id, { onDelete: "cascade" }),
   createdBy: int("created_by")
     .notNull()
     .references(() => users.id),

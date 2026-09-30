@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { CalendarDays, Users } from "lucide-react";
 import { db } from "@/db";
 import { checklistItems, checklists, projectMembers, projects } from "@/db/schema";
@@ -17,7 +17,7 @@ export default async function ProjetsPage() {
     .select({ project: projects, role: projectMembers.role })
     .from(projectMembers)
     .innerJoin(projects, eq(projects.id, projectMembers.projectId))
-    .where(eq(projectMembers.userId, user.id))
+    .where(and(eq(projectMembers.userId, user.id), isNull(projects.personalOf)))
     .orderBy(desc(projects.createdAt));
 
   const ids = mine.map((m) => m.project.id);

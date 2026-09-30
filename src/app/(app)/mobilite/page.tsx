@@ -38,22 +38,30 @@ async function Place({ title, address, origin }: { title: string; address: strin
               <span className="shrink-0 rounded-full border border-line px-2.5 py-0.5 text-sm text-muted">{fmtDistance(s.distance)}</span>
             </div>
             {s.departures.length === 0 && <p className="text-base text-muted">Pas de passage prévu prochainement.</p>}
-            <ul className="divide-y divide-line">
-              {s.departures.slice(0, 5).map((d) => (
-                <li key={d.line + d.destination} className="flex items-center gap-3 py-2 first:pt-0 last:pb-0">
+            {/* Un groupe par ligne (avec ses directions), séparés par un trait. */}
+            {[...Map.groupBy(s.departures, (d) => d.line)].slice(0, 5).map(([line, list], gi) => (
+              <div key={line}>
+                {gi > 0 && <hr className="mb-2.5 border-line" />}
+                <div className="flex items-start gap-3">
                   <span
-                    title={d.lineName}
-                    className={`inline-flex min-w-11 justify-center rounded-lg px-2.5 py-1 text-base font-bold ${
-                      d.tram ? "bg-accent text-accent-fg" : "border border-line bg-surface text-fg"
+                    title={list[0].lineName}
+                    className={`inline-flex min-w-11 shrink-0 justify-center rounded-lg px-2.5 py-1 text-base font-bold ${
+                      list[0].tram ? "bg-accent text-accent-fg" : "border border-line bg-surface text-fg"
                     }`}
                   >
-                    {d.line}
+                    {line}
                   </span>
-                  <span className="min-w-0 flex-1 truncate text-base">{d.destination}</span>
-                  <span className="shrink-0 text-base font-semibold tabular-nums">{d.minutes.map(fmtMinutes).join(" · ")}</span>
-                </li>
-              ))}
-            </ul>
+                  <ul className="min-w-0 flex-1 space-y-1.5">
+                    {list.map((d) => (
+                      <li key={d.destination} className="flex items-center gap-3">
+                        <span className="min-w-0 flex-1 truncate text-base">{d.destination}</span>
+                        <span className="shrink-0 text-base font-semibold tabular-nums">{d.minutes.map(fmtMinutes).join(" · ")}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            ))}
           </div>
         ))}
       </div>

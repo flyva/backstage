@@ -2,7 +2,7 @@ import "server-only";
 import { and, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { db } from "@/db";
-import { projectMembers, projects, type ProjectRole } from "@/db/schema";
+import { kanbanColumns, projectMembers, projects, type ProjectRole } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 
 const RANK: Record<ProjectRole, number> = { viewer: 1, editor: 2, owner: 3 };
@@ -81,3 +81,20 @@ export const CHECKLIST_TEMPLATES: Record<string, { title: string; items: string[
     ],
   },
 };
+
+/** Projet « kanban personnel » de la personne (créé à la première visite). Un seul par personne. */
+export async function getPersonalProject(userId: number) {
+  const find = async () => (await db.select().from(projects).where(eq(projects.personalOf, userId)).limit(1))[0];
+  const existing = await find();
+  if (existing) return existing;
+  try {
+    await db.transaction(async (tx) => {
+      const [res] = await tx.insert(projects).values({ name: "Mon kanban", createdBy: userId, personalOf: userId });
+      await tx.insert(projectMembers).values({ projectId: res.insertId, userId, role: "owner" });
+      await tx.insert(kanbanColumns).values(DEFAULT_KANBAN_COLUMNS.map((title, position) => ({ projectId: res.insertId, title, position })));
+    });
+  } catch {
+    /* deux ouvertures simultanées : l'autre a créé le projet (clé unique) */
+  }
+  return (await find())!;
+}

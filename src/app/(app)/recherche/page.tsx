@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { and, eq, or, sql } from "drizzle-orm";
+import { and, eq, isNull, or, sql } from "drizzle-orm";
 import { BookOpen, Briefcase, CircleHelp, Link2, Newspaper, Package, Search, type LucideIcon } from "lucide-react";
 import { db } from "@/db";
 import { equipmentItems, faqItems, newsPosts, projectMembers, projects, usefulLinks, wikiPages } from "@/db/schema";
@@ -34,7 +34,7 @@ export default async function SearchPage({ searchParams }: PageProps<"/recherche
         .select({ id: projects.id, name: projects.name, description: projects.description })
         .from(projects)
         .innerJoin(projectMembers, and(eq(projectMembers.projectId, projects.id), eq(projectMembers.userId, user.id)))
-        .where(or(sql`${projects.name} like ${like}`, sql`${projects.description} like ${like}`))
+        .where(and(isNull(projects.personalOf), or(sql`${projects.name} like ${like}`, sql`${projects.description} like ${like}`)))
         .limit(8),
       db.select({ id: equipmentItems.id, name: equipmentItems.name, code: equipmentItems.code, category: equipmentItems.category }).from(equipmentItems).where(or(sql`${equipmentItems.name} like ${like}`, sql`${equipmentItems.code} like ${like}`)).limit(8),
       db.select({ id: faqItems.id, question: faqItems.question, answer: faqItems.answer }).from(faqItems).where(or(sql`${faqItems.question} like ${like}`, sql`${faqItems.answer} like ${like}`)).limit(8),

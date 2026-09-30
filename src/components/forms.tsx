@@ -88,7 +88,7 @@ export function ProfileForm(props: { firstName: string; lastName: string; homeAd
         </div>
         <div>
           <label className="label" htmlFor="companyName">Nom de l&apos;entreprise</label>
-          <input id="companyName" name="companyName" defaultValue={props.companyName} maxLength={120} className="input" />
+          <input id="companyName" name="companyName" defaultValue={props.companyName} maxLength={120} autoComplete="off" className="input" />
         </div>
         <AddressField id="companyAddress" name="companyAddress" label="Adresse de l'entreprise" defaultValue={props.companyAddress} />
       </div>

@@ -1,5 +1,6 @@
 import { Markdown } from "@/components/Markdown";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ArrowLeft, CalendarDays } from "lucide-react";
 import { requireProject, ROLE_LABEL } from "@/lib/projects";
 import { ProjectTabs } from "@/components/ProjectTabs";
@@ -9,6 +10,7 @@ const dateFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "UTC", weekday: "lo
 export default async function ProjectLayout({ children, params }: LayoutProps<"/projets/[id]">) {
   const { id } = await params;
   const { project, role } = await requireProject(Number(id));
+  if (project.personalOf !== null) redirect("/kanban"); // le kanban personnel n'a ni checklists, ni conduite, ni équipe
   const tabs = [
     { slug: "", label: "Checklists" },
     { slug: "kanban", label: "Kanban" },
