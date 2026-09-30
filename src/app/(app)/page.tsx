@@ -65,7 +65,7 @@ export default async function HomePage() {
     {
       label: "Prochain cours", icon: Clock, color: "#17a2b8", href: "/agenda",
       value: nextEvent ? timeFmt.format(nextEvent.start) : "–",
-      sub: nextEvent ? `${dayLabel(nextEvent.start)} · ${nextEvent.title}${nextEvent.location ? ` · ${nextEvent.location}` : ""}` : user.icalUrl ? "Aucun cours dans les 2 semaines" : "Ajoute ton lien iCal",
+      sub: nextEvent ? `${dayLabel(nextEvent.start)} · ${nextEvent.title}${nextEvent.location ? `\n${nextEvent.location}` : ""}` : user.icalUrl ? "Aucun cours dans les 2 semaines" : "Ajoute ton lien iCal",
     },
     {
       label: dep ? `Prochain passage (${dep.line})` : "Prochain passage", icon: TramFront, color: "#28a745", href: "/mobilite",
@@ -120,7 +120,7 @@ export default async function HomePage() {
             <span className="grid size-11 place-items-center rounded-xl" style={{ background: `color-mix(in srgb, ${st.color} 16%, transparent)`, color: st.color }}><st.icon size={22} /></span>
             <div className="mt-4 text-sm text-muted">{st.label}</div>
             <div className="mt-1 text-3xl font-bold">{st.value}</div>
-            <div className="mt-1 line-clamp-2 text-xs text-muted" title={st.sub}>{st.sub}</div>
+            <div className="mt-1 line-clamp-3 whitespace-pre-line text-xs text-muted" title={st.sub}>{st.sub}</div>
           </Link>
         ))}
       </section>

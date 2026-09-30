@@ -140,7 +140,7 @@ function TripCard({ title, trip, transit, isAdmin }: { title: string; trip: Trip
                   <span key={l.code} title={l.name} className={`inline-flex min-w-9 justify-center rounded-lg px-2 py-0.5 text-sm font-bold ${l.tram ? "bg-accent text-accent-fg" : "border border-line bg-surface"}`}>{l.code}</span>
                 ))}
                 <span className="text-muted">
-                  {transit.departsInMin <= 0 ? "départ imminent" : `départ dans ${transit.departsInMin} min`}
+                  {transit.transfers > 0 ? `${transit.transfers} correspondance${transit.transfers > 1 ? "s" : ""} · ` : "direct · "}{transit.departsInMin <= 0 ? "départ imminent" : `départ dans ${transit.departsInMin} min`}
                 </span>
               </div>
               <p className="text-xs leading-relaxed text-muted">
@@ -149,7 +149,7 @@ function TripCard({ title, trip, transit, isAdmin }: { title: string; trip: Trip
               </p>
             </div>
           ) : (
-            <p className="mt-2 text-sm text-muted">Pas de ligne directe en service pour le moment. Regarde l&apos;itinéraire complet, avec correspondances.</p>
+            <p className="mt-2 text-sm text-muted">Aucun trajet en transport en commun disponible pour le moment (pas de service). Regarde l&apos;itinéraire complet.</p>
           )}
           <a href={trip.transitUrl} target="_blank" rel="noopener noreferrer" className="btn-ghost mt-3 w-full text-xs">
             Itinéraire complet <ExternalLink size={13} />

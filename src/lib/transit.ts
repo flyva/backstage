@@ -14,6 +14,7 @@ export type TransitPlan = {
   walkEndMin: number;
   totalMin: number;
   departsInMin: number; // départ de l'arrêt, dans N minutes
+  transfers: number; // correspondances
 };
 
 // Marche à ~4,7 km/h, avec un détour de 25 % par rapport à la ligne droite.
@@ -141,6 +142,7 @@ export async function bestTransit(a: LatLng, b: LatLng): Promise<TransitPlan | n
           walkEndMin: walkEnd,
           totalMin: total,
           departsInMin: Math.max(0, dep),
+          transfers: 0,
         };
       }
     }
@@ -148,8 +150,62 @@ export async function bestTransit(a: LatLng, b: LatLng): Promise<TransitPlan | n
   return best;
 }
 
-/** Version mémorisée 45 s : la page se rafraîchit toutes les 30 s et chaque calcul appelle plusieurs API. */
+type MotisLeg = { mode: string; duration: number; startTime: string; routeShortName?: string; displayName?: string; routeLongName?: string; from: { name: string }; to: { name: string } };
+type MotisItinerary = { startTime: string; endTime: string; transfers: number; legs: MotisLeg[] };
+
+// Les heures de l'API (TBM, Transitous) sont des heures locales étiquetées « Z » : on compare donc avec l'heure locale de Bordeaux.
+function parisWallNow(): number {
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Paris", hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }).formatToParts(new Date()).map((x) => [x.type, x.value]));
+  return Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second);
+}
+
+/**
+ * Itinéraire complet, avec correspondances, calculé par Transitous (MOTIS, service public gratuit qui agrège les horaires
+ * théoriques et temps réel de TBM). Renvoie le trajet qui arrive le plus tôt. Les coordonnées sont arrondies (~10 m).
+ */
+export async function bestTransitous(a: LatLng, b: LatLng): Promise<TransitPlan | null> {
+  const r = (n: number) => n.toFixed(4);
+  const url = `https://api.transitous.org/api/v5/plan?fromPlace=${r(a.lat)},${r(a.lng)}&toPlace=${r(b.lat)},${r(b.lng)}&numItineraries=4&maxTransfers=3&transitModes=TRANSIT`;
+  const res = await fetch(url, { headers: { "User-Agent": "Backstage-school-dashboard" }, signal: AbortSignal.timeout(8000), cache: "no-store" });
+  if (!res.ok) throw new Error(`transitous ${res.status}`);
+  const data = (await res.json()) as { itineraries?: MotisItinerary[] };
+  const now = parisWallNow();
+  const lineInfo = await getLines().catch(() => new Map());
+  let best: TransitPlan | null = null;
+  for (const it of data.itineraries ?? []) {
+    const transit = it.legs.filter((l) => l.mode !== "WALK");
+    if (transit.length === 0) continue; // trajet entièrement à pied : déjà couvert par la carte « à pied »/vélo
+    const total = Math.max(1, Math.round((Date.parse(it.endTime) - now) / 60000));
+    const firstIdx = it.legs.findIndex((l) => l.mode !== "WALK");
+    const lastIdx = it.legs.length - 1 - [...it.legs].reverse().findIndex((l) => l.mode !== "WALK");
+    const walkStart = it.legs.slice(0, firstIdx).reduce((n, l) => n + l.duration, 0) / 60;
+    const walkEnd = it.legs.slice(lastIdx + 1).reduce((n, l) => n + l.duration, 0) / 60;
+    const ride = transit.reduce((n, l) => n + l.duration, 0) / 60;
+    const departs = Math.max(0, Math.round((Date.parse(it.legs[firstIdx].startTime) - now) / 60000));
+    if (!best || total < best.totalMin) {
+      best = {
+        lines: transit.map((l) => {
+          const code = l.routeShortName ?? l.displayName ?? "?";
+          const info = [...lineInfo.values()].find((x: { code: string }) => x.code === code) as { name: string; tram: boolean } | undefined;
+          return { code, name: info?.name ?? l.routeLongName ?? "", tram: info?.tram ?? l.mode === "TRAM" };
+        }),
+        from: transit[0].from.name,
+        to: transit[transit.length - 1].to.name,
+        walkStartMin: Math.round(walkStart),
+        waitMin: Math.max(0, Math.round(total - walkStart - ride - walkEnd)),
+        rideMin: Math.round(ride),
+        walkEndMin: Math.round(walkEnd),
+        totalMin: total,
+        departsInMin: departs,
+        transfers: it.transfers,
+      };
+    }
+  }
+  return best;
+}
+
+/** Version mémorisée 45 s : la page se rafraîchit toutes les 30 s. Transitous d'abord (avec correspondances), sinon ligne directe TBM. */
 export async function bestTransitCached(a: LatLng, b: LatLng): Promise<TransitPlan | null> {
   const key = `transit:${a.lat.toFixed(4)},${a.lng.toFixed(4)}:${b.lat.toFixed(4)},${b.lng.toFixed(4)}`;
-  return (await cached(key, 45e3, () => bestTransit(a, b))) ?? null;
+  return (await cached(key, 45e3, async () => (await bestTransitous(a, b).catch(() => undefined)) ?? (await bestTransit(a, b)))) ?? null;
 }
