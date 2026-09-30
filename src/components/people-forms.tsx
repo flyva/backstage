@@ -7,7 +7,7 @@ import { LINK_KINDS, type LinkKind } from "@/db/schema";
 import { LINK_LABEL, initialsOf } from "@/lib/people-shared";
 import {
   addLink, deleteLink, regenerateCardSlug, removeAvatar, saveFiche, saveNetworkContact, saveTrack, setCardEnabled, uploadAvatar,
-  deleteNetworkContact, deleteTrack,
+  deleteNetworkContact, deleteTrack, setFeedEnabled, regenerateFeedToken,
 } from "@/lib/people-actions";
 
 function Feedback({ state }: { state: FormState }) {
@@ -188,6 +188,32 @@ export function CardPanel({ enabled, url, qrSvg }: { enabled: boolean; url: stri
             </div>
             <p className="text-xs text-muted">La carte montre ton nom, ta photo, ta filière, ta présentation, tes liens, ton e-mail de contact (ou 3IS) et ton téléphone si tu l&apos;as autorisé.</p>
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------- Abonnement calendrier ----------
+
+export function FeedPanel({ enabled, httpsUrl }: { enabled: boolean; httpsUrl: string | null }) {
+  const webcal = httpsUrl ? httpsUrl.replace(/^https?:/, "webcal:") : null;
+  return (
+    <div className="space-y-4">
+      <form action={setFeedEnabled} className="flex flex-wrap items-center gap-3">
+        <input type="hidden" name="enabled" value={enabled ? "0" : "1"} />
+        <button className={enabled ? "btn-ghost" : "btn"}>{enabled ? "Désactiver l'abonnement" : "Activer l'abonnement calendrier"}</button>
+        <span className="text-sm text-muted">Ton planning école/entreprise, tes échéances, tes évènements BDE et tes retours de matériel dans Google Agenda, Apple Calendrier ou Outlook.</span>
+      </form>
+      {enabled && httpsUrl && (
+        <div className="space-y-3">
+          <p className="break-all rounded-lg border border-line bg-bg px-3 py-2 text-sm">{httpsUrl}</p>
+          <div className="flex flex-wrap gap-2">
+            <CopyButton value={httpsUrl} label="Copier l'adresse" />
+            {webcal && <a href={webcal} className="btn-ghost">Ouvrir dans mon calendrier</a>}
+            <form action={regenerateFeedToken}><button className="btn-ghost" title="L'ancienne adresse ne fonctionnera plus">Changer l&apos;adresse</button></form>
+          </div>
+          <p className="text-xs text-muted">Colle cette adresse dans « Ajouter un calendrier par URL » (Google Agenda : Autres agendas → À partir de l&apos;URL). Ne la partage pas : elle donne accès à ton planning, et quiconque l&apos;a peut le lire. Elle se met à jour toutes les heures environ.</p>
         </div>
       )}
     </div>

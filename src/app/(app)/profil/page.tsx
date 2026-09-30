@@ -6,7 +6,7 @@ import QRCode from "qrcode";
 import { db } from "@/db";
 import { tracks, userLinks } from "@/db/schema";
 import { ProfileForm } from "@/components/forms";
-import { AvatarForm, CardPanel, FicheForm, LinksEditor } from "@/components/people-forms";
+import { AvatarForm, CardPanel, FeedPanel, FicheForm, LinksEditor } from "@/components/people-forms";
 import { avatarUrl } from "@/lib/avatar-files";
 import { publicBaseUrl } from "@/lib/mail";
 
@@ -20,14 +20,19 @@ export default async function ProfilPage({ searchParams }: PageProps<"/profil">)
     db.select().from(userLinks).where(eq(userLinks.userId, user.id)).orderBy(asc(userLinks.sortOrder)),
   ]);
   // Adresse publique de la carte : APP_URL si défini, sinon celle de la requête.
+  let feedUrl: string | null = null;
   let cardUrl: string | null = null;
   let qrSvg: string | null = null;
-  if (user.cardEnabled && user.cardSlug) {
+  if ((user.cardEnabled && user.cardSlug) || user.feedToken) {
     const h = await headers();
     const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost";
     const proto = h.get("x-forwarded-proto") ?? (/^(localhost|127\.)/.test(host) ? "http" : "https");
-    cardUrl = `${publicBaseUrl() ?? `${proto}://${host}`}/carte/${user.cardSlug}`;
-    qrSvg = await QRCode.toString(cardUrl, { type: "svg", margin: 0, errorCorrectionLevel: "M" });
+    const base = publicBaseUrl() ?? `${proto}://${host}`;
+    if (user.cardEnabled && user.cardSlug) {
+      cardUrl = `${base}/carte/${user.cardSlug}`;
+      qrSvg = await QRCode.toString(cardUrl, { type: "svg", margin: 0, errorCorrectionLevel: "M" });
+    }
+    if (user.feedToken) feedUrl = `${base}/api/feed/${user.feedToken}.ics`;
   }
   return (
     <div className="max-w-2xl space-y-6">
@@ -63,6 +68,11 @@ export default async function ProfilPage({ searchParams }: PageProps<"/profil">)
       <div className="card space-y-3">
         <h2 className="font-semibold">Ma carte de visite en ligne</h2>
         <CardPanel enabled={user.cardEnabled} url={cardUrl} qrSvg={qrSvg} />
+      </div>
+
+      <div className="card space-y-3">
+        <h2 className="font-semibold">Mon calendrier Backstage (abonnement)</h2>
+        <FeedPanel enabled={!!user.feedToken} httpsUrl={feedUrl} />
       </div>
 
       <p className="text-sm text-muted">

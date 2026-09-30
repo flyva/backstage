@@ -180,3 +180,20 @@ export async function deleteTrack(fd: FormData) {
   revalidatePath("/profil");
   revalidatePath("/annuaire");
 }
+
+// ---------- Abonnement calendrier (iCal) ----------
+
+const newFeedToken = () => randomBytes(16).toString("hex"); // 32 caractères
+
+export async function setFeedEnabled(fd: FormData) {
+  const user = await requireUser();
+  await db.update(users).set({ feedToken: fd.get("enabled") === "1" ? (user.feedToken ?? newFeedToken()) : null }).where(eq(users.id, user.id));
+  revalidatePath("/profil");
+}
+
+/** Nouvelle adresse : l'ancienne cesse de fonctionner (à refaire dans l'application de calendrier). */
+export async function regenerateFeedToken() {
+  const user = await requireUser();
+  await db.update(users).set({ feedToken: newFeedToken() }).where(eq(users.id, user.id));
+  revalidatePath("/profil");
+}

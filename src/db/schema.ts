@@ -84,6 +84,7 @@ export const users = mysqlTable("users", {
   showPhone: boolean("show_phone").notNull().default(false), // téléphone visible dans l'annuaire et sur la carte
   cardSlug: varchar("card_slug", { length: 16 }).unique(), // adresse publique non devinable de la carte
   cardEnabled: boolean("card_enabled").notNull().default(false),
+  feedToken: varchar("feed_token", { length: 32 }).unique(), // adresse secrète de l'abonnement calendrier (iCal)
   notifyNews: boolean("notify_news").notNull().default(true),
   notifyBde: boolean("notify_bde").notNull().default(true),
   notifyLoans: boolean("notify_loans").notNull().default(true),
@@ -770,4 +771,77 @@ export const networkContacts = mysqlTable(
     createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
   },
   (t) => [index("nc_user_idx").on(t.userId)],
+);
+
+// ---------- Petites annonces ----------
+
+export const LISTING_CATEGORIES = ["vente", "logement", "mission", "recherche", "don", "autre"] as const;
+export type ListingCategory = (typeof LISTING_CATEGORIES)[number];
+
+export const listings = mysqlTable(
+  "listings",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    userId: int("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    category: mysqlEnum("category", LISTING_CATEGORIES).notNull().default("vente"),
+    title: varchar("title", { length: 120 }).notNull(),
+    description: text("description").notNull(),
+    price: varchar("price", { length: 40 }), // texte libre : « 50 € », « 400 €/mois », « Gratuit »
+    contact: varchar("contact", { length: 160 }).notNull(), // comment joindre la personne
+    photoFile: varchar("photo_file", { length: 40 }),
+    status: mysqlEnum("status", ["active", "closed"]).notNull().default("active"), // « closed » : vendu, pourvu…
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+    expiresAt: datetime("expires_at").notNull(), // l'annonce disparaît d'elle-même (60 jours)
+  },
+  (t) => [index("listing_status_idx").on(t.status, t.createdAt), index("listing_user_idx").on(t.userId)],
+);
+
+// ---------- Sondages de disponibilités ----------
+
+export const polls = mysqlTable(
+  "polls",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    creatorId: int("creator_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 150 }).notNull(),
+    description: varchar("description", { length: 500 }),
+    closed: boolean("closed").notNull().default(false),
+    finalOptionId: int("final_option_id"), // créneau retenu (renseigné à la clôture)
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [index("poll_creator_idx").on(t.creatorId)],
+);
+
+export const pollOptions = mysqlTable(
+  "poll_options",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    pollId: int("poll_id").notNull().references(() => polls.id, { onDelete: "cascade" }),
+    startsAt: datetime("starts_at").notNull(),
+    endsAt: datetime("ends_at"),
+  },
+  (t) => [index("po_poll_idx").on(t.pollId, t.startsAt)],
+);
+
+export const POLL_ANSWERS = ["yes", "maybe", "no"] as const;
+export type PollAnswer = (typeof POLL_ANSWERS)[number];
+
+export const pollVotes = mysqlTable(
+  "poll_votes",
+  {
+    optionId: int("option_id").notNull().references(() => pollOptions.id, { onDelete: "cascade" }),
+    userId: int("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    answer: mysqlEnum("answer", POLL_ANSWERS).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.optionId, t.userId] }), index("pv_user_idx").on(t.userId)],
+);
+
+// Personnes invitées à répondre (elles reçoivent une notification) ; le sondage reste ouvert à toute personne qui a le lien.
+export const pollInvites = mysqlTable(
+  "poll_invites",
+  {
+    pollId: int("poll_id").notNull().references(() => polls.id, { onDelete: "cascade" }),
+    userId: int("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.pollId, t.userId] }), index("pi_user_idx").on(t.userId)],
 );
