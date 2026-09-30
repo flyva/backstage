@@ -11,7 +11,7 @@ import { db } from "@/db";
 import { users, faqItems, usefulLinks, settings } from "@/db/schema";
 import {
   createSession, destroyOtherSessions, destroySession, hashPassword, verifyPassword,
-  requireUser, requireAdmin,
+  requireUser, requireAdmin, getSessionUser,
 } from "@/lib/auth";
 import { newUserRoleId } from "@/lib/roles";
 import { SETTING_KEYS } from "@/lib/settings";
@@ -203,6 +203,18 @@ export async function updateProfile(_: FormState, fd: FormData): Promise<FormSta
   }).where(eq(users.id, user.id));
   revalidatePath("/", "layout");
   return { ok: "Profil enregistré" };
+}
+
+/** Message d'une personne en attente de validation : il s'affiche à l'administrateur avec sa demande. */
+export async function saveRequestNote(_: FormState, fd: FormData): Promise<FormState> {
+  const user = await getSessionUser(); // requireUser renverrait la personne en attente vers /en-attente
+  if (!user || user.status !== "pending") return { error: "Ton compte n'est pas en attente." };
+  const note = String(fd.get("note") ?? "").trim();
+  if (note.length > 500) return { error: "500 caractères maximum" };
+  if (!allow(`note:${user.id}`, 10, 60 * 60e3)) return { error: "Trop de modifications : réessaie plus tard." };
+  await db.update(users).set({ requestNote: note || null }).where(eq(users.id, user.id));
+  revalidatePath("/admin");
+  return { ok: "Message enregistré : l'administrateur le verra avec ta demande." };
 }
 
 // ---------- Administration ----------

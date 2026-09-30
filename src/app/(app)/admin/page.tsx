@@ -41,6 +41,7 @@ export default async function AdminPage() {
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-medium">{u.name}</div>
                   <div className="truncate text-xs text-muted">{u.email}</div>
+                  {u.requestNote && <p className="mt-1 whitespace-pre-line rounded-lg border border-line bg-bg p-2 text-xs">{u.requestNote}</p>}
                 </div>
                 <form action={approveUser}><input type="hidden" name="id" value={u.id} /><button className="btn">Valider</button></form>
                 <form action={rejectUser}><input type="hidden" name="id" value={u.id} /><button className="btn-ghost">Refuser</button></form>

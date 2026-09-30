@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { changePassword, login, register, updateProfile, saveSettings, type FormState } from "@/lib/actions";
+import { changePassword, login, register, saveRequestNote, updateProfile, saveSettings, type FormState } from "@/lib/actions";
 import { PasswordField } from "@/components/PasswordField";
 import { EmailField } from "@/components/EmailField";
 import { AddressField } from "@/components/AddressField";
@@ -156,6 +156,20 @@ export function ChangePasswordForm() {
       </div>
       <Feedback state={state} />
       <button className="btn" disabled={pending || mismatch}>{pending ? "Enregistrement…" : "Changer le mot de passe"}</button>
+    </form>
+  );
+}
+
+export function RequestNoteForm({ defaultValue }: { defaultValue: string }) {
+  const [state, action, pending] = useActionState(saveRequestNote, undefined);
+  return (
+    <form action={action} className="space-y-3">
+      <div>
+        <label className="label" htmlFor="note">Ton message pour l&apos;administrateur</label>
+        <textarea id="note" name="note" rows={4} maxLength={500} defaultValue={defaultValue} className="input" placeholder="Qui es-tu ? Pourquoi demandes-tu l'accès ? (ex. intervenant, ancien élève, membre du BDE…)" />
+      </div>
+      <Feedback state={state} />
+      <button className="btn" disabled={pending}>{pending ? "Envoi…" : "Enregistrer le message"}</button>
     </form>
   );
 }
