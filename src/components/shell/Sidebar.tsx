@@ -26,7 +26,7 @@ export function Sidebar({ user, loanBadge }: { user: { name: string; email: stri
         </span>
       </Link>
 
-      <div className="flex-1 overflow-y-auto p-3">
+      <div className="slim-scroll flex-1 overflow-y-auto p-3">
         <Nav isAdmin={user.isAdmin} views={user.views} loanBadge={loanBadge} />
       </div>
 

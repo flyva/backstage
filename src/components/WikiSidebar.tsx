@@ -64,7 +64,7 @@ export function WikiSidebar({ pages }: { pages: TreePage[] }) {
         <div className="pt-3">{menu}</div>
       </details>
       <aside className="hidden lg:block lg:w-64 lg:shrink-0 print:hidden">
-        <div className="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto rounded-2xl border border-line bg-surface p-3">{menu}</div>
+        <div className="sticky top-20 slim-scroll max-h-[calc(100vh-6rem)] overflow-y-auto rounded-2xl border border-line bg-surface p-3">{menu}</div>
       </aside>
     </>
   );
