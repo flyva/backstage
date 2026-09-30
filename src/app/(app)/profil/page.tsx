@@ -27,7 +27,7 @@ export default async function ProfilPage({ searchParams }: PageProps<"/profil">)
   const tab: TabId = TABS.some((t) => t.id === sp.onglet) ? (sp.onglet as TabId) : "general";
 
   return (
-    <div className="max-w-2xl space-y-5">
+    <div className="space-y-5">
       <h1 className="text-2xl font-bold">Mon profil</h1>
       {welcome && (
         <div className="card border-accent text-sm">
@@ -49,10 +49,11 @@ export default async function ProfilPage({ searchParams }: PageProps<"/profil">)
       </nav>
 
       {tab === "general" && (
-        <>
+        <div className="grid items-start gap-5 xl:grid-cols-2">
           <div className="card">
             <ProfileForm firstName={user.firstName} lastName={user.lastName} homeAddress={user.homeAddress ?? ""} companyName={user.companyName ?? ""} companyAddress={user.companyAddress ?? ""} icalUrl={user.icalUrl ?? ""} />
           </div>
+          <div className="space-y-5">
           <p className="text-sm text-muted">
             Thème, couleurs, notifications et mot de passe : <Link href="/parametres" className="text-accent underline">Paramètres</Link>.
           </p>
@@ -69,7 +70,8 @@ export default async function ProfilPage({ searchParams }: PageProps<"/profil">)
               Ce lien donne accès à ton planning : ne le partage pas. Backstage l&apos;utilisera pour ton agenda.
             </p>
           </div>
-        </>
+          </div>
+        </div>
       )}
 
       {tab === "fiche" && <FicheTab user={user} />}
@@ -84,7 +86,7 @@ type User = Awaited<ReturnType<typeof requireUser>>;
 async function FicheTab({ user }: { user: User }) {
   const allTracks = await db.select().from(tracks).orderBy(asc(tracks.sortOrder), asc(tracks.name));
   return (
-    <>
+    <div className="grid items-start gap-5 lg:grid-cols-[20rem_1fr]">
       <div className="card space-y-3">
         <h2 className="font-semibold">Ma photo</h2>
         <AvatarForm name={user.name} url={avatarUrl(user.avatarFile)} />
@@ -99,7 +101,7 @@ async function FicheTab({ user }: { user: User }) {
           contactEmail={user.contactEmail ?? ""} showInDirectory={user.showInDirectory} showPhone={user.showPhone} cardShowPhone={user.cardShowPhone} discord={user.discord ?? ""} cardShowDiscord={user.cardShowDiscord} cardShowSchool={user.cardShowSchool} showCompany={user.showCompany} companyName={user.companyName ?? ""} loginEmail={user.email}
         />
       </div>
-    </>
+    </div>
   );
 }
 
@@ -120,7 +122,7 @@ async function ShareTab({ user }: { user: User }) {
   const qrSvg = cardUrl ? await QRCode.toString(cardUrl, { type: "svg", margin: 0, errorCorrectionLevel: "M" }) : null;
   const feedUrl = user.feedToken ? await absoluteUrl(`/api/feed/${user.feedToken}.ics`) : null;
   return (
-    <>
+    <div className="grid items-start gap-5 xl:grid-cols-2">
       <div className="card space-y-3">
         <h2 className="font-semibold">Ma carte de visite en ligne</h2>
         <CardPanel enabled={user.cardEnabled} url={cardUrl} qrSvg={qrSvg} />
@@ -129,6 +131,6 @@ async function ShareTab({ user }: { user: User }) {
         <h2 className="font-semibold">Mon calendrier Backstage (abonnement)</h2>
         <FeedPanel enabled={!!user.feedToken} httpsUrl={feedUrl} />
       </div>
-    </>
+    </div>
   );
 }

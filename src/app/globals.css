@@ -95,6 +95,10 @@ body {
 }
 
 /* Barre de défilement fine et discrète (menu latéral, menu du wiki) : invisible au repos, visible au survol. */
+/* Défilement sans aucune barre visible (le menu de gauche). */
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
 .slim-scroll {
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;

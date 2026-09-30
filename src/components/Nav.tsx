@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useState } from "react";
 import {
   BookOpen, BookUser, Bot, Briefcase, Calculator, Car, ChevronRight, Library, CalendarDays, Camera, CircleHelp, Home, Images, Link2, Newspaper, Package, PartyPopper, School, NotebookPen, SquareKanban, TramFront, Users, Contact, Megaphone, CalendarClock, MessageSquare,
   type LucideIcon,
@@ -10,13 +10,13 @@ import {
 
 type Badge = "loans" | "messages";
 type Item = { href: string; label: string; icon: LucideIcon; badge?: Badge; adminOnly?: boolean; module?: string };
-type Group = { id: string; title: string; open: boolean; items: Item[] }; // open : état par défaut
+type Group = { id: string; title: string; items: Item[] };
 
-// Six groupes par thème. Ceux marqués « open » sont déployés par défaut ; le groupe de la page en cours l'est toujours,
-// et le choix de chaque personne est mémorisé sur son appareil.
+// Six groupes par thème, dépliés UN SEUL à la fois (accordéon) : le menu ne dépasse jamais la hauteur de l'écran, donc il ne défile pas.
+// Le groupe de la page en cours est ouvert ; un clic sur un titre ouvre ce groupe (et referme l'autre).
 const GROUPS: Group[] = [
   {
-    id: "quotidien", title: "Au quotidien", open: true,
+    id: "quotidien", title: "Au quotidien",
     items: [
       { href: "/", label: "Accueil", icon: Home },
       { href: "/agenda", label: "Agenda", icon: CalendarDays },
@@ -26,7 +26,7 @@ const GROUPS: Group[] = [
     ],
   },
   {
-    id: "travail", title: "Travail", open: true,
+    id: "travail", title: "Travail",
     items: [
       { href: "/projets", label: "Projets", icon: Briefcase },
       { href: "/kanban", label: "Mon kanban", icon: SquareKanban },
@@ -36,7 +36,7 @@ const GROUPS: Group[] = [
     ],
   },
   {
-    id: "savoirs", title: "Savoirs", open: false,
+    id: "savoirs", title: "Savoirs",
     items: [
       { href: "/wiki", label: "Wiki", icon: BookOpen },
       { href: "/bibliotheque", label: "Bibliothèque", icon: Library },
@@ -45,7 +45,7 @@ const GROUPS: Group[] = [
     ],
   },
   {
-    id: "promo", title: "Promo", open: false,
+    id: "promo", title: "Promo",
     items: [
       { href: "/actus", label: "Actualités", icon: Newspaper, module: "actus" },
       { href: "/annuaire", label: "Annuaire", icon: Users },
@@ -55,7 +55,7 @@ const GROUPS: Group[] = [
     ],
   },
   {
-    id: "vie", title: "Vie étudiante", open: false,
+    id: "vie", title: "Vie étudiante",
     items: [
       { href: "/bde", label: "BDE", icon: PartyPopper, module: "bde" },
       { href: "/galerie", label: "Galerie", icon: Images, module: "galerie" },
@@ -63,7 +63,7 @@ const GROUPS: Group[] = [
     ],
   },
   {
-    id: "ecole", title: "École", open: false,
+    id: "ecole", title: "École",
     items: [
       { href: "/ecole", label: "Wi-Fi et plan", icon: School },
       { href: "/contacts", label: "Contacts", icon: BookUser },
@@ -72,49 +72,30 @@ const GROUPS: Group[] = [
   },
 ];
 
-const STORAGE_KEY = "backstage.nav";
 const isActive = (pathname: string, href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
-
-// Groupes repliés ou dépliés par la personne : mémorisés sur son appareil (lecture par useSyncExternalStore : le serveur
-// et le premier affichage du navigateur partent des réglages par défaut, puis le choix enregistré s'applique).
-const listeners = new Set<() => void>();
-const readSaved = () => { try { return localStorage.getItem(STORAGE_KEY) ?? "{}"; } catch { return "{}"; } };
-const subscribeSaved = (cb: () => void) => {
-  listeners.add(cb);
-  window.addEventListener("storage", cb);
-  return () => { listeners.delete(cb); window.removeEventListener("storage", cb); };
-};
-const writeSaved = (next: Record<string, boolean>) => {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* stockage indisponible */ }
-  listeners.forEach((l) => l());
-};
 
 export function Nav({ isAdmin, loanBadge, messageBadge = 0, views }: { isAdmin: boolean; loanBadge: number; messageBadge?: number; views: Record<string, boolean> }) {
   const pathname = usePathname();
-  const raw = useSyncExternalStore(subscribeSaved, readSaved, () => "{}");
-  const saved = useMemo(() => { try { return JSON.parse(raw) as Record<string, boolean>; } catch { return {}; } }, [raw]);
-  // Repli provisoire du groupe de la page en cours : valable tant qu'on reste sur cette page (en changer le rouvre).
-  const [folded, setFolded] = useState<{ id: string; path: string } | null>(null);
-  const toggle = (id: string, now: boolean, hasActive: boolean) => {
-    if (hasActive) setFolded(now ? { id, path: pathname } : null);
-    else writeSaved({ ...saved, [id]: !now });
-  };
+  // Groupe ouvert : celui de la page en cours, sauf si la personne en a choisi un autre (ou tout refermé) sur cette page.
+  // Changer de page revient au groupe de la nouvelle page.
+  const [choice, setChoice] = useState<{ id: string | null; path: string } | null>(null);
+  const activeId = GROUPS.find((g) => g.items.some((i) => isActive(pathname, i.href)))?.id ?? GROUPS[0].id;
+  const openId = choice && choice.path === pathname ? choice.id : activeId;
+  const toggle = (id: string) => setChoice({ id: openId === id ? null : id, path: pathname });
   const countOf = (badge?: Badge) => (badge === "loans" ? loanBadge : badge === "messages" ? messageBadge : 0);
 
   return (
-    <nav className="space-y-1" aria-label="Navigation principale">
+    <nav className="space-y-0.5" aria-label="Navigation principale">
       {GROUPS.map((g) => {
         const items = g.items.filter((i) => (!i.adminOnly || isAdmin) && (!i.module || views[i.module]));
         if (items.length === 0) return null;
-        const hasActive = items.some((i) => isActive(pathname, i.href));
-        // Le groupe de la page en cours est ouvert ; sinon le choix mémorisé de la personne, sinon l'état par défaut.
-        const open = hasActive ? !(folded?.id === g.id && folded.path === pathname) : (saved[g.id] ?? g.open);
+        const open = openId === g.id;
         const pending = items.reduce((n, i) => n + countOf(i.badge), 0);
         return (
           <div key={g.id}>
             <button
               type="button"
-              onClick={() => toggle(g.id, open, hasActive)}
+              onClick={() => toggle(g.id)}
               aria-expanded={open}
               aria-controls={`nav-${g.id}`}
               className="flex w-full items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-side-muted transition hover:text-side-strong"
@@ -126,7 +107,7 @@ export function Nav({ isAdmin, loanBadge, messageBadge = 0, views }: { isAdmin: 
               )}
             </button>
             {open && (
-              <ul id={`nav-${g.id}`} className="mb-2 space-y-0.5">
+              <ul id={`nav-${g.id}`} className="mb-1.5 space-y-0.5">
                 {items.map(({ href, label, icon: Icon, badge }) => {
                   const active = isActive(pathname, href);
                   const count = countOf(badge);
@@ -135,7 +116,7 @@ export function Nav({ isAdmin, loanBadge, messageBadge = 0, views }: { isAdmin: 
                       <Link
                         href={href}
                         aria-current={active ? "page" : undefined}
-                        className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition ${
+                        className={`flex items-center gap-3 rounded-xl px-3 py-1.5 text-sm transition ${
                           active ? "bg-accent text-accent-fg shadow-[0_2px_8px_color-mix(in_srgb,var(--accent)_40%,transparent)]" : "text-side-text hover:bg-side-hover hover:text-side-strong"
                         }`}
                       >

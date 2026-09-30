@@ -29,7 +29,7 @@ export function Sidebar({ user, loanBadge, messageBadge = 0 }: { user: { name: s
         </span>
       </Link>
 
-      <div className="slim-scroll flex-1 overflow-y-auto p-3">
+      <div className="no-scrollbar flex-1 overflow-y-auto p-3">
         <Nav isAdmin={user.isAdmin} views={user.views} loanBadge={loanBadge} messageBadge={messageBadge} />
       </div>
     </>
