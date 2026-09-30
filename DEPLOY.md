@@ -326,3 +326,13 @@ La **messagerie des annonces** (migration 0035) met en relation acheteur et vend
 **Messages en direct** : les nouveaux messages arrivent par un flux (Server-Sent Events, `/api/messages/<id>/stream`) sans recharger la page, en moins d'une demi-seconde. Le flux passe par le tunnel Cloudflare ; s'il est coupé, la page interroge le serveur toutes les 4 secondes en attendant. **Avis** : seulement après une vente, lorsque l'auteur a conclu l'annonce avec l'acheteur (seuls ces deux-là peuvent se noter).
 
 **Comptes refusés** (migration 0037) : refuser une demande d'accès ne supprime plus le compte. La personne qui se reconnecte voit que sa demande a été refusée, avec le motif écrit par l'administrateur, et reçoit aussi un mail si l'envoi est configuré (de même pour une validation). Un administrateur peut revalider le compte depuis Administration → Utilisateurs (statut « Actif »).
+
+### Dépannage de la connexion Google
+
+- **« La connexion a expiré » (`erreur=session-expiree`)** : le navigateur n'a pas renvoyé le cookie de la tentative de connexion. La cause la plus fréquente est une adresse différente entre celle où tu as cliqué sur le bouton et `APP_URL` (le cookie est propre à un domaine). Vérifie que `APP_URL` est **exactement** l'adresse que tu tapes dans le navigateur (`https://backstage.exemple.fr`, sans `/` final, `https`). Chaque échec est consigné avec sa raison :
+  ```bash
+  journalctl -u backstage -n 50 --no-pager | grep "\[google\]"
+  ```
+  La ligne indique par exemple `cookie … absent (… hôte : …)`, `état différent`, ou `échange du code refusé par Google : HTTP 400` (alors, vérifie l'URI de redirection dans Google Cloud et le secret du client).
+- **Redirection vers `https://localhost:3000/…`** : corrigé. Derrière le tunnel, le serveur ne connaît que son adresse interne ; les redirections utilisent désormais `APP_URL`. Si tu vois encore cette adresse, `APP_URL` n'est pas défini.
+- Chaque tentative de connexion a son propre cookie : un double clic, un deuxième onglet ou un préchargement du lien ne peuvent plus annuler une connexion en cours.

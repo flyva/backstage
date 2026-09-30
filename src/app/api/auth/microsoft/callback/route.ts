@@ -1,9 +1,10 @@
+import { siteUrl } from "@/lib/site-url";
 import { NextResponse } from "next/server";
 import { timingSafeEqual } from "node:crypto";
 import { allowedTenants, appBaseUrl, decodeIdToken, endpointTenant, microsoftConfig, redirectUri, signInWithMicrosoft, validateClaims } from "@/lib/microsoft";
 
 const back = (req: Request, code: string) => {
-  const res = NextResponse.redirect(new URL(`/login?erreur=${code}`, req.url));
+  const res = NextResponse.redirect(siteUrl(`/login?erreur=${code}`, req));
   res.cookies.delete({ name: "ms_oauth", path: "/api/auth/microsoft" });
   return res;
 };
@@ -65,7 +66,7 @@ export async function GET(req: Request) {
   if (!check.ok) return back(req, check.code);
 
   const { created } = await signInWithMicrosoft(check.identity);
-  const res = NextResponse.redirect(new URL(created ? "/profil?bienvenue=1" : "/", req.url));
+  const res = NextResponse.redirect(siteUrl(created ? "/profil?bienvenue=1" : "/", req));
   res.cookies.delete({ name: "ms_oauth", path: "/api/auth/microsoft" });
   return res;
 }

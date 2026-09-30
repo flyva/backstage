@@ -1,3 +1,4 @@
+import { siteUrl } from "@/lib/site-url";
 import { NextResponse } from "next/server";
 import { allowedTenants, appBaseUrl, authorizeUrl, microsoftConfig, newSecret } from "@/lib/microsoft";
 import { allow, clientIp } from "@/lib/rate-limit";
@@ -5,12 +6,12 @@ import { allow, clientIp } from "@/lib/rate-limit";
 export async function GET(req: Request) {
   const cfg = microsoftConfig();
   const base = appBaseUrl(req);
-  if (!cfg || !base) return NextResponse.redirect(new URL("/login?erreur=microsoft-indisponible", req.url));
-  if (!allow(`ms-login:${await clientIp()}`, 30, 10 * 60e3)) return NextResponse.redirect(new URL("/login?erreur=trop-de-tentatives", req.url));
+  if (!cfg || !base) return NextResponse.redirect(siteUrl("/login?erreur=microsoft-indisponible", req));
+  if (!allow(`ms-login:${await clientIp()}`, 30, 10 * 60e3)) return NextResponse.redirect(siteUrl("/login?erreur=trop-de-tentatives", req));
 
   const tenants = await allowedTenants(cfg);
   // Organisation du domaine injoignable chez Microsoft : on n'ouvre rien tant qu'on ne peut pas la vérifier.
-  if (tenants.length === 0) return NextResponse.redirect(new URL("/login?erreur=microsoft-indisponible", req.url));
+  if (tenants.length === 0) return NextResponse.redirect(siteUrl("/login?erreur=microsoft-indisponible", req));
 
   // État, nonce et vérificateur PKCE : gardés dans un cookie court, lus au retour de Microsoft.
   const s = { state: newSecret(), nonce: newSecret(), verifier: newSecret(48) };

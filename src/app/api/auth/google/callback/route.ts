@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { timingSafeEqual } from "node:crypto";
-import { googleConfig, googleRedirectUri, signInWithGoogle, validateGoogleClaims, type GoogleClaims } from "@/lib/google";
+import { googleConfig, googleCookieName, googleRedirectUri, signInWithGoogle, validateGoogleClaims, type GoogleClaims } from "@/lib/google";
 import { appBaseUrl } from "@/lib/microsoft";
+import { siteUrl } from "@/lib/site-url";
 
-const back = (req: Request, code: string) => {
-  const res = NextResponse.redirect(new URL(`/login?erreur=${code}`, req.url));
-  res.cookies.delete({ name: "google_oauth", path: "/api/auth/google" });
+const back = (req: Request, code: string, detail = "", cookie?: string) => {
+  // Journal (sans aucune donnée secrète) : indique pourquoi la connexion a échoué.
+  console.error(`[google] connexion refusée : ${code}${detail ? ` (${detail})` : ""}`);
+  const res = NextResponse.redirect(siteUrl(`/login?erreur=${code}`, req));
+  if (cookie) res.cookies.delete({ name: cookie, path: "/api/auth/google" });
   return res;
 };
 
@@ -25,14 +28,19 @@ export async function GET(req: Request) {
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
 
+  // Le cookie de cette tentative est retrouvé par son nom (dérivé de l'état renvoyé par Google).
+  const cookieName = state && /^[A-Za-z0-9_-]{20,}$/.test(state) ? googleCookieName(state) : null;
   let saved: { state: string; nonce: string; verifier: string } | null = null;
   try {
-    const cookie = req.headers.get("cookie")?.split(/;\s*/).find((c) => c.startsWith("google_oauth="));
-    if (cookie) saved = JSON.parse(decodeURIComponent(cookie.slice("google_oauth=".length)));
+    const found = cookieName ? req.headers.get("cookie")?.split(/;\s*/).find((c) => c.startsWith(`${cookieName}=`)) : undefined;
+    if (found && cookieName) saved = JSON.parse(decodeURIComponent(found.slice(cookieName.length + 1)));
   } catch {
     saved = null;
   }
-  if (!code || !state || !saved || !same(state, saved.state)) return back(req, "session-expiree");
+  if (!code || !state || !saved || !same(state, saved.state)) {
+    const why = !code ? "code absent" : !state ? "état absent" : !saved ? `cookie google_oauth absent (cookies reçus : ${req.headers.get("cookie") ? "oui" : "aucun"}, hôte : ${req.headers.get("host") ?? "?"})` : "état différent de celui du cookie";
+    return back(req, "session-expiree", why, cookieName ?? undefined);
+  }
 
   // Échange du code contre le jeton d'identité (serveur à serveur, avec le secret du client).
   let idToken: string | undefined;
@@ -51,10 +59,10 @@ export async function GET(req: Request) {
       signal: AbortSignal.timeout(10_000),
       cache: "no-store",
     });
-    if (!res.ok) return back(req, "google-echec");
+    if (!res.ok) return back(req, "google-echec", `échange du code refusé par Google : HTTP ${res.status}`, cookieName ?? undefined);
     idToken = ((await res.json()) as { id_token?: string }).id_token;
   } catch {
-    return back(req, "google-echec");
+    return back(req, "google-echec", "échange du code impossible (réseau)", cookieName ?? undefined);
   }
 
   let claims: GoogleClaims | null = null;
@@ -64,14 +72,14 @@ export async function GET(req: Request) {
   } catch {
     claims = null;
   }
-  if (!claims) return back(req, "google-echec");
+  if (!claims) return back(req, "google-echec", "jeton d'identité illisible", cookieName ?? undefined);
   const check = validateGoogleClaims(claims, cfg, saved.nonce);
-  if (!check.ok) return back(req, check.code);
+  if (!check.ok) return back(req, check.code, "jeton d'identité refusé", cookieName ?? undefined);
 
   const { user, created } = await signInWithGoogle(check.identity);
   // Compte personnel non validé : page d'attente (il n'a accès à rien d'autre).
   const target = user.status !== "active" ? "/en-attente" : created ? "/profil?bienvenue=1" : "/";
-  const res = NextResponse.redirect(new URL(target, req.url));
-  res.cookies.delete({ name: "google_oauth", path: "/api/auth/google" });
+  const res = NextResponse.redirect(siteUrl(target, req));
+  if (cookieName) res.cookies.delete({ name: cookieName, path: "/api/auth/google" });
   return res;
 }

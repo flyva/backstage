@@ -34,6 +34,12 @@ export function googleConfig() {
 export type GoogleConfig = NonNullable<ReturnType<typeof googleConfig>>;
 export const googleEnabled = () => googleConfig() !== null;
 
+/**
+ * Cookie propre à chaque tentative de connexion (le nom contient le début de l'état) : un préchargement du lien par le navigateur
+ * ou Cloudflare, un double clic ou deux onglets ne peuvent plus écraser l'état d'une connexion en cours.
+ */
+export const googleCookieName = (state: string) => `goauth_${state.slice(0, 12)}`;
+
 export const googleRedirectUri = (base: string) => `${base}/api/auth/google/callback`;
 
 export function googleAuthorizeUrl(cfg: GoogleConfig, base: string, s: { state: string; nonce: string; verifier: string }) {
