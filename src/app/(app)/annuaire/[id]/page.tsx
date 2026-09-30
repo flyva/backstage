@@ -44,7 +44,7 @@ export default async function MemberPage({ params }: PageProps<"/annuaire/[id]">
       {isSelf && (
         <div className="card border-accent text-sm">
           {u.showInDirectory ? "Voici ta fiche telle que les autres membres la voient. " : "Tu as choisi de ne pas apparaître dans l'annuaire : personne d'autre ne peut ouvrir cette fiche. "}
-          <Link href="/profil" className="font-medium text-accent underline">Modifier dans mon profil</Link>
+          <Link href="/profil?onglet=fiche" className="font-medium text-accent underline">Modifier dans mon profil</Link>
         </div>
       )}
 
