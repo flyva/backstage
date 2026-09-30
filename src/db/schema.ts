@@ -46,6 +46,7 @@ export const users = mysqlTable("users", {
   notifyNews: boolean("notify_news").notNull().default(true),
   notifyBde: boolean("notify_bde").notNull().default(true),
   notifyLoans: boolean("notify_loans").notNull().default(true),
+  notifyReminders: boolean("notify_reminders").notNull().default(true),
   createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
 });
 
@@ -507,3 +508,143 @@ export const projectFiles = mysqlTable(
   (t) => [index("pf_project_idx").on(t.projectId)],
 );
 
+
+// ---------- Alternance : planning école / entreprise et carnet de liaison ----------
+
+export const WORK_KINDS = ["ecole", "entreprise", "conge", "ferie"] as const;
+export type WorkKind = (typeof WORK_KINDS)[number];
+
+export const workDays = mysqlTable(
+  "work_days",
+  {
+    userId: int("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    day: date("day", { mode: "string" }).notNull(),
+    kind: mysqlEnum("kind", WORK_KINDS).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.day] })],
+);
+
+export const workLogs = mysqlTable(
+  "work_logs",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    userId: int("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    day: date("day", { mode: "string" }).notNull(),
+    minutes: int("minutes").notNull().default(0),
+    place: mysqlEnum("place", ["entreprise", "ecole"]).notNull().default("entreprise"),
+    mission: text("mission").notNull(),
+    skills: varchar("skills", { length: 300 }), // compétences travaillées, séparées par des virgules
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [index("wl_user_day_idx").on(t.userId, t.day)],
+);
+
+// ---------- Bibliothèques (régie) ----------
+
+export const fixtureModels = mysqlTable("fixture_models", {
+  id: int("id").primaryKey().autoincrement(),
+  name: varchar("name", { length: 120 }).notNull(),
+  mode: varchar("mode", { length: 60 }),
+  footprint: int("footprint").notNull().default(1),
+  watts: int("watts"),
+  notes: varchar("notes", { length: 300 }),
+  createdBy: int("created_by").notNull().references(() => users.id),
+  createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+});
+
+export const consoleMemories = mysqlTable(
+  "console_memories",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    title: varchar("title", { length: 150 }).notNull(),
+    console: varchar("console", { length: 80 }), // grandMA, ETC, Chamsys…
+    number: varchar("number", { length: 30 }), // numéro de mémoire, de cue, de scène
+    category: varchar("category", { length: 60 }),
+    notes: text("notes"),
+    image: varchar("image", { length: 120 }), // nom d'un fichier envoyé (wiki_files)
+    tags: varchar("tags", { length: 200 }),
+    createdBy: int("created_by").notNull().references(() => users.id),
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+    updatedAt: datetime("updated_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [index("cm_console_idx").on(t.console)],
+);
+
+// ---------- Planning de montage et charge électrique (par projet) ----------
+
+export const buildSlots = mysqlTable(
+  "build_slots",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    projectId: int("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+    day: date("day", { mode: "string" }).notNull(),
+    startTime: varchar("start_time", { length: 5 }).notNull(), // HH:MM
+    endTime: varchar("end_time", { length: 5 }).notNull(),
+    title: varchar("title", { length: 200 }).notNull(),
+    notes: varchar("notes", { length: 500 }),
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [index("bs_project_idx").on(t.projectId, t.day, t.startTime)],
+);
+
+export const buildSlotAssignees = mysqlTable(
+  "build_slot_assignees",
+  {
+    slotId: int("slot_id").notNull().references(() => buildSlots.id, { onDelete: "cascade" }),
+    userId: int("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.slotId, t.userId] })],
+);
+
+export const powerCircuits = mysqlTable(
+  "power_circuits",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    projectId: int("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 60 }).notNull(),
+    breakerAmps: int("breaker_amps").notNull().default(16),
+    phase: int("phase").notNull().default(1), // 1, 2 ou 3 (triphasé)
+    position: int("position").notNull().default(0),
+  },
+  (t) => [index("pc_project_idx").on(t.projectId)],
+);
+
+export const powerItems = mysqlTable(
+  "power_items",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    projectId: int("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+    circuitId: int("circuit_id").references(() => powerCircuits.id, { onDelete: "set null" }),
+    name: varchar("name", { length: 120 }).notNull(),
+    watts: int("watts").notNull(),
+    qty: int("qty").notNull().default(1),
+  },
+  (t) => [index("pi_project_idx").on(t.projectId)],
+);
+
+// ---------- Covoiturage ----------
+
+export const rides = mysqlTable(
+  "rides",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    driverId: int("driver_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 150 }).notNull(), // évènement ou raison du trajet
+    fromPlace: varchar("from_place", { length: 200 }).notNull(),
+    toPlace: varchar("to_place", { length: 200 }).notNull(),
+    departsAt: datetime("departs_at").notNull(),
+    seats: int("seats").notNull().default(3),
+    notes: varchar("notes", { length: 300 }),
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [index("ride_departs_idx").on(t.departsAt)],
+);
+
+export const ridePassengers = mysqlTable(
+  "ride_passengers",
+  {
+    rideId: int("ride_id").notNull().references(() => rides.id, { onDelete: "cascade" }),
+    userId: int("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.rideId, t.userId] })],
+);

@@ -4,6 +4,7 @@ import { bdeEvents, equipmentItems, galleryAlbums, loans, newsPosts, users } fro
 import { requireUser } from "@/lib/auth";
 import { STATUS_LABEL, daysBetween, isManager, todayParis } from "@/lib/equipment";
 import { ago } from "@/lib/relative-time";
+import { cardHref, dueCards } from "@/lib/reminders";
 import { AppShell } from "@/components/shell/AppShell";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { NotificationBell, type NotifItem } from "@/components/shell/NotificationBell";
@@ -20,7 +21,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   const manager = isManager(user);
   const admin = user.role === "admin";
 
-  const [mineDue, requested, lateAll, pendingUsers, news, events, albums, lastLoans] = await Promise.all([
+  const [mineDue, requested, lateAll, pendingUsers, news, events, albums, lastLoans, myCards] = await Promise.all([
     // Mes prêts à rendre demain ou en retard (alertes à traiter)
     db
       .select({ id: loans.id, dueDate: loans.dueDate, name: equipmentItems.name })
@@ -42,6 +43,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
       .where(and(eq(loans.userId, user.id), inArray(loans.status, ["reserved", "rejected", "out", "returned"])))
       .orderBy(desc(loans.requestedAt))
       .limit(2),
+    dueCards(limit, user.id), // mes tâches kanban à échéance (aujourd'hui, demain ou en retard)
   ]);
 
   const loanBadge = mineDue.length + requested.length + Number(lateAll[0]?.n ?? 0);
@@ -50,6 +52,14 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   const seenAt = (user.notifSeenAt ?? user.createdAt).getTime();
 
   const alerts: NotifItem[] = [
+    ...myCards.slice(0, 5).map((c) => ({
+      key: `card-${c.cardId}`,
+      kind: "alert" as const,
+      text: `${c.title} : ${c.dueDate < today ? "en retard" : c.dueDate === today ? "à finir aujourd'hui" : "à finir demain"}`,
+      when: c.personal ? "Mon kanban" : c.projectName,
+      href: cardHref(c),
+      unread: false,
+    })),
     ...mineDue.map((l) => {
       const left = daysBetween(today, l.dueDate);
       return {

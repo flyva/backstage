@@ -9,6 +9,7 @@ import { dayKey, getEvents, type AgendaEvent } from "@/lib/ical";
 import { daysBetween, STATUS_LABEL, todayParis } from "@/lib/equipment";
 import { homeGlance } from "@/lib/glance";
 import { ago } from "@/lib/relative-time";
+import { MyDay } from "@/components/MyDay";
 
 const timeFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit" });
 const dateFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", weekday: "long", day: "numeric", month: "long" });
@@ -113,6 +114,14 @@ export default async function HomePage() {
           Complète ton <Link href="/profil" className="font-medium text-accent underline">profil</Link> : adresse du domicile et lien iCalendar Ypareo pour personnaliser ton espace.
         </div>
       )}
+
+      <MyDay
+        userId={user.id}
+        today={today}
+        events={events}
+        home={home}
+        school={Number.isFinite(parseFloat(s.school_lat ?? "")) && Number.isFinite(parseFloat(s.school_lng ?? "")) ? { lat: parseFloat(s.school_lat!), lng: parseFloat(s.school_lng!) } : null}
+      />
 
       <section className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4" aria-label="En un coup d'œil">
         {stats.map((st) => (

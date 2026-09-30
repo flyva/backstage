@@ -1,9 +1,10 @@
 import { timingSafeEqual } from "node:crypto";
 import { and, eq, inArray, lte } from "drizzle-orm";
 import { db } from "@/db";
-import { equipmentItems, loans, users } from "@/db/schema";
+import { equipmentItems, loans, users, workDays } from "@/db/schema";
 import { daysBetween, todayParis } from "@/lib/equipment";
 import { notifyUser } from "@/lib/push";
+import { cardHref, dueCards } from "@/lib/reminders";
 
 // Appelé une fois par jour (cron / timer systemd) avec l'en-tête  Authorization: Bearer <CRON_SECRET>.
 // Envoie un rappel aux emprunteurs dont le matériel est à rendre bientôt ou en retard,
@@ -46,7 +47,27 @@ async function run(req: Request) {
       managers += await notifyUser(s.id, { title: "Prêts en retard", body: `${overdue} prêt(s) de matériel en retard.`, url: "/materiel/gestion", tag: "loans-overdue" }, "loans");
     }
   }
-  return Response.json({ ok: true, loansConcerned: due.length, overdue, notifiedBorrowers: borrowers, notifiedManagers: managers });
+  // Rappels de tâches (kanban) : un seul message par personne, avec les échéances du jour, de demain et les retards.
+  const cards = await dueCards(limit);
+  const byUser = Map.groupBy(cards, (c) => c.userId);
+  let reminded = 0;
+  for (const [uid, list] of byUser) {
+    const late = list.filter((c) => c.dueDate < today).length;
+    const todayN = list.filter((c) => c.dueDate === today).length;
+    const tomorrowN = list.filter((c) => c.dueDate > today).length;
+    const parts = [late && `${late} en retard`, todayN && `${todayN} pour aujourd'hui`, tomorrowN && `${tomorrowN} pour demain`].filter(Boolean).join(", ");
+    const names = list.slice(0, 3).map((c) => c.title).join(" · ");
+    reminded += await notifyUser(uid, { title: "Tâches à finir", body: `${parts} : ${names}${list.length > 3 ? "…" : ""}`, url: cardHref(list[0]), tag: `due-${uid}` }, "reminders");
+  }
+
+  // Rappel de la veille : « Demain : entreprise / école » (d'après le planning de l'alternance).
+  const plan = await db.select({ userId: workDays.userId, kind: workDays.kind }).from(workDays).where(and(eq(workDays.day, limit), inArray(workDays.kind, ["ecole", "entreprise"])));
+  let planned = 0;
+  for (const p of plan) {
+    planned += await notifyUser(p.userId, { title: "Demain", body: p.kind === "ecole" ? "Demain : journée à l'école." : "Demain : journée en entreprise.", url: "/alternance", tag: `plan-${p.userId}` }, "reminders");
+  }
+
+  return Response.json({ ok: true, remindedTasks: reminded, remindedPlanning: planned, loansConcerned: due.length, overdue, notifiedBorrowers: borrowers, notifiedManagers: managers });
 }
 
 export const GET = run;
