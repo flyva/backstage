@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  BookOpen, Briefcase, Car, Library, CalendarDays, Camera, CircleHelp, Home, Images, Link2, Newspaper, Package, PartyPopper, School, NotebookPen, Settings, Shield, SquareKanban, TramFront, User,
+  BookOpen, Briefcase, Calculator, Car, Library, CalendarDays, Camera, CircleHelp, Home, Images, Link2, Newspaper, Package, PartyPopper, School, NotebookPen, Settings, Shield, SquareKanban, TramFront, User,
   type LucideIcon,
 } from "lucide-react";
 
@@ -26,6 +26,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
       { href: "/kanban", label: "Mon kanban", icon: SquareKanban },
       { href: "/wiki", label: "Wiki", icon: BookOpen },
       { href: "/bibliotheque", label: "Bibliothèque", icon: Library },
+      { href: "/calculettes", label: "Calculettes", icon: Calculator },
       { href: "/materiel", label: "Matériel", icon: Package, badge: "loans" },
     ],
   },
