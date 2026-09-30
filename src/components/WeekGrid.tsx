@@ -5,8 +5,8 @@ import type { AgendaEvent } from "@/lib/ical";
 
 // Planning de la semaine en grille horaire (une colonne par jour, une ligne par heure) : les cours sont placés selon leur heure.
 
-const HOUR_PX = 64; // hauteur d'une heure
-const MIN_EVENT_PX = 30;
+const HOUR_PX = 80; // hauteur d'une heure
+const MIN_EVENT_PX = 36;
 const dayFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "UTC", weekday: "short", day: "numeric" });
 const timeFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit" });
 const partsFmt = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
@@ -56,12 +56,12 @@ export function WeekGrid({ days, byDay, kinds, today, nowMinutes }: {
 
   // Le week-end reste étroit tant qu'il n'y a rien dedans.
   const cols = days.map(({ key }, i) => (i >= 5 && !(byDay.get(key)?.length) && !kinds.get(key) ? "0.45fr" : "1fr"));
-  const template = `3.5rem ${cols.join(" ")}`;
+  const template = `3rem ${cols.join(" ")}`;
   const anyAllDay = days.some(({ key }) => (byDay.get(key) ?? []).some((e) => e.allDay));
 
   return (
-    <div className="card overflow-x-auto p-0">
-      <div className="min-w-[860px]">
+    <div className="card slim-scroll overflow-x-auto p-0">
+      <div className="min-w-[600px]">
         {/* En-têtes des jours */}
         <div className="grid border-b border-line bg-surface" style={{ gridTemplateColumns: template }}>
           <div />
@@ -69,7 +69,7 @@ export function WeekGrid({ days, byDay, kinds, today, nowMinutes }: {
             const kind = kinds.get(key);
             return (
               <div key={key} className={`border-l border-line px-2 py-2 text-center ${key === today ? "bg-accent/10" : ""}`}>
-                <div className={`text-sm font-semibold capitalize ${key === today ? "text-accent" : ""}`}>{dayFmt.format(date)}</div>
+                <div className={`text-base font-semibold capitalize ${key === today ? "text-accent" : ""}`}>{dayFmt.format(date)}</div>
                 {kind && <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${KIND_CLASS[kind]}`}>{KIND_LABEL[kind]}</span>}
               </div>
             );
@@ -94,7 +94,7 @@ export function WeekGrid({ days, byDay, kinds, today, nowMinutes }: {
         <div className="grid" style={{ gridTemplateColumns: template }}>
           <div className="relative" style={{ height }}>
             {hours.map((h) => (
-              <div key={h} className="absolute right-2 -translate-y-1/2 text-[11px] tabular-nums text-muted" style={{ top: (h - startH) * HOUR_PX }}>
+              <div key={h} className="absolute right-1.5 -translate-y-1/2 text-xs tabular-nums text-muted" style={{ top: (h - startH) * HOUR_PX }}>
                 {h > startH ? `${h} h` : ""}
               </div>
             ))}
@@ -112,13 +112,13 @@ export function WeekGrid({ days, byDay, kinds, today, nowMinutes }: {
                   return (
                     <div
                       key={e.id}
-                      className="absolute overflow-hidden rounded-lg border border-line border-l-4 border-l-accent bg-surface p-1.5 text-xs shadow-sm"
+                      className="absolute overflow-hidden rounded-lg border border-line border-l-4 border-l-accent bg-surface p-2 text-sm shadow-sm"
                       style={{ top, height: h - 2, left: `calc(${(lane / lanes) * 100}% + 2px)`, width: `calc(${100 / lanes}% - 4px)` }}
                       title={`${e.title}\n${timeFmt.format(e.start)} – ${timeFmt.format(e.end)}${e.location ? `\n${e.location}` : ""}`}
                     >
-                      <div className="font-semibold leading-tight text-accent tabular-nums">{timeFmt.format(e.start)} – {timeFmt.format(e.end)}</div>
-                      <div className="mt-0.5 text-[13px] font-medium leading-snug">{e.title}</div>
-                      {e.location && h > 70 && <div className="mt-0.5 flex items-center gap-1 text-muted"><MapPin size={11} /> <span className="truncate">{e.location}</span></div>}
+                      <div className="text-xs font-semibold leading-tight text-accent tabular-nums">{timeFmt.format(e.start)} – {timeFmt.format(e.end)}</div>
+                      <div className="mt-0.5 text-sm font-medium leading-snug">{e.title}</div>
+                      {e.location && h > 90 && <div className="mt-0.5 flex items-center gap-1 text-muted"><MapPin size={11} /> <span className="truncate">{e.location}</span></div>}
                     </div>
                   );
                 })}
