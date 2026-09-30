@@ -25,7 +25,7 @@ export default async function PendingPage() {
           Ton compte Google <strong className="text-fg">{user.email}</strong> est bien créé, mais ce n&apos;est pas une adresse de l&apos;école :
           un administrateur doit le valider avant que tu puisses accéder à Backstage.
         </p>
-        <p className="text-sm text-muted">Ta demande apparaît chez les administrateurs. Laisse-leur un message pour qu'ils sachent qui tu es, puis reviens te connecter : l&apos;accès s&apos;ouvrira dès la validation.</p>
+        <p className="text-sm text-muted">Ta demande apparaît chez les administrateurs. Laisse-leur un message pour qu&apos;ils sachent qui tu es, puis reviens te connecter : l&apos;accès s&apos;ouvrira dès la validation.</p>
         <RequestNoteForm defaultValue={row?.note ?? ""} />
         <form action={logout}><button className="btn-ghost">Se déconnecter</button></form>
       </div>

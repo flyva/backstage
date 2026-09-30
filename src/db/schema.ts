@@ -35,6 +35,13 @@ export const roles = mysqlTable("roles", {
   createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
 });
 
+// Filières de l'école (Spectacle et évènementiel, Acting, Cinéma…) : gérées dans l'administration, choisies par chaque personne.
+export const tracks = mysqlTable("tracks", {
+  id: int("id").primaryKey().autoincrement(),
+  name: varchar("name", { length: 80 }).notNull().unique(),
+  sortOrder: int("sort_order").notNull().default(0),
+});
+
 export const users = mysqlTable("users", {
   id: int("id").primaryKey().autoincrement(),
   email: varchar("email", { length: 190 }).notNull().unique(),
@@ -67,6 +74,16 @@ export const users = mysqlTable("users", {
   requestNote: varchar("request_note", { length: 500 }), // message laissé par une personne en attente de validation (qui elle est, pourquoi elle demande l'accès)
   googleSub: varchar("google_sub", { length: 40 }).unique(), // identifiant Google (« sub »)
   msOid: varchar("ms_oid", { length: 80 }).unique(), // « tid.oid » : organisation + identifiant dans l'organisation
+  // Fiche personnelle : annuaire de la promo et carte de visite en ligne.
+  trackId: int("track_id").references(() => tracks.id, { onDelete: "set null" }), // filière
+  avatarFile: varchar("avatar_file", { length: 40 }),
+  headline: varchar("headline", { length: 120 }), // « Régisseur son · alternant chez… »
+  phone: varchar("phone", { length: 30 }),
+  contactEmail: varchar("contact_email", { length: 190 }), // adresse affichée sur la carte de visite (sinon l'adresse 3IS)
+  showInDirectory: boolean("show_in_directory").notNull().default(true),
+  showPhone: boolean("show_phone").notNull().default(false), // téléphone visible dans l'annuaire et sur la carte
+  cardSlug: varchar("card_slug", { length: 16 }).unique(), // adresse publique non devinable de la carte
+  cardEnabled: boolean("card_enabled").notNull().default(false),
   notifyNews: boolean("notify_news").notNull().default(true),
   notifyBde: boolean("notify_bde").notNull().default(true),
   notifyLoans: boolean("notify_loans").notNull().default(true),
@@ -718,3 +735,39 @@ export const pendingRegistrations = mysqlTable("pending_registrations", {
   expiresAt: datetime("expires_at").notNull(),
   createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
 });
+
+// ---------- Liens personnels (réseaux, portfolio) et carnet de réseau ----------
+
+export const LINK_KINDS = ["linkedin", "instagram", "youtube", "vimeo", "behance", "github", "tiktok", "x", "facebook", "portfolio", "site", "autre"] as const;
+export type LinkKind = (typeof LINK_KINDS)[number];
+
+export const userLinks = mysqlTable(
+  "user_links",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    userId: int("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    kind: mysqlEnum("kind", LINK_KINDS).notNull().default("site"),
+    url: varchar("url", { length: 300 }).notNull(),
+    label: varchar("label", { length: 60 }),
+    sortOrder: int("sort_order").notNull().default(0),
+  },
+  (t) => [index("ul_user_idx").on(t.userId)],
+);
+
+// Carnet de réseau : contacts professionnels de chaque personne (visibles par elle seule).
+export const networkContacts = mysqlTable(
+  "network_contacts",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    userId: int("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 120 }).notNull(),
+    jobTitle: varchar("job_title", { length: 120 }),
+    company: varchar("company", { length: 120 }),
+    email: varchar("email", { length: 190 }),
+    phone: varchar("phone", { length: 30 }),
+    linkUrl: varchar("link_url", { length: 300 }),
+    notes: text("notes"),
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [index("nc_user_idx").on(t.userId)],
+);

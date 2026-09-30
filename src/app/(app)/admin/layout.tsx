@@ -5,6 +5,7 @@ const TABS = [
   { slug: "", label: "Général" },
   { slug: "utilisateurs", label: "Utilisateurs" },
   { slug: "roles", label: "Rôles" },
+  { slug: "filieres", label: "Filières" },
   { slug: "checklists", label: "Checklists" },
   { slug: "faq", label: "FAQ" },
   { slug: "liens", label: "Liens utiles" },

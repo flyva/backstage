@@ -232,6 +232,13 @@
       "when": 1790790823648,
       "tag": "0032_wealthy_betty_ross",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "5",
+      "when": 1790795063547,
+      "tag": "0033_old_hitman",
+      "breakpoints": true
     }
   ]
 }
