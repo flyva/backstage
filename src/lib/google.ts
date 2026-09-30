@@ -7,6 +7,7 @@ import { newUserRoleId } from "@/lib/roles";
 import { allowedDomainsFromEnv, emailInDomains } from "@/lib/email-domain";
 import { challengeFor, newSecret } from "@/lib/microsoft";
 import { joinName, splitName } from "@/lib/names";
+import { notifyPendingAccount } from "@/lib/admin-notify";
 import { skinFrom } from "@/lib/skin";
 import { writeSkinCookies } from "@/lib/skin-cookies";
 
@@ -122,5 +123,6 @@ export async function signInWithGoogle(identity: GoogleIdentity): Promise<{ user
   });
   const [created] = await db.select().from(users).where(eq(users.id, res.insertId)).limit(1);
   await open(created);
+  if (status === "pending") await notifyPendingAccount({ name: created.name, email: created.email });
   return { user: created, created: true };
 }

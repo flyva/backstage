@@ -23,6 +23,7 @@ import { skinFrom } from "@/lib/skin";
 import { writeSkinCookies } from "@/lib/skin-cookies";
 import { timingSafeEqual } from "node:crypto";
 import { fetchIcal, clearIcalCache } from "@/lib/ical";
+import { notifyPendingAccount } from "@/lib/admin-notify";
 import { startVerifiedRegistration } from "@/lib/registration-verify";
 import { verificationEnabled } from "@/lib/mail";
 
@@ -212,7 +213,9 @@ export async function saveRequestNote(_: FormState, fd: FormData): Promise<FormS
   const note = String(fd.get("note") ?? "").trim();
   if (note.length > 500) return { error: "500 caractères maximum" };
   if (!allow(`note:${user.id}`, 10, 60 * 60e3)) return { error: "Trop de modifications : réessaie plus tard." };
+  const [before] = await db.select({ note: users.requestNote }).from(users).where(eq(users.id, user.id)).limit(1);
   await db.update(users).set({ requestNote: note || null }).where(eq(users.id, user.id));
+  if (note && !before?.note) await notifyPendingAccount({ name: user.name, email: user.email, note }); // premier message : l'administrateur est prévenu avec le texte
   revalidatePath("/admin");
   return { ok: "Message enregistré : l'administrateur le verra avec ta demande." };
 }

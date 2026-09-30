@@ -304,3 +304,5 @@ Sur un VPS OVH, le port 25 sortant est bloqué par défaut : on n'en a pas besoi
 ### Confirmation de l'adresse à l'inscription
 
 Dès que `MAIL_HOST` **et** `APP_URL` sont définis, une nouvelle inscription n'est plus immédiate : la personne reçoit un lien (valable 24 h) et son compte n'est créé qu'après avoir cliqué sur « Activer mon compte ». Seul le tout premier compte (l'administrateur) en est dispensé. Sans mail configuré, l'inscription reste immédiate ; dans ce cas, garde `REGISTRATION_CODE`. Avec la confirmation par mail, le code n'est plus nécessaire.
+
+Quand le SMTP est configuré, les administrateurs reçoivent aussi un mail à chaque nouvelle demande d'accès (compte Google hors école en attente), puis un second quand la personne laisse son message.
