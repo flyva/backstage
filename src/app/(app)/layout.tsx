@@ -7,6 +7,8 @@ import { ago } from "@/lib/relative-time";
 import { AppShell } from "@/components/shell/AppShell";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { NotificationBell, type NotifItem } from "@/components/shell/NotificationBell";
+import { QuickTheme } from "@/components/shell/SkinControls";
+import { skinFrom } from "@/lib/skin";
 import { UserMenu } from "@/components/shell/UserMenu";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
@@ -98,7 +100,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   return (
     <AppShell
       sidebar={<Sidebar user={{ name: user.name, email: user.email, role: user.role }} loanBadge={loanBadge} />}
-      bell={<NotificationBell items={items} unread={unread} />}
+      bell={<><QuickTheme initial={skinFrom(user)} /><NotificationBell items={items} unread={unread} /></>}
       menu={<UserMenu name={user.name} email={user.email} />}
     >
       {children}

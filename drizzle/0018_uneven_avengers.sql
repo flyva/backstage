@@ -1,0 +1,1 @@
+ALTER TABLE `users` MODIFY COLUMN `accent` enum('ambre','bleu','indigo','vert','rose','blanc','noir') NOT NULL DEFAULT 'blanc';

@@ -8,8 +8,8 @@ export const ACCENT_INFO: Record<Accent, { label: string; light: string; dark: s
   indigo: { label: "Indigo", light: "#4f46e5", dark: "#8b93ff" },
   vert: { label: "Émeraude", light: "#047857", dark: "#34d399" },
   rose: { label: "Rose", light: "#be185d", dark: "#f472b6" },
-  blanc: { label: "Blanc", light: "#ffffff", dark: "#ffffff" },
-  noir: { label: "Noir", light: "#111111", dark: "#111111" },
+  blanc: { label: "Blanc (contraste)", light: "#111111", dark: "#ffffff" },
+  noir: { label: "Noir (inversé)", light: "#e5e7eb", dark: "#000000" },
 };
 
 export type SidebarSkin = "dark" | "light";
@@ -19,6 +19,6 @@ export const isAccent = (v: unknown): v is Accent => typeof v === "string" && (A
 export const skinFrom = (v: { theme?: string; accent?: string; sidebar?: string }) => ({
   // « system » (ancien réglage) est traité comme clair : le blanc est le thème par défaut.
   theme: (v.theme === "dark" ? "dark" : "light") as ThemeMode,
-  accent: (isAccent(v.accent) ? v.accent : "ambre") as Accent,
+  accent: (isAccent(v.accent) ? v.accent : "blanc") as Accent,
   sidebar: (v.sidebar === "light" ? "light" : "dark") as SidebarSkin,
 });

@@ -23,7 +23,7 @@ function subscribeHtml(cb: () => void) {
 }
 const readHtml = () => {
   const el = document.documentElement;
-  return `${el.classList.contains("dark") ? "dark" : "light"}|${el.dataset.accent ?? "ambre"}|${el.dataset.sidebar ?? "dark"}`;
+  return `${el.classList.contains("dark") ? "dark" : "light"}|${el.dataset.accent ?? "blanc"}|${el.dataset.sidebar ?? "dark"}`;
 };
 function useSkin(initial: Skin): Skin {
   const snap = useSyncExternalStore(subscribeHtml, readHtml, () => `${initial.theme}|${initial.accent}|${initial.sidebar}`);
@@ -82,7 +82,7 @@ export function SkinControls({ initial }: { initial: Skin }) {
               className="grid size-7 place-items-center rounded-full outline-offset-2"
               style={{ background: ACCENT_INFO[a][current.theme], boxShadow: "inset 0 0 0 1px rgba(128,128,128,.55)", outline: current.accent === a ? `2px solid ${ACCENT_INFO[a][current.theme]}` : undefined }}
             >
-              {current.accent === a && <Check size={14} className={a === "blanc" ? "text-black" : "text-white"} />}
+              {current.accent === a && <Check size={14} className={(a === "blanc" && current.theme === "dark") || (a === "noir" && current.theme === "light") ? "text-black" : "text-white"} />}
             </button>
           ))}
         </div>

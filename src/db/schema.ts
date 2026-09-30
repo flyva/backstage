@@ -24,7 +24,7 @@ export const users = mysqlTable("users", {
   role: mysqlEnum("role", ["admin", "materiel", "bde", "member"]).notNull().default("member"),
   theme: mysqlEnum("theme", ["system", "light", "dark"]).notNull().default("light"),
   // Skin personnel (panneau de droite) : couleur d'accent et couleur du menu.
-  accent: mysqlEnum("accent", ["ambre", "bleu", "indigo", "vert", "rose", "blanc", "noir"]).notNull().default("ambre"),
+  accent: mysqlEnum("accent", ["ambre", "bleu", "indigo", "vert", "rose", "blanc", "noir"]).notNull().default("blanc"),
   sidebar: mysqlEnum("sidebar", ["dark", "light"]).notNull().default("dark"),
   homeAddress: varchar("home_address", { length: 255 }),
   homeLat: double("home_lat"),

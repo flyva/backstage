@@ -12,9 +12,9 @@ export function Sidebar({ user, loanBadge }: { user: { name: string; email: stri
   return (
     <>
       <div className="flex h-14 shrink-0 items-center gap-2 border-b border-side-line px-4">
-        <span className="grid size-8 place-items-center rounded-lg bg-accent font-bold text-accent-fg">B</span>
+        <span className="grid size-8 place-items-center rounded-lg bg-accent text-[13px] font-extrabold tracking-tight text-accent-fg">3IS</span>
         <Link href="/" className="text-lg font-semibold tracking-tight text-side-strong">
-          Back<span className="text-accent">stage</span>
+          Back<span className="text-side-text">stage</span>
         </Link>
       </div>
 
