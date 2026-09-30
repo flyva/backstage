@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
-import { ChevronLeft, ChevronRight, Maximize, RotateCcw } from "lucide-react";
+import { ChevronLeft, ChevronRight, Maximize, Pause, Play, RotateCcw } from "lucide-react";
 
 export type ShowCue = {
   id: number;
@@ -12,7 +12,8 @@ export type ShowCue = {
   notes: string | null;
 };
 
-type ShowState = { index: number; cueStartedAt: number | null; showStartedAt: number | null };
+// pausedAt : instant de la mise en pause (le chronomètre est figé), null sinon.
+type ShowState = { index: number; cueStartedAt: number | null; showStartedAt: number | null; pausedAt?: number | null };
 const EMPTY: ShowState = { index: -1, cueStartedAt: null, showStartedAt: null };
 
 // ---- petit store branché sur localStorage (l'état survit à un rechargement de page) ----
@@ -71,15 +72,28 @@ export function ShowMode({ projectId, projectName, cues }: { projectId: number; 
     }
   }, [raw, cues.length]);
 
+  const paused = !!state.pausedAt;
+
   const go = useCallback(() => {
-    if (state.index >= cues.length - 1) return;
+    if (state.index >= cues.length - 1 || state.pausedAt) return;
     const now = Date.now();
     write(key, { index: state.index + 1, cueStartedAt: now, showStartedAt: state.showStartedAt ?? now });
   }, [key, state, cues.length]);
 
   const back = useCallback(() => {
-    if (state.index < 0) return;
+    if (state.index < 0 || state.pausedAt) return;
     write(key, { ...state, index: state.index - 1, cueStartedAt: Date.now() });
+  }, [key, state]);
+
+  // Pause : le chronomètre de la cue et celui du spectacle sont figés ; à la reprise, ils repartent d'où ils s'étaient arrêtés.
+  const togglePause = useCallback(() => {
+    if (state.index < 0) return;
+    if (state.pausedAt) {
+      const gap = Date.now() - state.pausedAt;
+      write(key, { ...state, pausedAt: null, cueStartedAt: (state.cueStartedAt ?? 0) + gap, showStartedAt: (state.showStartedAt ?? 0) + gap });
+    } else {
+      write(key, { ...state, pausedAt: Date.now() });
+    }
   }, [key, state]);
 
   const reset = useCallback(() => {
@@ -91,12 +105,13 @@ export function ShowMode({ projectId, projectName, cues }: { projectId: number; 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.target instanceof Element && e.target.closest("input, textarea, select, button")) return;
-      if (e.code === "Space" || e.key === "ArrowRight") { e.preventDefault(); go(); }
+      if (e.key === "p" || e.key === "P") { e.preventDefault(); togglePause(); }
+      else if (e.code === "Space" || e.key === "ArrowRight") { e.preventDefault(); go(); }
       else if (e.key === "ArrowLeft") { e.preventDefault(); back(); }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [go, back]);
+  }, [go, back, togglePause]);
 
   // Empêche l'écran de se mettre en veille pendant le spectacle.
   useEffect(() => {
@@ -115,8 +130,9 @@ export function ShowMode({ projectId, projectName, cues }: { projectId: number; 
 
   const current = state.index >= 0 ? cues[state.index] : null;
   const next = cues[state.index + 1] ?? null;
-  const cueElapsed = state.cueStartedAt ? nowSec - Math.floor(state.cueStartedAt / 1000) : 0;
-  const showElapsed = state.showStartedAt ? nowSec - Math.floor(state.showStartedAt / 1000) : 0;
+  const now = state.pausedAt ? Math.floor(state.pausedAt / 1000) : nowSec; // en pause, l'horloge est figée
+  const cueElapsed = state.cueStartedAt ? now - Math.floor(state.cueStartedAt / 1000) : 0;
+  const showElapsed = state.showStartedAt ? now - Math.floor(state.showStartedAt / 1000) : 0;
   const remaining = current?.durationSec != null ? current.durationSec - cueElapsed : null;
   const over = remaining !== null && remaining < 0;
   const finished = state.index === cues.length - 1;
@@ -132,6 +148,7 @@ export function ShowMode({ projectId, projectName, cues }: { projectId: number; 
       </div>
 
       <section className="card space-y-3 py-8 text-center" aria-live="polite">
+        {paused && <div className="mx-auto w-fit rounded-full bg-accent px-3 py-1 text-sm font-bold text-accent-fg">EN PAUSE</div>}
         {current ? (
           <>
             <div className="font-mono text-sm text-accent">CUE {current.label} · {current.category}</div>
@@ -153,15 +170,18 @@ export function ShowMode({ projectId, projectName, cues }: { projectId: number; 
       </section>
 
       <div className="flex gap-2">
-        <button onClick={back} disabled={state.index < 0} className="btn-ghost px-4 py-4" aria-label="Cue précédente">
+        <button onClick={back} disabled={state.index < 0 || paused} className="btn-ghost px-4 py-4" aria-label="Cue précédente">
           <ChevronLeft size={22} />
         </button>
-        <button onClick={go} disabled={finished} className="btn flex-1 py-4 text-xl font-bold">
+        <button onClick={go} disabled={finished || paused} className="btn flex-1 py-4 text-xl font-bold">
           {finished ? "Fin du spectacle" : state.index < 0 ? "GO" : "GO cue suivante"} <ChevronRight size={22} />
+        </button>
+        <button onClick={togglePause} disabled={state.index < 0} className={paused ? "btn px-4 py-4" : "btn-ghost px-4 py-4"} aria-label={paused ? "Reprendre" : "Mettre en pause"} title={paused ? "Reprendre (P)" : "Pause (P)"}>
+          {paused ? <Play size={20} /> : <Pause size={20} />}
         </button>
         <button onClick={reset} className="btn-ghost px-4 py-4" aria-label="Remise à zéro"><RotateCcw size={20} /></button>
       </div>
-      <p className="text-center text-xs text-muted">Espace ou → pour GO · ← pour revenir</p>
+      <p className="text-center text-xs text-muted">Espace ou → pour GO · ← pour revenir · P pour la pause</p>
 
       {next && (
         <section className="card flex items-center gap-3 p-3 text-sm">

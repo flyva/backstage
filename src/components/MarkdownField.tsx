@@ -2,7 +2,6 @@
 
 import { useRef, useState } from "react";
 import { Bold, Code, Heading2, ImagePlus, Italic, Link2, List, ListOrdered, Quote } from "lucide-react";
-import { Markdown } from "@/components/Markdown";
 
 type Tool = { label: string; icon: typeof Bold; run: (sel: string) => { text: string; from: number; to: number } };
 
@@ -35,8 +34,7 @@ const TOOLS: Tool[] = [
   },
 ];
 
-// Éditeur : barre de mise en forme (pas besoin de connaître le Markdown) + onglet d'aperçu. Le textarea reste dans le DOM
-// (masqué en mode aperçu) pour que le contenu soit toujours envoyé avec le formulaire.
+// Éditeur : barre de mise en forme (pas besoin de connaître le Markdown), sans aperçu.
 export function MarkdownField({
   name = "body",
   defaultValue = "",
@@ -56,7 +54,6 @@ export function MarkdownField({
   uploadUrl?: string;
 }) {
   const [text, setText] = useState(defaultValue);
-  const [tab, setTab] = useState<"write" | "preview">("write");
   const ref = useRef<HTMLTextAreaElement>(null);
   const picker = useRef<HTMLInputElement>(null);
   const [uploadState, setUploadState] = useState<{ busy: boolean; error: string | null }>({ busy: false, error: null });
@@ -113,21 +110,7 @@ export function MarkdownField({
   return (
     <div>
       <div className="mb-1 flex flex-wrap items-center gap-1">
-        <div className="flex gap-1" role="tablist" aria-label={label ?? "Mode de l'éditeur"}>
-          {(["write", "preview"] as const).map((t) => (
-            <button
-              key={t}
-              type="button"
-              role="tab"
-              aria-selected={tab === t}
-              onClick={() => setTab(t)}
-              className={`rounded-md px-3 py-1 text-xs ${tab === t ? "bg-accent text-accent-fg" : "text-muted hover:text-fg"}`}
-            >
-              {t === "write" ? "Écrire" : "Aperçu"}
-            </button>
-          ))}
-        </div>
-        {tab === "write" && (
+        {(
           <div className="ml-auto flex flex-wrap gap-0.5" role="toolbar" aria-label="Mise en forme">
             {TOOLS.map((t) => (
               <button
@@ -182,13 +165,8 @@ export function MarkdownField({
         spellCheck
         placeholder={placeholder}
         aria-label={label}
-        className={`input ${tab === "write" ? "" : "hidden"}`}
+        className="input"
       />
-      {tab === "preview" && (
-        <div className="card min-h-24">
-          {text.trim() ? <Markdown breaks>{text}</Markdown> : <p className="text-sm text-muted">Rien à afficher.</p>}
-        </div>
-      )}
     </div>
   );
 }

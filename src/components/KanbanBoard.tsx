@@ -6,7 +6,7 @@ import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, LayoutGrid, Paperclip, P
 import { addCard, addColumn, deleteColumn, moveCard, moveColumn, renameColumn } from "@/lib/kanban-actions";
 import { CardDialog } from "@/components/KanbanCardDialog";
 import {
-  CardMeta, LabelChip, PRIORITY_LABEL, PRIORITY_RANK, PriorityPill, fmtDay, isLate, plain,
+  CardMeta, LabelChip, PRIORITY_LABEL, PRIORITY_RANK, PriorityPill, fmtDay, isLate,
   type BoardCard, type BoardColumn, type BoardMember,
 } from "@/components/kanban-shared";
 
@@ -139,7 +139,6 @@ export function KanbanBoard(props: {
 
               <ul className="min-h-2 space-y-2">
                 {col.cards.map((card, i) => {
-                  const desc = plain(card.description);
                   return (
                     <li
                       key={card.id}
@@ -168,7 +167,6 @@ export function KanbanBoard(props: {
                         </div>
                       )}
                       <div className="font-medium leading-snug">{card.title}</div>
-                      {desc && <p className="mt-1 line-clamp-2 text-xs text-muted">{desc}</p>}
                       <CardMeta card={card} late={isLate(card, col.title, today)} />
                     </li>
                   );
@@ -299,7 +297,6 @@ function CardTable({
                 <tr key={card.id} className="align-top hover:bg-bg">
                   <td className="max-w-xs px-3 py-2">
                     <button type="button" onClick={() => onOpen(card.id)} className="text-left font-medium hover:text-accent hover:underline">{card.title}</button>
-                    {card.description && <p className="line-clamp-1 text-xs text-muted">{plain(card.description)}</p>}
                   </td>
                   <td className="px-3 py-2">
                     {canEdit ? (

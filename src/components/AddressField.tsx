@@ -29,10 +29,12 @@ export function AddressField({
   const [active, setActive] = useState(-1);
   const box = useRef<HTMLDivElement>(null);
   const skip = useRef(false); // évite de relancer une recherche juste après un choix
+  const typed = useRef(false); // les suggestions ne s'ouvrent que si la personne a tapé (pas à l'ouverture du formulaire)
 
   // Recherche différée : on attend 250 ms sans frappe, et on ignore les réponses périmées.
   useEffect(() => {
     if (skip.current) { skip.current = false; return; }
+    if (!typed.current) return;
     const q = value.trim();
     if (q.length < 3) return;
     const ctrl = new AbortController();
@@ -73,7 +75,7 @@ export function AddressField({
         id={id}
         name={name}
         value={value}
-        onChange={(e) => { setValue(e.target.value); if (e.target.value.trim().length < 3) { setItems([]); setOpen(false); } }}
+        onChange={(e) => { typed.current = true; setValue(e.target.value); if (e.target.value.trim().length < 3) { setItems([]); setOpen(false); } }}
         onFocus={() => items.length > 0 && setOpen(true)}
         onKeyDown={(e) => {
           if (!open || items.length === 0) return;

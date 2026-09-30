@@ -21,15 +21,6 @@ export default async function PersonalizationPage() {
         <SkinControls initial={skin} />
       </section>
 
-      <section className="card space-y-3">
-        <h2 className="font-semibold">Aperçu</h2>
-        <div className="flex flex-wrap items-center gap-3">
-          <button type="button" className="btn">Bouton principal</button>
-          <button type="button" className="btn-ghost">Bouton secondaire</button>
-          <span className="rounded-full bg-accent px-3 py-1 text-xs font-medium text-accent-fg">Badge</span>
-          <span className="text-sm text-accent underline">Lien</span>
-        </div>
-      </section>
     </div>
   );
 }

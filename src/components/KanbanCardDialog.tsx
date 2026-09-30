@@ -9,6 +9,7 @@ import {
 } from "@/lib/kanban-actions";
 import { Markdown } from "@/components/Markdown";
 import { MarkdownField } from "@/components/MarkdownField";
+import { TagPicker } from "@/components/TagPicker";
 import {
   LabelChip, PRIORITY_LABEL, PriorityPill, fmtDay, fmtSize, type BoardCard, type BoardColumn, type BoardMember, type Priority,
 } from "@/components/kanban-shared";
@@ -41,18 +42,10 @@ function EditForm({ card, members }: { card: BoardCard; members: BoardMember[] }
         <MarkdownField name="description" defaultValue={card.description} rows={6} maxLength={4000} label="Description de la carte" placeholder="Détails, consignes, liens…" />
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <fieldset className="sm:col-span-2">
-          <legend className="label">Assigné à (une ou plusieurs personnes)</legend>
-          <div className="flex flex-wrap gap-2">
-            {members.map((m) => (
-              <label key={m.id} className="flex cursor-pointer items-center gap-2 rounded-lg border border-line bg-bg px-3 py-1.5 text-sm has-[:checked]:border-accent has-[:checked]:bg-accent/10">
-                <input type="checkbox" name="assigneeIds" value={m.id} defaultChecked={card.assignees.some((a) => a.id === m.id)} className="size-4 accent-[var(--accent)]" />
-                {m.name}
-              </label>
-            ))}
-            {members.length === 0 && <p className="text-sm text-muted">Aucun membre dans le projet.</p>}
-          </div>
-        </fieldset>
+        <div className="sm:col-span-2">
+          <label className="label" htmlFor={`a${card.id}`}>Assigné à (une ou plusieurs personnes)</label>
+          <TagPicker id={`a${card.id}`} name="assigneeIds" options={members.map((m) => ({ value: m.id, label: m.name }))} defaultValue={card.assignees.map((a) => a.id)} placeholder="Tape un nom…" />
+        </div>
         <div>
           <label className="label" htmlFor={`p${card.id}`}>Priorité</label>
           <select id={`p${card.id}`} name="priority" defaultValue={card.priority} className="input">
