@@ -24,7 +24,7 @@ export default async function ListingPage({ params }: PageProps<"/annonces/[id]"
   const id = Number((await params).id);
   if (!Number.isInteger(id)) notFound();
   const [row] = await db
-    .select({ l: listings, name: users.name, avatar: users.avatarFile, trackId: users.trackId })
+    .select({ l: listings, name: users.name, avatar: users.avatarFile, trackId: users.trackId, visible: users.showInDirectory })
     .from(listings).innerJoin(users, eq(users.id, listings.userId)).where(eq(listings.id, id)).limit(1);
   if (!row) notFound();
   const { l } = row;
@@ -69,7 +69,7 @@ export default async function ListingPage({ params }: PageProps<"/annonces/[id]"
         <div className="flex items-center gap-3 border-t border-line pt-4">
           <Avatar name={row.name} url={avatarUrl(row.avatar)} size={44} />
           <div className="min-w-0">
-            <div className="truncate font-semibold">{row.name}{trackRow[0] ? <span className="font-normal text-muted"> · {trackRow[0].name}</span> : null}</div>
+            <div className="truncate font-semibold">{row.visible ? <Link href={`/annuaire/${l.userId}`} className="hover:text-accent">{row.name}</Link> : row.name}{trackRow[0] ? <span className="font-normal text-muted"> · {trackRow[0].name}</span> : null}</div>
             {rating ? <RatingBadge avg={rating.avg} n={rating.n} /> : <span className="text-xs text-muted">Pas encore d&apos;avis</span>}
           </div>
           <span className="ml-auto text-xs text-muted">{ago(l.createdAt)}</span>

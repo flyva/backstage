@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Mail, Phone } from "lucide-react";
 import { Avatar, CopyChip } from "@/components/people-forms";
@@ -53,9 +54,9 @@ export function Directory({ people, tracks }: { people: Person[]; tracks: { id: 
       <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {shown.map((p) => (
           <li key={p.id} className="card flex gap-3 p-4">
-            <Avatar name={p.name} url={p.avatar} size={52} />
+            <Link href={`/annuaire/${p.id}`} aria-label={`Ouvrir la fiche de ${p.name}`}><Avatar name={p.name} url={p.avatar} size={52} /></Link>
             <div className="min-w-0 flex-1 space-y-1">
-              <div className="truncate font-semibold">{p.name}</div>
+              <div className="truncate font-semibold"><Link href={`/annuaire/${p.id}`} className="hover:text-accent">{p.name}</Link></div>
               {p.track && <span className="inline-block rounded-full border border-line px-2 py-0.5 text-[11px] font-semibold text-muted">{p.track}</span>}
               {p.headline && <div className="text-sm text-muted">{p.headline}</div>}
               {p.email3is && <a href={`mailto:${p.email3is}`} className="flex items-center gap-1.5 truncate text-sm underline"><Mail size={13} aria-hidden /> {p.email3is}</a>}

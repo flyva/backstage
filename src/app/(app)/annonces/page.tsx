@@ -32,7 +32,7 @@ export default async function AnnoncesPage({ searchParams }: PageProps<"/annonce
     conds.push(or(like(listings.title, like_), like(listings.description, like_))!);
   }
   const [feed, mine, trackRows] = await Promise.all([
-    db.select({ l: listings, name: users.name, avatar: users.avatarFile, trackId: users.trackId }).from(listings).innerJoin(users, eq(users.id, listings.userId)).where(and(...conds)).orderBy(desc(listings.createdAt)).limit(200),
+    db.select({ l: listings, name: users.name, avatar: users.avatarFile, trackId: users.trackId, visible: users.showInDirectory }).from(listings).innerJoin(users, eq(users.id, listings.userId)).where(and(...conds)).orderBy(desc(listings.createdAt)).limit(200),
     // Mes annonces terminées : fermées ou expirées (on peut les republier).
     db.select().from(listings).where(and(eq(listings.userId, user.id), or(eq(listings.status, "closed"), lte(listings.expiresAt, now))!)).orderBy(desc(listings.createdAt)),
     db.select().from(tracks),
@@ -67,7 +67,7 @@ export default async function AnnoncesPage({ searchParams }: PageProps<"/annonce
 
       {feed.length === 0 && <p className="text-sm text-muted">Aucune annonce pour le moment.</p>}
       <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {feed.map(({ l, name, avatar, trackId }) => {
+        {feed.map(({ l, name, avatar, trackId, visible }) => {
           const can = l.userId === user.id || isAdmin;
           return (
             <li key={l.id} className="card flex flex-col gap-3 p-4">
@@ -84,7 +84,7 @@ export default async function AnnoncesPage({ searchParams }: PageProps<"/annonce
               <div className="mt-auto space-y-2 border-t border-line pt-3 text-sm">
                 <div className="flex items-center gap-2">
                   <Avatar name={name} url={avatarUrl(avatar)} size={28} />
-                  <span className="min-w-0 flex-1 truncate font-medium">{name}{trackId && trackName.get(trackId) ? <span className="font-normal text-muted"> · {trackName.get(trackId)}</span> : null}</span>
+                  <span className="min-w-0 flex-1 truncate font-medium">{visible ? <Link href={`/annuaire/${l.userId}`} className="hover:text-accent">{name}</Link> : name}{trackId && trackName.get(trackId) ? <span className="font-normal text-muted"> · {trackName.get(trackId)}</span> : null}</span>
                   <span className="shrink-0 text-xs text-muted">{ago(l.createdAt)}</span>
                 </div>
                 {ratings.get(l.userId) && <RatingBadge avg={ratings.get(l.userId)!.avg} n={ratings.get(l.userId)!.n} />}

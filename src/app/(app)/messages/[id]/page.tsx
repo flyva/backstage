@@ -28,7 +28,7 @@ export default async function ConversationPage({ params }: PageProps<"/messages/
   const otherId = iAmBuyer ? conv.sellerId : conv.buyerId;
   const [thread, [other], [listing], counts, ratings, [myReview]] = await Promise.all([
     db.select().from(messages).where(eq(messages.conversationId, id)).orderBy(asc(messages.id)),
-    db.select({ id: users.id, name: users.name, avatar: users.avatarFile }).from(users).where(eq(users.id, otherId)).limit(1),
+    db.select({ id: users.id, name: users.name, avatar: users.avatarFile, visible: users.showInDirectory }).from(users).where(eq(users.id, otherId)).limit(1),
     db.select().from(listings).where(eq(listings.id, conv.listingId)).limit(1),
     messageCountsBySender(id),
     ratingSummary([otherId]),
@@ -53,7 +53,7 @@ export default async function ConversationPage({ params }: PageProps<"/messages/
         <div className="flex items-center gap-3">
           <Avatar name={other?.name ?? "?"} url={avatarUrl(other?.avatar)} size={48} />
           <div className="min-w-0">
-            <h1 className="truncate text-xl font-bold">{other?.name ?? "Personne supprimée"}</h1>
+            <h1 className="truncate text-xl font-bold">{other?.visible ? <Link href={`/annuaire/${other.id}`} className="hover:text-accent">{other.name}</Link> : (other?.name ?? "Personne supprimée")}</h1>
             {rating && <RatingBadge avg={rating.avg} n={rating.n} />}
           </div>
         </div>

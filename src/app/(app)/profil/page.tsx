@@ -52,7 +52,10 @@ export default async function ProfilPage({ searchParams }: PageProps<"/profil">)
       </div>
 
       <div className="card space-y-3">
-        <h2 className="font-semibold">Ma fiche (annuaire de la promo)</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-semibold">Ma fiche (annuaire de la promo)</h2>
+          <Link href={`/annuaire/${user.id}`} className="btn-ghost text-xs">Voir ma fiche comme les autres</Link>
+        </div>
         <FicheForm
           tracks={allTracks.map((t) => ({ id: t.id, name: t.name }))} trackId={user.trackId} headline={user.headline ?? ""} phone={user.phone ?? ""}
           contactEmail={user.contactEmail ?? ""} showInDirectory={user.showInDirectory} showPhone={user.showPhone} cardShowPhone={user.cardShowPhone} discord={user.discord ?? ""} cardShowDiscord={user.cardShowDiscord} loginEmail={user.email}
