@@ -11,6 +11,7 @@ const STATUS = {
   active: { label: "Actif", cls: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" },
   pending: { label: "En attente", cls: "bg-amber-500/15 text-amber-700 dark:text-amber-300" },
   disabled: { label: "Désactivé", cls: "bg-zinc-500/20 text-muted" },
+  rejected: { label: "Refusé", cls: "bg-red-500/15 text-red-700 dark:text-red-300" },
 } as const;
 
 export default async function UsersPage({ searchParams }: PageProps<"/admin/utilisateurs">) {
@@ -35,7 +36,7 @@ export default async function UsersPage({ searchParams }: PageProps<"/admin/util
       <form role="search" className="flex flex-wrap gap-2">
         <input name="q" defaultValue={q} placeholder="Rechercher un nom ou une adresse…" aria-label="Rechercher" className="input max-w-xs" />
         <select name="role" defaultValue={roleFilter} aria-label="Rôle" className="input w-auto"><option value="">Tous les rôles</option>{allRoles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select>
-        <select name="statut" defaultValue={statusFilter} aria-label="Statut" className="input w-auto"><option value="">Tous les statuts</option><option value="active">Actifs</option><option value="pending">En attente</option><option value="disabled">Désactivés</option></select>
+        <select name="statut" defaultValue={statusFilter} aria-label="Statut" className="input w-auto"><option value="">Tous les statuts</option><option value="active">Actifs</option><option value="pending">En attente</option><option value="disabled">Désactivés</option><option value="rejected">Refusés</option></select>
         <button className="btn-ghost">Filtrer</button>
         {(q || roleFilter || statusFilter) && <Link href="/admin/utilisateurs" className="btn-ghost">Effacer</Link>}
       </form>

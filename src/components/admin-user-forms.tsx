@@ -80,7 +80,7 @@ export function DeleteRoleForm({ id }: { id: number }) {
 export function UserEditForm({
   user, roles, isSelf,
 }: {
-  user: { id: number; firstName: string; lastName: string; email: string; roleId: number | null; status: "active" | "pending" | "disabled" };
+  user: { id: number; firstName: string; lastName: string; email: string; roleId: number | null; status: "active" | "pending" | "disabled" | "rejected" };
   roles: { id: number; name: string }[];
   isSelf: boolean;
 }) {
@@ -103,6 +103,7 @@ export function UserEditForm({
             <option value="active">Actif</option>
             <option value="pending">En attente de validation</option>
             <option value="disabled">Désactivé (ne peut plus se connecter)</option>
+            <option value="rejected">Refusé (voit le refus en se connectant)</option>
           </select>
           {isSelf && <input type="hidden" name="status" value={user.status} />}
         </div>

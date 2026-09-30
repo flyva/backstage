@@ -98,7 +98,7 @@ const userSchema = z.object({
   firstName: z.string().trim().min(1, "Prénom requis").max(60),
   lastName: z.string().trim().min(1, "Nom requis").max(60),
   email: z.string().trim().toLowerCase().email("Email invalide").max(190),
-  status: z.enum(["active", "pending", "disabled"]),
+  status: z.enum(["active", "pending", "disabled", "rejected"]),
 });
 
 export async function updateUser(_: FormState, fd: FormData): Promise<FormState> {

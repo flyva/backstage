@@ -23,7 +23,7 @@ import { skinFrom } from "@/lib/skin";
 import { writeSkinCookies } from "@/lib/skin-cookies";
 import { timingSafeEqual } from "node:crypto";
 import { fetchIcal, clearIcalCache } from "@/lib/ical";
-import { notifyPendingAccount } from "@/lib/admin-notify";
+import { notifyDecision, notifyPendingAccount } from "@/lib/admin-notify";
 import { startVerifiedRegistration } from "@/lib/registration-verify";
 import { verificationEnabled } from "@/lib/mail";
 
@@ -209,7 +209,7 @@ export async function updateProfile(_: FormState, fd: FormData): Promise<FormSta
 /** Message d'une personne en attente de validation : il s'affiche à l'administrateur avec sa demande. */
 export async function saveRequestNote(_: FormState, fd: FormData): Promise<FormState> {
   const user = await getSessionUser(); // requireUser renverrait la personne en attente vers /en-attente
-  if (!user || user.status !== "pending") return { error: "Ton compte n'est pas en attente." };
+  if (!user || user.status !== "pending") return { error: "Ta demande n'est plus en attente." };
   const note = String(fd.get("note") ?? "").trim();
   if (note.length > 500) return { error: "500 caractères maximum" };
   if (!allow(`note:${user.id}`, 10, 60 * 60e3)) return { error: "Trop de modifications : réessaie plus tard." };
@@ -222,19 +222,32 @@ export async function saveRequestNote(_: FormState, fd: FormData): Promise<FormS
 
 // ---------- Administration ----------
 
+/** Valide un compte en attente (ou revalide un compte refusé) : la personne est prévenue par mail si l'envoi est configuré. */
 export async function approveUser(fd: FormData) {
   await requireAdmin();
-  await db.update(users).set({ status: "active" }).where(eq(users.id, Number(fd.get("id"))));
+  const id = Number(fd.get("id"));
+  const [u] = await db.select({ status: users.status, email: users.email, name: users.name }).from(users).where(eq(users.id, id)).limit(1);
+  if (!u || (u.status !== "pending" && u.status !== "rejected")) return;
+  await db.update(users).set({ status: "active", rejectionNote: null }).where(eq(users.id, id));
+  await notifyDecision({ email: u.email, name: u.name, approved: true });
   revalidatePath("/admin");
+  revalidatePath("/admin/utilisateurs");
 }
 
-/** Refuser un compte en attente = le supprimer (la personne pourra se reconnecter, et sera de nouveau mise en attente). */
+/**
+ * Refuse un compte en attente : il n'est pas supprimé. La personne qui se reconnecte voit que sa demande a été refusée,
+ * avec le motif écrit par l'administrateur (facultatif), au lieu d'être remise en attente sans explication.
+ */
 export async function rejectUser(fd: FormData) {
   await requireAdmin();
   const id = Number(fd.get("id"));
-  const [u] = await db.select({ status: users.status }).from(users).where(eq(users.id, id)).limit(1);
-  if (u?.status === "pending") await db.delete(users).where(eq(users.id, id));
+  const reason = String(fd.get("reason") ?? "").trim().slice(0, 500);
+  const [u] = await db.select({ status: users.status, email: users.email, name: users.name }).from(users).where(eq(users.id, id)).limit(1);
+  if (u?.status !== "pending") return;
+  await db.update(users).set({ status: "rejected", rejectionNote: reason || null }).where(eq(users.id, id));
+  await notifyDecision({ email: u.email, name: u.name, approved: false, reason });
   revalidatePath("/admin");
+  revalidatePath("/admin/utilisateurs");
 }
 
 const faqSchema = z.object({

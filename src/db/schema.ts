@@ -70,7 +70,8 @@ export const users = mysqlTable("users", {
   // Identifiant Microsoft (« oid » Entra ID) une fois le compte lié à Office 365.
   // « active » : accès normal ; « pending » : compte Google personnel en attente de validation par un admin ;
   // « disabled » : compte désactivé par un admin (plus de connexion possible, données conservées).
-  status: mysqlEnum("status", ["active", "pending", "disabled"]).notNull().default("active"),
+  status: mysqlEnum("status", ["active", "pending", "disabled", "rejected"]).notNull().default("active"),
+  rejectionNote: varchar("rejection_note", { length: 500 }), // motif du refus, affiché à la personne refusée quand elle se reconnecte
   requestNote: varchar("request_note", { length: 500 }), // message laissé par une personne en attente de validation (qui elle est, pourquoi elle demande l'accès)
   googleSub: varchar("google_sub", { length: 40 }).unique(), // identifiant Google (« sub »)
   msOid: varchar("ms_oid", { length: 80 }).unique(), // « tid.oid » : organisation + identifiant dans l'organisation

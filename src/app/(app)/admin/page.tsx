@@ -44,7 +44,11 @@ export default async function AdminPage() {
                   {u.requestNote && <p className="mt-1 whitespace-pre-line rounded-lg border border-line bg-bg p-2 text-xs">{u.requestNote}</p>}
                 </div>
                 <form action={approveUser}><input type="hidden" name="id" value={u.id} /><button className="btn">Valider</button></form>
-                <form action={rejectUser}><input type="hidden" name="id" value={u.id} /><button className="btn-ghost">Refuser</button></form>
+                <form action={rejectUser} className="flex flex-wrap items-center gap-2">
+                  <input type="hidden" name="id" value={u.id} />
+                  <input name="reason" maxLength={500} placeholder="Motif du refus (facultatif, visible par la personne)" className="input w-64 max-w-full text-xs" aria-label={`Motif du refus pour ${u.name}`} />
+                  <button className="btn-ghost">Refuser</button>
+                </form>
               </li>
             ))}
           </ul>
