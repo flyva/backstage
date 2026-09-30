@@ -320,3 +320,5 @@ Fonctions ajoutées (migrations 0033 et 0034, appliquées automatiquement par `i
 - **Météo** (Open-Meteo) et **alertes TBM** (SIRI Lite) : sans clé, aucune variable d'environnement à ajouter.
 - Photos de profil et d'annonces : `data/uploads/avatars` et `data/uploads/listings`. Elles sont déjà incluses dans la sauvegarde (`backup.sh`) et conservées entre deux versions.
 - Routes publiques (sans session) : `/carte/*`, `/api/avatar/*`, `/api/feed/*`. Leurs adresses sont des codes aléatoires non devinables.
+
+La **messagerie des annonces** (migration 0035) met en relation acheteur et vendeur : conversations privées (visibles seulement par les deux personnes, pas même par un administrateur), notifications push et pastille « non lus », avis de 1 à 5 étoiles après un échange. Le téléphone a deux cases distinctes : annuaire et carte de visite.

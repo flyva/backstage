@@ -8,6 +8,7 @@ import { cardHref, dueCards } from "@/lib/reminders";
 import { AppShell } from "@/components/shell/AppShell";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { avatarUrl } from "@/lib/avatar-files";
+import { unreadConversations } from "@/lib/messaging";
 import { NotificationBell, type NotifItem } from "@/components/shell/NotificationBell";
 import { QuickTheme } from "@/components/shell/SkinControls";
 import { skinFrom } from "@/lib/skin";
@@ -22,7 +23,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   const manager = isManager(user);
   const admin = user.perms.administration;
 
-  const [mineDue, requested, lateAll, pendingUsers, news, events, albums, lastLoans, myCards, pollsToAnswer] = await Promise.all([
+  const [mineDue, requested, lateAll, pendingUsers, news, events, albums, lastLoans, myCards, pollsToAnswer, unreadConvs] = await Promise.all([
     // Mes prêts à rendre demain ou en retard (alertes à traiter)
     db
       .select({ id: loans.id, dueDate: loans.dueDate, name: equipmentItems.name })
@@ -53,6 +54,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
       .where(and(eq(pollInvites.userId, user.id), eq(polls.closed, false), sql`not exists (select 1 from poll_votes pv join poll_options po on po.id = pv.option_id where po.poll_id = ${polls.id} and pv.user_id = ${user.id})`))
       .orderBy(desc(polls.createdAt))
       .limit(4),
+    unreadConversations(user.id), // conversations des annonces avec des messages non lus
   ]);
 
   const loanBadge = mineDue.length + requested.length + Number(lateAll[0]?.n ?? 0);
@@ -91,6 +93,16 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
           unread: requested.some((r) => r.at.getTime() > seenAt), // nouvelle demande depuis la dernière ouverture
         }]
       : []),
+    ...(unreadConvs > 0
+      ? [{
+          key: "messages-unread",
+          kind: "alert" as const,
+          text: `${unreadConvs} conversation${unreadConvs > 1 ? "s" : ""} avec des messages non lus`,
+          when: "Messages",
+          href: "/messages",
+          unread: true,
+        }]
+      : []),
     ...pollsToAnswer.map((p) => ({
       key: `poll-${p.id}`,
       kind: "alert" as const,
@@ -126,7 +138,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
 
   return (
     <AppShell
-      sidebar={<Sidebar user={{ name: user.name, email: user.email, roleName: user.roleName, isAdmin: user.perms.administration, views: user.perms.view, avatar: avatarUrl(user.avatarFile) }} loanBadge={loanBadge} />}
+      sidebar={<Sidebar user={{ name: user.name, email: user.email, roleName: user.roleName, isAdmin: user.perms.administration, views: user.perms.view, avatar: avatarUrl(user.avatarFile) }} loanBadge={loanBadge} messageBadge={unreadConvs} />}
       bell={<><QuickTheme initial={skinFrom(user)} /><NotificationBell items={items} unread={unread} /></>}
       menu={<UserMenu name={user.name} email={user.email} isAdmin={admin} />}
     >

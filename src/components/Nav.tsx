@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  BookOpen, BookUser, Bot, Briefcase, Calculator, Car, Library, CalendarDays, Camera, CircleHelp, Home, Images, Link2, Newspaper, Package, PartyPopper, School, NotebookPen, SquareKanban, TramFront, Users, Contact, Megaphone, CalendarClock,
+  BookOpen, BookUser, Bot, Briefcase, Calculator, Car, Library, CalendarDays, Camera, CircleHelp, Home, Images, Link2, Newspaper, Package, PartyPopper, School, NotebookPen, SquareKanban, TramFront, Users, Contact, Megaphone, CalendarClock, MessageSquare,
   type LucideIcon,
 } from "lucide-react";
 
-type Item = { href: string; label: string; icon: LucideIcon; badge?: "loans"; adminOnly?: boolean; module?: string };
+type Item = { href: string; label: string; icon: LucideIcon; badge?: "loans" | "messages"; adminOnly?: boolean; module?: string };
 
 const GROUPS: { title: string; items: Item[] }[] = [
   {
@@ -37,6 +37,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
       { href: "/actus", label: "Actualités", icon: Newspaper, module: "actus" },
       { href: "/annuaire", label: "Annuaire", icon: Users },
       { href: "/annonces", label: "Annonces", icon: Megaphone },
+      { href: "/messages", label: "Messages", icon: MessageSquare, badge: "messages" },
       { href: "/disponibilites", label: "Disponibilités", icon: CalendarClock },
       { href: "/covoiturage", label: "Covoiturage", icon: Car },
       { href: "/bde", label: "BDE", icon: PartyPopper, module: "bde" },
@@ -56,7 +57,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
   },
 ];
 
-export function Nav({ isAdmin, loanBadge, views }: { isAdmin: boolean; loanBadge: number; views: Record<string, boolean> }) {
+export function Nav({ isAdmin, loanBadge, messageBadge = 0, views }: { isAdmin: boolean; loanBadge: number; messageBadge?: number; views: Record<string, boolean> }) {
   const pathname = usePathname();
   return (
     <nav className="space-y-4" aria-label="Navigation principale">
@@ -68,7 +69,7 @@ export function Nav({ isAdmin, loanBadge, views }: { isAdmin: boolean; loanBadge
             <ul className="space-y-0.5">
               {items.map(({ href, label, icon: Icon, badge }) => {
                 const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
-                const count = badge === "loans" ? loanBadge : 0;
+                const count = badge === "loans" ? loanBadge : badge === "messages" ? messageBadge : 0;
                 return (
                   <li key={href}>
                     <Link
@@ -81,7 +82,7 @@ export function Nav({ isAdmin, loanBadge, views }: { isAdmin: boolean; loanBadge
                       <Icon size={18} />
                       <span className="flex-1">{label}</span>
                       {count > 0 && (
-                        <span className="rounded-full bg-[#dc3545] px-1.5 text-[10px] font-semibold text-white" aria-label={`${count} à traiter`}>{count}</span>
+                        <span className="rounded-full bg-[#dc3545] px-1.5 text-[10px] font-semibold text-white" aria-label={badge === "messages" ? `${count} non lu(s)` : `${count} à traiter`}>{count}</span>
                       )}
                     </Link>
                   </li>

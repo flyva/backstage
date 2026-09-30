@@ -20,7 +20,7 @@ export async function getCard(slug: string): Promise<CardData | null> {
   return {
     name: u.name, firstName: u.firstName, lastName: u.lastName, avatar: avatarUrl(u.avatarFile), headline: u.headline, track: t?.name ?? null,
     email: u.contactEmail || school3isEmail(u.email), // jamais l'adresse personnelle de connexion
-    phone: u.showPhone ? u.phone : null,
+    phone: u.cardShowPhone ? u.phone : null, // choix propre à la carte, indépendant de l'annuaire
     links: links.map((l) => ({ kind: l.kind, url: l.url, label: l.label })),
   };
 }

@@ -35,7 +35,7 @@ export async function saveFiche(_: FormState, fd: FormData): Promise<FormState> 
   if (contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) return { error: "Adresse e-mail de contact invalide" };
   await db.update(users).set({
     trackId, headline: headline || null, phone: phone || null, contactEmail: contactEmail || null,
-    showInDirectory: fd.get("showInDirectory") === "on", showPhone: fd.get("showPhone") === "on",
+    showInDirectory: fd.get("showInDirectory") === "on", showPhone: fd.get("showPhone") === "on", cardShowPhone: fd.get("cardShowPhone") === "on",
   }).where(eq(users.id, user.id));
   revalidatePath("/profil");
   revalidatePath("/annuaire");

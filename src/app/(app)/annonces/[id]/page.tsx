@@ -1,0 +1,119 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { and, desc, eq } from "drizzle-orm";
+import { db } from "@/db";
+import { conversations, listings, reviews, tracks, users } from "@/db/schema";
+import { requireUser } from "@/lib/auth";
+import { avatarUrl } from "@/lib/avatar-files";
+import { LISTING_LABEL, LISTING_PHOTO_PREFIX } from "@/lib/listing-shared";
+import { deleteReview } from "@/lib/message-actions";
+import { ratingSummary } from "@/lib/messaging";
+import { ago } from "@/lib/relative-time";
+import { Avatar } from "@/components/people-forms";
+import { StartConversationForm } from "@/components/message-forms";
+import { RatingBadge, Stars } from "@/components/Stars";
+
+export async function generateMetadata({ params }: PageProps<"/annonces/[id]">) {
+  const [l] = await db.select({ title: listings.title }).from(listings).where(eq(listings.id, Number((await params).id))).limit(1);
+  return { title: l ? l.title : "Annonce" };
+}
+
+export default async function ListingPage({ params }: PageProps<"/annonces/[id]">) {
+  const user = await requireUser();
+  const id = Number((await params).id);
+  if (!Number.isInteger(id)) notFound();
+  const [row] = await db
+    .select({ l: listings, name: users.name, avatar: users.avatarFile, trackId: users.trackId })
+    .from(listings).innerJoin(users, eq(users.id, listings.userId)).where(eq(listings.id, id)).limit(1);
+  if (!row) notFound();
+  const { l } = row;
+  const isOwner = l.userId === user.id;
+  const live = l.status === "active" && l.expiresAt > new Date();
+
+  const [trackRow, ratings, sellerReviews, mine, mineAsSeller] = await Promise.all([
+    row.trackId ? db.select({ name: tracks.name }).from(tracks).where(eq(tracks.id, row.trackId)).limit(1) : Promise.resolve([]),
+    ratingSummary([l.userId]),
+    db
+      .select({ r: reviews, author: users.name })
+      .from(reviews).innerJoin(users, eq(users.id, reviews.authorId))
+      .where(eq(reviews.subjectId, l.userId)).orderBy(desc(reviews.createdAt)).limit(20),
+    // Ma conversation avec l'auteur à propos de cette annonce (si j'en ai déjà une)
+    !isOwner ? db.select({ id: conversations.id }).from(conversations).where(and(eq(conversations.listingId, id), eq(conversations.buyerId, user.id))).limit(1) : Promise.resolve([]),
+    // Conversations ouvertes sur mon annonce
+    isOwner
+      ? db
+          .select({ id: conversations.id, buyer: users.name, at: conversations.lastMessageAt })
+          .from(conversations).innerJoin(users, eq(users.id, conversations.buyerId))
+          .where(eq(conversations.listingId, id)).orderBy(desc(conversations.lastMessageAt))
+      : Promise.resolve([]),
+  ]);
+  const rating = ratings.get(l.userId);
+
+  return (
+    <div className="max-w-3xl space-y-5">
+      <p className="text-sm"><Link href="/annonces" className="text-muted underline">← Annonces</Link></p>
+
+      <article className="card space-y-4 p-5">
+        {l.photoFile && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={`${LISTING_PHOTO_PREFIX}${l.photoFile}`} alt="" className="max-h-96 w-full rounded-xl border border-line object-cover" />
+        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full border border-line px-2 py-0.5 text-[11px] font-semibold text-muted">{LISTING_LABEL[l.category]}</span>
+          {l.price && <span className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-bold text-accent-fg">{l.price}</span>}
+          {!live && <span className="rounded-full border border-line px-2 py-0.5 text-[11px] font-semibold text-muted">{l.status === "closed" ? "Terminée" : "Expirée"}</span>}
+        </div>
+        <h1 className="text-2xl font-bold leading-snug">{l.title}</h1>
+        <p className="whitespace-pre-line text-sm">{l.description}</p>
+        <div className="flex items-center gap-3 border-t border-line pt-4">
+          <Avatar name={row.name} url={avatarUrl(row.avatar)} size={44} />
+          <div className="min-w-0">
+            <div className="truncate font-semibold">{row.name}{trackRow[0] ? <span className="font-normal text-muted"> · {trackRow[0].name}</span> : null}</div>
+            {rating ? <RatingBadge avg={rating.avg} n={rating.n} /> : <span className="text-xs text-muted">Pas encore d&apos;avis</span>}
+          </div>
+          <span className="ml-auto text-xs text-muted">{ago(l.createdAt)}</span>
+        </div>
+        <p className="text-sm"><span className="text-muted">Autre moyen de contact :</span> <strong className="break-words">{l.contact}</strong></p>
+      </article>
+
+      {!isOwner && (
+        <section className="card space-y-3">
+          <h2 className="font-semibold">Messagerie</h2>
+          {mine[0] && <p className="text-sm">Tu as déjà écrit à {row.name} : <Link href={`/messages/${mine[0].id}`} className="font-medium underline">reprendre la conversation</Link>.</p>}
+          {live ? <StartConversationForm listingId={id} sellerName={row.name} /> : <p className="text-sm text-muted">Cette annonce est terminée ou expirée.</p>}
+        </section>
+      )}
+      {isOwner && (
+        <section className="card space-y-3">
+          <h2 className="font-semibold">Conversations sur ton annonce ({mineAsSeller.length})</h2>
+          {mineAsSeller.length === 0 && <p className="text-sm text-muted">Personne ne t&apos;a encore écrit.</p>}
+          <ul className="divide-y divide-line text-sm">
+            {mineAsSeller.map((c) => (
+              <li key={c.id}><Link href={`/messages/${c.id}`} className="flex items-center gap-3 py-2 hover:text-accent"><span className="min-w-0 flex-1 truncate font-medium">{c.buyer}</span><span className="text-xs text-muted">{ago(c.at)}</span></Link></li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <section className="card space-y-3">
+        <h2 className="font-semibold">Avis sur {row.name}{rating ? ` (${rating.n})` : ""}</h2>
+        {sellerReviews.length === 0 && <p className="text-sm text-muted">Aucun avis pour le moment. Les avis se laissent depuis la messagerie, après un échange.</p>}
+        <ul className="divide-y divide-line">
+          {sellerReviews.map(({ r, author }) => (
+            <li key={r.id} className="space-y-1 py-3 text-sm">
+              <div className="flex flex-wrap items-center gap-2">
+                <Stars value={r.rating} />
+                <span className="font-medium">{author}</span>
+                <span className="text-xs text-muted">{r.subjectRole === "seller" ? "à propos d'une vente" : "à propos d'un achat"} · « {r.listingTitle} » · {ago(r.createdAt)}</span>
+              </div>
+              {r.comment && <p className="whitespace-pre-line text-muted">{r.comment}</p>}
+              {(r.authorId === user.id || user.perms.administration) && (
+                <form action={deleteReview}><input type="hidden" name="id" value={r.id} /><button className="text-xs text-muted underline">Supprimer cet avis</button></form>
+              )}
+            </li>
+          ))}
+        </ul>
+      </section>
+    </div>
+  );
+}

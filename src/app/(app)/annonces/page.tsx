@@ -10,6 +10,8 @@ import { school3isEmail } from "@/lib/people-shared";
 import { ListingForm } from "@/components/listing-forms";
 import { Avatar } from "@/components/people-forms";
 import { ago } from "@/lib/relative-time";
+import { ratingSummary } from "@/lib/messaging";
+import { RatingBadge } from "@/components/Stars";
 
 export const metadata = { title: "Annonces" };
 
@@ -36,6 +38,7 @@ export default async function AnnoncesPage({ searchParams }: PageProps<"/annonce
     db.select().from(tracks),
   ]);
   const trackName = new Map(trackRows.map((t) => [t.id, t.name]));
+  const ratings = await ratingSummary(feed.map((f) => f.l.userId));
   const defaultContact = user.contactEmail || school3isEmail(user.email) || "";
   const isAdmin = user.perms.administration;
   const href = (c: string | null) => `/annonces${c || q ? `?${new URLSearchParams({ ...(c ? { c } : {}), ...(q ? { q } : {}) })}` : ""}`;
@@ -76,7 +79,7 @@ export default async function AnnoncesPage({ searchParams }: PageProps<"/annonce
                 <span className="rounded-full border border-line px-2 py-0.5 text-[11px] font-semibold text-muted">{LISTING_LABEL[l.category]}</span>
                 {l.price && <span className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-bold text-accent-fg">{l.price}</span>}
               </div>
-              <h2 className="text-lg font-semibold leading-snug">{l.title}</h2>
+              <h2 className="text-lg font-semibold leading-snug"><Link href={`/annonces/${l.id}`} className="hover:text-accent">{l.title}</Link></h2>
               <p className="whitespace-pre-line text-sm text-muted">{l.description}</p>
               <div className="mt-auto space-y-2 border-t border-line pt-3 text-sm">
                 <div className="flex items-center gap-2">
@@ -84,7 +87,10 @@ export default async function AnnoncesPage({ searchParams }: PageProps<"/annonce
                   <span className="min-w-0 flex-1 truncate font-medium">{name}{trackId && trackName.get(trackId) ? <span className="font-normal text-muted"> · {trackName.get(trackId)}</span> : null}</span>
                   <span className="shrink-0 text-xs text-muted">{ago(l.createdAt)}</span>
                 </div>
-                <p><span className="text-muted">Contact :</span> <strong className="break-words">{l.contact}</strong></p>
+                {ratings.get(l.userId) && <RatingBadge avg={ratings.get(l.userId)!.avg} n={ratings.get(l.userId)!.n} />}
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link href={`/annonces/${l.id}`} className="btn-ghost text-xs">{l.userId === user.id ? "Voir l'annonce et les messages" : "Voir et écrire à l'auteur"}</Link>
+                </div>
                 {can && (
                   <div className="flex flex-wrap gap-3 text-xs">
                     <form action={setListingStatus}><input type="hidden" name="id" value={l.id} /><input type="hidden" name="status" value="closed" /><button className="underline">Marquer comme terminée</button></form>

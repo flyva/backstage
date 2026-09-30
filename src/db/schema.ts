@@ -81,7 +81,8 @@ export const users = mysqlTable("users", {
   phone: varchar("phone", { length: 30 }),
   contactEmail: varchar("contact_email", { length: 190 }), // adresse affichée sur la carte de visite (sinon l'adresse 3IS)
   showInDirectory: boolean("show_in_directory").notNull().default(true),
-  showPhone: boolean("show_phone").notNull().default(false), // téléphone visible dans l'annuaire et sur la carte
+  showPhone: boolean("show_phone").notNull().default(false), // téléphone visible dans l'annuaire
+  cardShowPhone: boolean("card_show_phone").notNull().default(false), // téléphone visible sur la carte de visite (choix indépendant)
   cardSlug: varchar("card_slug", { length: 16 }).unique(), // adresse publique non devinable de la carte
   cardEnabled: boolean("card_enabled").notNull().default(false),
   feedToken: varchar("feed_token", { length: 32 }).unique(), // adresse secrète de l'abonnement calendrier (iCal)
@@ -844,4 +845,52 @@ export const pollInvites = mysqlTable(
     userId: int("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   },
   (t) => [primaryKey({ columns: [t.pollId, t.userId] }), index("pi_user_idx").on(t.userId)],
+);
+
+// ---------- Messagerie des annonces et avis ----------
+
+// Une conversation par annonce et par personne intéressée (acheteur) avec l'auteur de l'annonce (vendeur).
+export const conversations = mysqlTable(
+  "conversations",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    listingId: int("listing_id").notNull().references(() => listings.id, { onDelete: "cascade" }),
+    buyerId: int("buyer_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    sellerId: int("seller_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    buyerReadAt: datetime("buyer_read_at"),
+    sellerReadAt: datetime("seller_read_at"),
+    lastMessageAt: datetime("last_message_at").notNull().$defaultFn(() => new Date()),
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [index("conv_listing_buyer_idx").on(t.listingId, t.buyerId), index("conv_buyer_idx").on(t.buyerId), index("conv_seller_idx").on(t.sellerId)],
+);
+
+export const messages = mysqlTable(
+  "messages",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    conversationId: int("conversation_id").notNull().references(() => conversations.id, { onDelete: "cascade" }),
+    senderId: int("sender_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    body: text("body").notNull(),
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [index("msg_conv_idx").on(t.conversationId, t.createdAt)],
+);
+
+// Avis sur une personne à la suite d'une vente (ou d'un échange) : note de 1 à 5 et commentaire.
+// L'annonce peut disparaître : son titre est conservé ici pour que l'avis reste lisible.
+export const reviews = mysqlTable(
+  "reviews",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    listingId: int("listing_id").references(() => listings.id, { onDelete: "set null" }),
+    listingTitle: varchar("listing_title", { length: 120 }).notNull(),
+    authorId: int("author_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    subjectId: int("subject_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    subjectRole: mysqlEnum("subject_role", ["seller", "buyer"]).notNull(), // rôle de la personne notée dans l'échange
+    rating: int("rating").notNull(),
+    comment: varchar("comment", { length: 500 }),
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [index("rev_subject_idx").on(t.subjectId), index("rev_author_listing_idx").on(t.authorId, t.listingId)],
 );

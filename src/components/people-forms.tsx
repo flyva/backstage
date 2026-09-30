@@ -84,7 +84,7 @@ export function AvatarForm({ name, url }: { name: string; url: string | null }) 
 
 export function FicheForm(props: {
   tracks: { id: number; name: string }[]; trackId: number | null; headline: string; phone: string; contactEmail: string;
-  showInDirectory: boolean; showPhone: boolean; loginEmail: string;
+  showInDirectory: boolean; showPhone: boolean; cardShowPhone: boolean; loginEmail: string;
 }) {
   const [state, action, pending] = useActionState(saveFiche, undefined);
   return (
@@ -112,7 +112,8 @@ export function FicheForm(props: {
       </div>
       <div className="space-y-2 text-sm">
         <label className="flex items-start gap-2"><input type="checkbox" name="showInDirectory" defaultChecked={props.showInDirectory} className="mt-1" /> <span>Apparaître dans l&apos;annuaire de la promo</span></label>
-        <label className="flex items-start gap-2"><input type="checkbox" name="showPhone" defaultChecked={props.showPhone} className="mt-1" /> <span>Afficher mon téléphone (annuaire et carte de visite)</span></label>
+        <label className="flex items-start gap-2"><input type="checkbox" name="showPhone" defaultChecked={props.showPhone} className="mt-1" /> <span>Afficher mon téléphone dans l&apos;annuaire de la promo</span></label>
+        <label className="flex items-start gap-2"><input type="checkbox" name="cardShowPhone" defaultChecked={props.cardShowPhone} className="mt-1" /> <span>Afficher mon téléphone sur ma carte de visite (publique)</span></label>
       </div>
       <p className="text-xs text-muted">
         L&apos;annuaire montre ton adresse <strong className="text-fg">{props.loginEmail}</strong> seulement si elle se termine par @3is.fr. Il est réservé aux personnes connectées à Backstage.
