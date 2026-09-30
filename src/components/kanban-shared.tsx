@@ -6,8 +6,7 @@ export type BoardCard = {
   id: number;
   title: string;
   description: string;
-  assigneeId: number | null;
-  assigneeName: string | null;
+  assignees: { id: number; name: string }[];
   startDate: string | null;
   dueDate: string | null;
   priority: Priority;
@@ -57,7 +56,7 @@ export function CardMeta({ card, late }: { card: BoardCard; late: boolean }) {
     ),
     card.files.length > 0 && <span key="f" className="flex items-center gap-1"><Paperclip size={12} /> {card.files.length}</span>,
     card.comments.length > 0 && <span key="m" className="flex items-center gap-1"><MessageSquare size={12} /> {card.comments.length}</span>,
-    card.assigneeName && <span key="a" className="flex items-center gap-1"><User size={12} /> {card.assigneeName}</span>,
+    card.assignees.length > 0 && <span key="a" className="flex items-center gap-1"><User size={12} /> {card.assignees.map((a) => a.name).join(", ")}</span>,
     card.dueDate && (
       <span key="d" className={`flex items-center gap-1 ${late ? "font-medium text-danger" : ""}`}><CalendarDays size={12} /> {fmtDay(card.dueDate)}</span>
     ),

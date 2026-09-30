@@ -41,13 +41,18 @@ function EditForm({ card, members }: { card: BoardCard; members: BoardMember[] }
         <MarkdownField name="description" defaultValue={card.description} rows={6} maxLength={4000} label="Description de la carte" placeholder="Détails, consignes, liens…" />
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <div>
-          <label className="label" htmlFor={`a${card.id}`}>Assigné à</label>
-          <select id={`a${card.id}`} name="assigneeId" defaultValue={card.assigneeId ?? ""} className="input">
-            <option value="">Personne</option>
-            {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-          </select>
-        </div>
+        <fieldset className="sm:col-span-2">
+          <legend className="label">Assigné à (une ou plusieurs personnes)</legend>
+          <div className="flex flex-wrap gap-2">
+            {members.map((m) => (
+              <label key={m.id} className="flex cursor-pointer items-center gap-2 rounded-lg border border-line bg-bg px-3 py-1.5 text-sm has-[:checked]:border-accent has-[:checked]:bg-accent/10">
+                <input type="checkbox" name="assigneeIds" value={m.id} defaultChecked={card.assignees.some((a) => a.id === m.id)} className="size-4 accent-[var(--accent)]" />
+                {m.name}
+              </label>
+            ))}
+            {members.length === 0 && <p className="text-sm text-muted">Aucun membre dans le projet.</p>}
+          </div>
+        </fieldset>
         <div>
           <label className="label" htmlFor={`p${card.id}`}>Priorité</label>
           <select id={`p${card.id}`} name="priority" defaultValue={card.priority} className="input">
@@ -80,7 +85,7 @@ function ReadOnly({ card, members }: { card: BoardCard; members: BoardMember[] }
     <div className="space-y-3 text-sm">
       {card.description ? <Markdown breaks>{card.description}</Markdown> : <p className="text-muted">Pas de description.</p>}
       <dl className="grid gap-x-4 gap-y-1 sm:grid-cols-2">
-        <div><dt className="inline text-muted">Assigné à : </dt><dd className="inline">{card.assigneeName ?? "Personne"}</dd></div>
+        <div><dt className="inline text-muted">Assigné à : </dt><dd className="inline">{card.assignees.length ? card.assignees.map((a) => a.name).join(", ") : "Personne"}</dd></div>
         <div><dt className="inline text-muted">Priorité : </dt><dd className="inline">{PRIORITY_LABEL[card.priority]}</dd></div>
         <div><dt className="inline text-muted">Début : </dt><dd className="inline">{card.startDate ? fmtDay(card.startDate) : "–"}</dd></div>
         <div><dt className="inline text-muted">Échéance : </dt><dd className="inline">{card.dueDate ? fmtDay(card.dueDate) : "–"}</dd></div>

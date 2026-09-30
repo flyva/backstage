@@ -232,7 +232,7 @@ function CardTable({
     const all = columns.flatMap((column, ci) => column.cards.map((card, i) => ({ card, column, ci, i })));
     const needle = q.trim().toLowerCase();
     const filtered = all.filter(({ card }) =>
-      (!assignee || (assignee === "none" ? card.assigneeId === null : String(card.assigneeId) === assignee)) &&
+      (!assignee || (assignee === "none" ? card.assignees.length === 0 : card.assignees.some((a) => String(a.id) === assignee))) &&
       (!needle || `${card.title} ${card.description} ${card.labels.join(" ")}`.toLowerCase().includes(needle)),
     );
     const progress = (c: BoardCard) => (c.checklist.length ? c.checklist.filter((x) => x.done).length / c.checklist.length : -1);
@@ -241,7 +241,7 @@ function CardTable({
         case "title": return a.card.title.localeCompare(b.card.title, "fr");
         case "column": return a.ci - b.ci || a.i - b.i;
         case "priority": return PRIORITY_RANK[a.card.priority] - PRIORITY_RANK[b.card.priority];
-        case "assignee": return (a.card.assigneeName ?? "￿").localeCompare(b.card.assigneeName ?? "￿", "fr");
+        case "assignee": return (a.card.assignees[0]?.name ?? "￿").localeCompare(b.card.assignees[0]?.name ?? "￿", "fr");
         case "due": return (a.card.dueDate ?? "9999").localeCompare(b.card.dueDate ?? "9999");
         case "progress": return progress(a.card) - progress(b.card);
       }
@@ -309,7 +309,7 @@ function CardTable({
                     ) : column.title}
                   </td>
                   <td className="px-3 py-2">{card.priority === "normal" ? <span className="text-muted">{PRIORITY_LABEL.normal}</span> : <PriorityPill priority={card.priority} />}</td>
-                  <td className="whitespace-nowrap px-3 py-2">{card.assigneeName ?? <span className="text-muted">–</span>}</td>
+                  <td className="px-3 py-2">{card.assignees.length ? card.assignees.map((a) => a.name).join(", ") : <span className="text-muted">–</span>}</td>
                   <td className={`whitespace-nowrap px-3 py-2 ${late ? "font-medium text-danger" : ""}`}>{card.dueDate ? fmtDay(card.dueDate) : <span className="text-muted">–</span>}</td>
                   <td className="px-3 py-2"><div className="flex flex-wrap gap-1">{card.labels.map((l) => <LabelChip key={l} label={l} />)}</div></td>
                   <td className="whitespace-nowrap px-3 py-2">

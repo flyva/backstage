@@ -1,6 +1,6 @@
 import { and, asc, eq, inArray, isNotNull } from "drizzle-orm";
 import { db } from "@/db";
-import { kanbanCards, kanbanChecklist, kanbanColumns, kanbanComments, projectFiles, projectMembers, users } from "@/db/schema";
+import { kanbanCardAssignees, kanbanCards, kanbanChecklist, kanbanColumns, kanbanComments, projectFiles, projectMembers, users } from "@/db/schema";
 import { can, requireProject } from "@/lib/projects";
 import { createDefaultColumns } from "@/lib/kanban-actions";
 import { todayParis } from "@/lib/equipment";
@@ -17,9 +17,8 @@ export default async function ProjectKanbanPage({ params, searchParams }: PagePr
   const cols = await db.select().from(kanbanColumns).where(eq(kanbanColumns.projectId, project.id)).orderBy(asc(kanbanColumns.position), asc(kanbanColumns.id));
   const cards = cols.length
     ? await db
-        .select({ card: kanbanCards, assignee: users.name })
+        .select({ card: kanbanCards })
         .from(kanbanCards)
-        .leftJoin(users, eq(users.id, kanbanCards.assigneeId))
         .where(inArray(kanbanCards.columnId, cols.map((c) => c.id)))
         .orderBy(asc(kanbanCards.position), asc(kanbanCards.id))
     : [];
@@ -31,7 +30,7 @@ export default async function ProjectKanbanPage({ params, searchParams }: PagePr
     .orderBy(asc(users.name));
 
   const cardIds = cards.map((c) => c.card.id);
-  const [checklist, comments, files] = cardIds.length
+  const [checklist, comments, files, assignees] = cardIds.length
     ? await Promise.all([
         db.select().from(kanbanChecklist).where(inArray(kanbanChecklist.cardId, cardIds)).orderBy(asc(kanbanChecklist.position), asc(kanbanChecklist.id)),
         db
@@ -45,22 +44,28 @@ export default async function ProjectKanbanPage({ params, searchParams }: PagePr
           .from(projectFiles)
           .where(and(eq(projectFiles.projectId, project.id), isNotNull(projectFiles.cardId)))
           .orderBy(asc(projectFiles.createdAt)),
+        db
+          .select({ cardId: kanbanCardAssignees.cardId, id: users.id, name: users.name })
+          .from(kanbanCardAssignees)
+          .innerJoin(users, eq(users.id, kanbanCardAssignees.userId))
+          .where(inArray(kanbanCardAssignees.cardId, cardIds))
+          .orderBy(asc(users.name)),
       ])
-    : [[], [], []];
+    : [[], [], [], []];
   const checklistBy = Map.groupBy(checklist, (x) => x.cardId);
   const commentsBy = Map.groupBy(comments, (x) => x.c.cardId);
+  const assigneesBy = Map.groupBy(assignees, (x) => x.cardId);
   const filesBy = Map.groupBy(files, (x) => x.cardId as number);
 
   const byCol = Map.groupBy(cards, (c) => c.card.columnId);
   const board: BoardColumn[] = cols.map((c) => ({
     id: c.id,
     title: c.title,
-    cards: (byCol.get(c.id) ?? []).map(({ card, assignee }) => ({
+    cards: (byCol.get(c.id) ?? []).map(({ card }) => ({
       id: card.id,
       title: card.title,
       description: card.description ?? "",
-      assigneeId: card.assigneeId,
-      assigneeName: assignee,
+      assignees: (assigneesBy.get(card.id) ?? []).map((a) => ({ id: a.id, name: a.name })),
       startDate: card.startDate,
       dueDate: card.dueDate,
       priority: card.priority,

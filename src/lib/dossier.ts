@@ -2,7 +2,7 @@ import "server-only";
 import { asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import {
-  checklistItems, checklists, cues, kanbanCards, kanbanColumns, projectMembers, techInputs, techLights, users, type ProjectRole,
+  checklistItems, checklists, cues, kanbanCardAssignees, kanbanCards, kanbanColumns, projectMembers, techInputs, techLights, users, type ProjectRole,
 } from "@/db/schema";
 import { toCsv } from "@/lib/csv";
 import { ROLE_LABEL } from "@/lib/projects";
@@ -34,12 +34,20 @@ export async function loadDossier(project: Project, role: ProjectRole) {
   const itemsBy = Map.groupBy(items, (i) => i.checklistId);
   const cards = columns.length
     ? await db
-        .select({ card: kanbanCards, assignee: users.name })
+        .select({ card: kanbanCards })
         .from(kanbanCards)
-        .leftJoin(users, eq(users.id, kanbanCards.assigneeId))
         .where(inArray(kanbanCards.columnId, columns.map((c) => c.id)))
         .orderBy(asc(kanbanCards.position), asc(kanbanCards.id))
     : [];
+  const assigneeRows = cards.length
+    ? await db
+        .select({ cardId: kanbanCardAssignees.cardId, name: users.name })
+        .from(kanbanCardAssignees)
+        .innerJoin(users, eq(users.id, kanbanCardAssignees.userId))
+        .where(inArray(kanbanCardAssignees.cardId, cards.map((c) => c.card.id)))
+        .orderBy(asc(users.name))
+    : [];
+  const assigneesBy = Map.groupBy(assigneeRows, (r) => r.cardId);
   const colTitle = new Map(columns.map((c) => [c.id, c.title]));
   const starts = cueRows.reduce<number[]>((out, c, i) => [...out, i === 0 ? 0 : out[i - 1] + (cueRows[i - 1].durationSec ?? 0)], []);
 
@@ -50,8 +58,8 @@ export async function loadDossier(project: Project, role: ProjectRole) {
     lights,
     inputs,
     conflicts: findConflicts(lights),
-    tasks: cards.map(({ card, assignee }) => ({
-      title: card.title, status: colTitle.get(card.columnId) ?? "", priority: PRIORITY[card.priority], assignee, due: card.dueDate, labels: card.labels,
+    tasks: cards.map(({ card }) => ({
+      title: card.title, status: colTitle.get(card.columnId) ?? "", priority: PRIORITY[card.priority], assignee: (assigneesBy.get(card.id) ?? []).map((a) => a.name).join(", "), due: card.dueDate, labels: card.labels,
     })),
   };
 }

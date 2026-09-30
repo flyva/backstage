@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { and, asc, eq, inArray, max } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { kanbanCards, kanbanChecklist, kanbanColumns, kanbanComments, projectFiles, projectMembers } from "@/db/schema";
+import { kanbanCardAssignees, kanbanCards, kanbanChecklist, kanbanColumns, kanbanComments, projectFiles, projectMembers } from "@/db/schema";
 import { removeProjectFile } from "@/lib/project-files";
 import { can } from "@/lib/projects";
 import { DEFAULT_KANBAN_COLUMNS, requireProject } from "@/lib/projects";
@@ -113,7 +113,6 @@ export async function addCard(fd: FormData) {
 const cardSchema = z.object({
   title: z.string().trim().min(1, "Titre requis").max(200),
   description: z.string().trim().max(4000),
-  assigneeId: z.string(),
   startDate: z.string().refine((v) => v === "" || /^\d{4}-\d{2}-\d{2}$/.test(v), "Date invalide"),
   dueDate: z.string().refine((v) => v === "" || /^\d{4}-\d{2}-\d{2}$/.test(v), "Date invalide"),
   priority: z.enum(["low", "normal", "high", "urgent"]),
@@ -139,7 +138,6 @@ export async function updateCard(_: FormState, fd: FormData): Promise<FormState>
   const p = cardSchema.safeParse({
     title: fd.get("title"),
     description: fd.get("description") ?? "",
-    assigneeId: fd.get("assigneeId") ?? "",
     startDate: fd.get("startDate") ?? "",
     dueDate: fd.get("dueDate") ?? "",
     priority: fd.get("priority") ?? "normal",
@@ -147,23 +145,22 @@ export async function updateCard(_: FormState, fd: FormData): Promise<FormState>
   });
   if (!p.success) return { error: p.error.issues[0].message };
 
-  // La personne assignée doit faire partie du projet.
-  let assigneeId: number | null = null;
-  if (p.data.assigneeId) {
-    const uid = Number(p.data.assigneeId);
-    const [m] = await db.select({ u: projectMembers.userId }).from(projectMembers).where(and(eq(projectMembers.projectId, found.projectId), eq(projectMembers.userId, uid))).limit(1);
-    if (!m) return { error: "Cette personne ne fait pas partie du projet" };
-    assigneeId = uid;
+  // Les personnes assignées doivent toutes faire partie du projet.
+  const wanted = [...new Set(fd.getAll("assigneeIds").map(Number).filter((n) => Number.isInteger(n) && n > 0))];
+  if (wanted.length > 0) {
+    const ok = await db.select({ u: projectMembers.userId }).from(projectMembers).where(and(eq(projectMembers.projectId, found.projectId), inArray(projectMembers.userId, wanted)));
+    if (ok.length !== wanted.length) return { error: "Une personne assignée ne fait pas partie du projet" };
   }
   await db.update(kanbanCards).set({
     title: p.data.title,
     description: p.data.description || null,
-    assigneeId,
     startDate: p.data.startDate || null,
     dueDate: p.data.dueDate || null,
     priority: p.data.priority,
     labels: normalizeLabels(p.data.labels),
   }).where(eq(kanbanCards.id, cardId));
+  await db.delete(kanbanCardAssignees).where(eq(kanbanCardAssignees.cardId, cardId));
+  if (wanted.length > 0) await db.insert(kanbanCardAssignees).values(wanted.map((userId) => ({ cardId, userId })));
   touch(found.projectId);
   return { ok: "Carte mise à jour" };
 }

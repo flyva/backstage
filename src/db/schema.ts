@@ -274,7 +274,6 @@ export const kanbanCards = mysqlTable(
     columnId: int("column_id").notNull().references(() => kanbanColumns.id, { onDelete: "cascade" }),
     title: varchar("title", { length: 200 }).notNull(),
     description: text("description"),
-    assigneeId: int("assignee_id").references(() => users.id, { onDelete: "set null" }),
     startDate: date("start_date", { mode: "string" }),
     dueDate: date("due_date", { mode: "string" }),
     priority: mysqlEnum("priority", ["low", "normal", "high", "urgent"]).notNull().default("normal"),
@@ -284,6 +283,16 @@ export const kanbanCards = mysqlTable(
     createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
   },
   (t) => [index("kcard_col_idx").on(t.columnId, t.position)],
+);
+
+// Personnes assignées à une carte (une ou plusieurs).
+export const kanbanCardAssignees = mysqlTable(
+  "kanban_card_assignees",
+  {
+    cardId: int("card_id").notNull().references(() => kanbanCards.id, { onDelete: "cascade" }),
+    userId: int("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.cardId, t.userId] }), index("kca_user_idx").on(t.userId)],
 );
 
 export const kanbanChecklist = mysqlTable(
