@@ -1,3 +1,4 @@
+import { Markdown } from "@/components/Markdown";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { desc, eq } from "drizzle-orm";
@@ -50,7 +51,7 @@ export default async function ItemPage({ params }: PageProps<"/materiel/[id]">) 
         <div className="min-w-0 flex-1 space-y-1">
           <h1 className="text-2xl font-bold">{item.name}</h1>
           <p className="text-sm text-muted">{item.category}{item.code && ` · ${item.code}`}{item.location && ` · ${item.location}`}</p>
-          {item.description && <p className="whitespace-pre-line pt-1 text-sm">{item.description}</p>}
+          {item.description && <div className="pt-1 text-sm"><Markdown breaks>{item.description}</Markdown></div>}
           <p className="pt-2 text-sm">
             {item.status === "active" ? (
               <>Disponible aujourd&apos;hui : <strong className={available > 0 ? "text-accent" : "text-danger"}>{available}</strong> / {item.quantity}</>

@@ -1,14 +1,15 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkBreaks from "remark-breaks";
 import { expandWikiLinks } from "@/lib/wiki";
 
 // react-markdown ne rend jamais de HTML brut et neutralise les liens `javascript:` :
 // le contenu écrit par les élèves ne peut pas injecter de script.
-export function Markdown({ children }: { children: string }) {
+export function Markdown({ children, breaks = false }: { children: string; breaks?: boolean }) {
   return (
     <div className="prose-wiki">
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={breaks ? [remarkGfm, remarkBreaks] : [remarkGfm]}
         components={{
           a: ({ href, children }) => {
             const external = !!href && /^https?:\/\//i.test(href);

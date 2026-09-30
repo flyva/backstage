@@ -24,7 +24,7 @@ export function NewsForm({ postId, title = "", body = "", scope = "ecole", pinne
           </select>
         </div>
       </div>
-      <MarkdownField defaultValue={body} rows={12} maxLength={50000} placeholder="Écris en Markdown : **gras**, listes, liens…" />
+      <MarkdownField defaultValue={body} rows={12} maxLength={50000} label="Contenu de l'article" placeholder="Écris ton article…" />
       {isAdmin && (
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" name="pinned" defaultChecked={pinned} className="size-4 accent-[var(--accent)]" />

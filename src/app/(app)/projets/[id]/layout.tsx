@@ -1,3 +1,4 @@
+import { Markdown } from "@/components/Markdown";
 import Link from "next/link";
 import { ArrowLeft, CalendarDays } from "lucide-react";
 import { requireProject, ROLE_LABEL } from "@/lib/projects";
@@ -32,7 +33,7 @@ export default async function ProjectLayout({ children, params }: LayoutProps<"/
             <CalendarDays size={14} /> <span className="capitalize">{dateFmt.format(new Date(project.eventDate))}</span>
           </p>
         )}
-        {project.description && <p className="text-sm text-muted">{project.description}</p>}
+        {project.description && <div className="text-sm text-muted"><Markdown breaks>{project.description}</Markdown></div>}
       </header>
       <div className="print:hidden"><ProjectTabs base={`/projets/${project.id}`} tabs={tabs} /></div>
       {children}

@@ -1,3 +1,4 @@
+import { Markdown } from "@/components/Markdown";
 import { asc, eq, inArray } from "drizzle-orm";
 import { CalendarDays, MapPin, Trash2, Users } from "lucide-react";
 import { db } from "@/db";
@@ -63,7 +64,7 @@ export default async function BdeEventsPage() {
                 )}
               </form>
             </div>
-            {e.description && <p className="whitespace-pre-line text-sm">{e.description}</p>}
+            {e.description && <div className="text-sm"><Markdown breaks>{e.description}</Markdown></div>}
             {registered && <p className="text-xs text-accent">Tu es inscrit(e) ✓</p>}
 
             {manager && (

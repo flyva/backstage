@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import type { FormState } from "@/lib/actions";
+import { MarkdownField } from "@/components/MarkdownField";
 import { createPoll, saveEvent, submitIdea } from "@/lib/bde-actions";
 
 function Feedback({ state }: { state: FormState }) {
@@ -38,7 +39,7 @@ export function EventForm({ event }: { event?: EventDefaults }) {
       </div>
       <div>
         <label className="label">Description</label>
-        <textarea name="description" defaultValue={d.description} rows={3} maxLength={5000} className="input" />
+        <MarkdownField name="description" defaultValue={d.description} rows={5} maxLength={5000} label="Description" />
       </div>
       <Feedback state={state} />
       <button className="btn" disabled={pending}>{pending ? "Enregistrement…" : d.id ? "Enregistrer" : "Créer l'évènement"}</button>

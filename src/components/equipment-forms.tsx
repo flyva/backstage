@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import type { FormState } from "@/lib/actions";
+import { MarkdownField } from "@/components/MarkdownField";
 import { addItem, updateItem, requestLoan } from "@/lib/equipment-actions";
 
 function Feedback({ state }: { state: FormState }) {
@@ -53,7 +54,7 @@ function ItemFields({ d }: { d: ItemDefaults }) {
       </div>
       <div>
         <label className="label">Description</label>
-        <textarea name="description" defaultValue={d.description} rows={2} maxLength={2000} className="input" />
+        <MarkdownField name="description" defaultValue={d.description} rows={4} maxLength={2000} label="Description" />
       </div>
     </>
   );

@@ -3,6 +3,7 @@
 import { useActionState, useOptimistic, useTransition } from "react";
 import { Trash2 } from "lucide-react";
 import type { FormState } from "@/lib/actions";
+import { MarkdownField } from "@/components/MarkdownField";
 import { createProject, updateProject, addMember, toggleItem, deleteItem } from "@/lib/project-actions";
 
 function Feedback({ state }: { state: FormState }) {
@@ -27,7 +28,7 @@ function ProjectFields({ d }: { d: ProjectDefaults }) {
         </div>
         <div>
           <label className="label" htmlFor="description">Description</label>
-          <input id="description" name="description" defaultValue={d.description} placeholder="Lieu, contexte, contraintes…" className="input" />
+          <MarkdownField name="description" defaultValue={d.description} rows={4} maxLength={2000} placeholder="Lieu, contexte, contraintes…" label="Description" />
         </div>
       </div>
     </>
