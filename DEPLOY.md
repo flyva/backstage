@@ -145,6 +145,10 @@ Cloudflare **ne fournit pas de nom de domaine gratuit** : le tunnel a besoin d'u
 
 ## 8. Mettre à jour
 
+**Raccourci (depuis le PC)** : écris `utilisateur@adresse-du-pi` dans un fichier `.deploy` à la racine du projet, puis `npm run deploy` compile, envoie et installe en une commande (`npm run deploy -- --skip-build` réutilise la dernière archive). Une clé SSH évite de retaper le mot de passe de connexion ; le mot de passe sudo du Pi reste demandé.
+
+Détail des étapes manuelles :
+
 ```bash
 # PC
 npm run package
