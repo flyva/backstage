@@ -7,7 +7,7 @@ import { db } from "@/db";
 import { conversations, listings, messages, reviews } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { messageCountsBySender } from "@/lib/messaging";
-import { emitMessage } from "@/lib/message-bus";
+import { emitEvent, emitMessage } from "@/lib/message-bus";
 import { notifyUser } from "@/lib/push";
 import { allow } from "@/lib/rate-limit";
 import type { FormState } from "@/lib/actions";
@@ -15,7 +15,7 @@ import type { FormState } from "@/lib/actions";
 const body = (fd: FormData) => String(fd.get("body") ?? "").trim().slice(0, 2000);
 
 async function pushNew(toUserId: number, fromName: string, listingTitle: string, conversationId: number, text: string) {
-  await notifyUser(toUserId, { title: `${fromName} · ${listingTitle}`, body: text.length > 120 ? `${text.slice(0, 117)}…` : text, url: `/messages/${conversationId}`, tag: `conv-${conversationId}` }).catch(() => 0);
+  await notifyUser(toUserId, { title: `${fromName} · ${listingTitle}`, body: text.length > 120 ? `${text.slice(0, 117)}…` : text, url: `/messages/${conversationId}`, tag: `conv-${conversationId}` }, "messages").catch(() => 0);
 }
 
 /** Premier message d'une personne intéressée par une annonce : crée la conversation (ou reprend celle qui existe). */
@@ -69,7 +69,9 @@ export async function markConversationRead(conversationId: number) {
   const user = await requireUser();
   const [conv] = await db.select().from(conversations).where(eq(conversations.id, conversationId)).limit(1);
   if (!conv || (conv.buyerId !== user.id && conv.sellerId !== user.id)) return;
-  await db.update(conversations).set(conv.buyerId === user.id ? { buyerReadAt: new Date() } : { sellerReadAt: new Date() }).where(eq(conversations.id, conv.id));
+  const now = new Date();
+  await db.update(conversations).set(conv.buyerId === user.id ? { buyerReadAt: now } : { sellerReadAt: now }).where(eq(conversations.id, conv.id));
+  emitEvent(conv.id, { kind: "read", userId: user.id, at: now.toISOString() }); // l'autre personne voit « Vu » tout de suite
 }
 
 /** Avis sur l'autre personne de la conversation : il faut que chacune ait écrit au moins une fois. */
@@ -95,6 +97,9 @@ export async function saveReview(_: FormState, fd: FormData): Promise<FormState>
   const [existing] = await db.select({ id: reviews.id }).from(reviews).where(and(eq(reviews.authorId, user.id), eq(reviews.listingId, conv.listingId), eq(reviews.subjectId, subjectId))).limit(1);
   if (existing) await db.update(reviews).set({ rating, comment: values.comment }).where(eq(reviews.id, existing.id));
   else await db.insert(reviews).values(values);
+  if (!existing) {
+    await notifyUser(subjectId, { title: `Nouvel avis de ${user.name}`, body: `${"★".repeat(rating)}${comment ? ` · ${comment.slice(0, 80)}` : ""}`, url: `/messages/${conv.id}`, tag: `review-${conv.id}` }, "messages").catch(() => 0);
+  }
   revalidatePath(`/messages/${conv.id}`);
   revalidatePath("/annonces");
   revalidatePath(`/annonces/${conv.listingId}`);

@@ -91,7 +91,8 @@ export function ListingForm({ defaultContact }: { defaultContact: string }) {
         </div>
         <div>
           <label className="label" htmlFor="l-price">Prix (facultatif)</label>
-          <input id="l-price" name="price" maxLength={40} placeholder="50 €, gratuit…" className="input" />
+          <input id="l-price" name="price" maxLength={40} inputMode="decimal" placeholder="50" className="input" aria-describedby="l-price-help" />
+          <p id="l-price-help" className="mt-1 text-xs text-muted">En euros (le € s&apos;ajoute tout seul). Tu peux écrire « Gratuit » ou « À débattre ».</p>
         </div>
       </div>
       <div>

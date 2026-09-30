@@ -2,9 +2,10 @@ import { and, asc, eq, gt } from "drizzle-orm";
 import { db } from "@/db";
 import { conversations, messages } from "@/db/schema";
 import { getUser } from "@/lib/auth";
-import { onMessage, toLive, type LiveMessage } from "@/lib/message-bus";
+import { onEvent, toLive, type LiveEvent } from "@/lib/message-bus";
 
-// Flux en direct (Server-Sent Events) des nouveaux messages d'une conversation : réservé à ses deux participants.
+// Flux en direct (Server-Sent Events) d'une conversation : nouveaux messages, « est en train d'écrire », « vu ».
+// Réservé à ses deux participants.
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -23,13 +24,16 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const stream = new ReadableStream({
     async start(controller) {
       let closed = false;
-      const send = (m: LiveMessage) => {
-        if (!closed) controller.enqueue(enc.encode(`id: ${m.id}\nevent: message\ndata: ${JSON.stringify(m)}\n\n`));
+      const write = (chunk: string) => { if (!closed) controller.enqueue(enc.encode(chunk)); };
+      const send = (e: LiveEvent) => {
+        if (e.kind === "message") write(`id: ${e.message.id}\nevent: message\ndata: ${JSON.stringify(e.message)}\n\n`);
+        else if (e.kind === "typing") write(`event: typing\ndata: ${JSON.stringify({ userId: e.userId })}\n\n`);
+        else write(`event: read\ndata: ${JSON.stringify({ userId: e.userId, at: e.at })}\n\n`);
       };
-      controller.enqueue(enc.encode("retry: 2000\n\n"));
-      const off = onMessage(id, send);
+      write("retry: 2000\n\n");
+      const off = onEvent(id, send);
       // Un battement toutes les 20 s garde la connexion ouverte à travers Cloudflare et les box.
-      const beat = setInterval(() => { if (!closed) controller.enqueue(enc.encode(": ping\n\n")); }, 20000);
+      const beat = setInterval(() => write(": ping\n\n"), 20000);
       cleanup = () => {
         if (closed) return;
         closed = true;
@@ -38,7 +42,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         try { controller.close(); } catch { /* déjà fermé */ }
       };
       req.signal.addEventListener("abort", cleanup);
-      for (const m of await db.select().from(messages).where(and(eq(messages.conversationId, id), gt(messages.id, last))).orderBy(asc(messages.id))) send(toLive(m));
+      for (const m of await db.select().from(messages).where(and(eq(messages.conversationId, id), gt(messages.id, last))).orderBy(asc(messages.id))) send({ kind: "message", message: toLive(m) });
     },
     cancel() { cleanup(); },
   });

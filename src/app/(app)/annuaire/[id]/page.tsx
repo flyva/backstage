@@ -6,7 +6,7 @@ import { db } from "@/db";
 import { listings, reviews, tracks, userLinks, users } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { avatarUrl } from "@/lib/avatar-files";
-import { LISTING_LABEL, LISTING_PHOTO_PREFIX } from "@/lib/listing-shared";
+import { LISTING_LABEL, LISTING_PHOTO_PREFIX, formatPrice } from "@/lib/listing-shared";
 import { ratingSummary } from "@/lib/messaging";
 import { LINK_LABEL, school3isEmail } from "@/lib/people-shared";
 import { ago } from "@/lib/relative-time";
@@ -91,7 +91,7 @@ export default async function MemberPage({ params }: PageProps<"/annuaire/[id]">
                     )}
                     <div className="min-w-0 text-sm">
                       <div className="truncate font-medium">{l.title}</div>
-                      <div className="text-xs text-muted">{LISTING_LABEL[l.category]}{l.price ? ` · ${l.price}` : ""}</div>
+                      <div className="text-xs text-muted">{LISTING_LABEL[l.category]}{formatPrice(l.price) ? ` · ${formatPrice(l.price)}` : ""}</div>
                     </div>
                   </Link>
                 </li>

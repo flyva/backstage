@@ -15,7 +15,7 @@ export default async function NotificationsSettingsPage() {
       <NotificationSettings
         publicKey={vapidPublicKey()}
         serverReady={pushEnabled()}
-        initial={{ news: user.notifyNews, bde: user.notifyBde, loans: user.notifyLoans, reminders: user.notifyReminders }}
+        initial={{ news: user.notifyNews, bde: user.notifyBde, loans: user.notifyLoans, reminders: user.notifyReminders, messages: user.notifyMessages, listings: user.notifyListings }}
       />
     </section>
   );

@@ -5,9 +5,9 @@ import { db } from "@/db";
 import { pushSubscriptions, users } from "@/db/schema";
 
 export type PushPayload = { title: string; body: string; url: string; tag?: string };
-export type PushCategory = "news" | "bde" | "loans" | "reminders";
+export type PushCategory = "news" | "bde" | "loans" | "reminders" | "messages" | "listings";
 
-const COLUMN = { news: users.notifyNews, bde: users.notifyBde, loans: users.notifyLoans, reminders: users.notifyReminders } as const;
+const COLUMN = { news: users.notifyNews, bde: users.notifyBde, loans: users.notifyLoans, reminders: users.notifyReminders, messages: users.notifyMessages, listings: users.notifyListings } as const;
 
 let configured: boolean | null = null;
 function configure(): boolean {

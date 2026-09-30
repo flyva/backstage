@@ -6,11 +6,11 @@ import path from "node:path";
 import { and, asc, eq, gt, count } from "drizzle-orm";
 import { db } from "@/db";
 import { LISTING_CATEGORIES, conversations, listingPhotos, listings, type ListingCategory } from "@/db/schema";
-import { notifyUser } from "@/lib/push";
+import { notifyCategory, notifyUser } from "@/lib/push";
 import { requireUser } from "@/lib/auth";
 import { sniffAvatar } from "@/lib/avatar-files";
 import { ensureListingDir, listingDir, newListingPhotoName, removeListingPhoto } from "@/lib/listing-files";
-import { LISTING_TTL_DAYS, MAX_LISTING_PHOTOS, MAX_LISTING_PHOTO_BYTES } from "@/lib/listing-shared";
+import { LISTING_TTL_DAYS, MAX_LISTING_PHOTOS, MAX_LISTING_PHOTO_BYTES, formatPrice } from "@/lib/listing-shared";
 import { allow } from "@/lib/rate-limit";
 import type { FormState } from "@/lib/actions";
 
@@ -72,6 +72,8 @@ export async function createListing(_: FormState, fd: FormData): Promise<FormSta
     expiresAt: new Date(Date.now() + LISTING_TTL_DAYS * 864e5),
   });
   if (saved.names.length > 1) await db.insert(listingPhotos).values(saved.names.slice(1).map((file, i) => ({ listingId: res.insertId, file, position: i + 1 })));
+  // Notification aux personnes qui ont activé « Nouvelles annonces » (désactivé par défaut)
+  await notifyCategory("listings", { title: "Nouvelle annonce", body: `${user.name} : ${title}${formatPrice(text(fd, "price", 40)) ? ` · ${formatPrice(text(fd, "price", 40))}` : ""}`, url: `/annonces/${res.insertId}`, tag: `listing-${res.insertId}` }, user.id).catch(() => 0);
   revalidatePath("/annonces", "layout");
   return { ok: "Annonce publiée" };
 }
@@ -168,7 +170,7 @@ export async function concludeListing(fd: FormData) {
   await db.update(listings).set({ status: "closed", soldToId }).where(eq(listings.id, l.id));
   if (soldToId) {
     const [conv] = await db.select({ id: conversations.id }).from(conversations).where(and(eq(conversations.listingId, l.id), eq(conversations.buyerId, soldToId))).limit(1);
-    await notifyUser(soldToId, { title: `Annonce conclue : ${l.title}`, body: "Tu peux maintenant laisser un avis sur l'échange.", url: `/messages/${conv.id}`, tag: `sold-${l.id}` }).catch(() => 0);
+    await notifyUser(soldToId, { title: `Annonce conclue : ${l.title}`, body: "Tu peux maintenant laisser un avis sur l'échange.", url: `/messages/${conv.id}`, tag: `sold-${l.id}` }, "messages").catch(() => 0);
   }
   revalidatePath("/annonces", "layout");
   revalidatePath("/messages", "layout");

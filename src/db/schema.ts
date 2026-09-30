@@ -95,6 +95,8 @@ export const users = mysqlTable("users", {
   notifyBde: boolean("notify_bde").notNull().default(true),
   notifyLoans: boolean("notify_loans").notNull().default(true),
   notifyReminders: boolean("notify_reminders").notNull().default(true),
+  notifyMessages: boolean("notify_messages").notNull().default(true), // messages des annonces, vente validée, nouvel avis
+  notifyListings: boolean("notify_listings").notNull().default(false), // nouvelle annonce publiée par la promo (désactivé par défaut : peut être bavard)
   createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
 });
 

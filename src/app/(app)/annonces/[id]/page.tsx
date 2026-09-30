@@ -5,7 +5,7 @@ import { db } from "@/db";
 import { conversations, listingPhotos, listings, reviews, tracks, users } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { avatarUrl } from "@/lib/avatar-files";
-import { LISTING_LABEL } from "@/lib/listing-shared";
+import { LISTING_LABEL, formatPrice } from "@/lib/listing-shared";
 import { deleteReview } from "@/lib/message-actions";
 import { concludeListing, setListingStatus } from "@/lib/listing-actions";
 import { ratingSummary } from "@/lib/messaging";
@@ -63,7 +63,7 @@ export default async function ListingPage({ params }: PageProps<"/annonces/[id]"
         <PhotoGallery files={photos} title={l.title} />
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-full border border-line px-2 py-0.5 text-[11px] font-semibold text-muted">{LISTING_LABEL[l.category]}</span>
-          {l.price && <span className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-bold text-accent-fg">{l.price}</span>}
+          {formatPrice(l.price) && <span className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-bold text-accent-fg">{formatPrice(l.price)}</span>}
           {!live && <span className="rounded-full border border-line px-2 py-0.5 text-[11px] font-semibold text-muted">{l.status === "closed" ? (l.soldToId ? "Conclue" : "Retirée") : "Expirée"}</span>}
         </div>
         <h1 className="text-2xl font-bold leading-snug">{l.title}</h1>

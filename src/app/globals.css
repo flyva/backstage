@@ -162,3 +162,14 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
     @apply mb-1 block text-xs font-medium text-muted;
   }
 }
+
+/* Messagerie : arrivée d'un message, « est en train d'écrire », « vu ». Désactivées si la personne préfère moins de mouvement. */
+@keyframes msg-in { from { opacity: 0; transform: translateY(10px) scale(0.97); } to { opacity: 1; transform: none; } }
+@keyframes typing-dot { 0%, 60%, 100% { opacity: 0.3; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-4px); } }
+@keyframes seen-in { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
+.anim-msg-in { animation: msg-in 0.24s ease-out both; }
+.anim-seen-in { animation: seen-in 0.3s ease-out both; }
+.typing-dot { display: inline-block; width: 6px; height: 6px; border-radius: 9999px; background: currentColor; animation: typing-dot 1.2s infinite ease-in-out; }
+.typing-dot:nth-child(2) { animation-delay: 0.18s; }
+.typing-dot:nth-child(3) { animation-delay: 0.36s; }
+@media (prefers-reduced-motion: reduce) { .anim-msg-in, .anim-seen-in, .typing-dot { animation: none; } }

@@ -11,9 +11,12 @@ function Feedback({ state }: { state: FormState }) {
   return null;
 }
 
-// Ctrl/Cmd + Entrée envoie le message.
-const submitOnCtrlEnter = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); e.currentTarget.form?.requestSubmit(); }
+// Entrée envoie le message ; Maj + Entrée fait un retour à la ligne. On n'envoie pas pendant une saisie assistée (clavier japonais, suggestions…).
+const submitOnEnter = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+    e.preventDefault();
+    if (e.currentTarget.value.trim()) e.currentTarget.form?.requestSubmit();
+  }
 };
 
 /** Premier message depuis une annonce. */
@@ -23,7 +26,8 @@ export function StartConversationForm({ listingId, sellerName }: { listingId: nu
     <form action={action} className="space-y-3">
       <input type="hidden" name="listingId" value={listingId} />
       <label className="label" htmlFor="m-first">Écrire à {sellerName}</label>
-      <textarea id="m-first" name="body" required rows={3} maxLength={2000} onKeyDown={submitOnCtrlEnter} className="input" placeholder="Bonjour, est-ce que c'est toujours disponible ?" />
+      <textarea id="m-first" name="body" required rows={3} maxLength={2000} onKeyDown={submitOnEnter} className="input" placeholder="Bonjour, est-ce que c'est toujours disponible ?" />
+      <p className="text-xs text-muted">Entrée pour envoyer, Maj + Entrée pour un retour à la ligne.</p>
       <Feedback state={state} />
       <button className="btn" disabled={pending}><Send size={15} /> {pending ? "Envoi…" : "Envoyer le message"}</button>
     </form>
@@ -34,10 +38,18 @@ export function StartConversationForm({ listingId, sellerName }: { listingId: nu
 export function MessageComposer({ conversationId }: { conversationId: number }) {
   const [state, action, pending] = useActionState(sendMessage, undefined);
   const form = useRef<HTMLFormElement>(null);
+  const lastPing = useRef(0);
+  // Prévient l'autre personne qu'on est en train d'écrire (au plus toutes les 2,5 s ; rien n'est enregistré).
+  const ping = () => {
+    const now = Date.now();
+    if (now - lastPing.current < 2500) return;
+    lastPing.current = now;
+    void fetch(`/api/messages/${conversationId}/typing`, { method: "POST" }).catch(() => {});
+  };
   return (
-    <form ref={form} action={async (fd) => { await action(fd); form.current?.reset(); window.dispatchEvent(new Event("conv-sync")); }} className="space-y-2">
+    <form ref={form} action={async (fd) => { await action(fd); form.current?.reset(); lastPing.current = 0; window.dispatchEvent(new Event("conv-sync")); }} className="space-y-2">
       <input type="hidden" name="conversationId" value={conversationId} />
-      <textarea name="body" required rows={2} maxLength={2000} onKeyDown={submitOnCtrlEnter} className="input" placeholder="Ton message… (Ctrl + Entrée pour envoyer)" aria-label="Ton message" />
+      <textarea name="body" required rows={2} maxLength={2000} onKeyDown={submitOnEnter} onInput={ping} className="input" placeholder="Ton message… (Entrée pour envoyer, Maj + Entrée pour aller à la ligne)" aria-label="Ton message" />
       {state?.error && <Feedback state={state} />}
       <button className="btn" disabled={pending}><Send size={15} /> {pending ? "Envoi…" : "Envoyer"}</button>
     </form>

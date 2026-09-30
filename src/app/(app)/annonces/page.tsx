@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { LISTING_CATEGORIES, listingPhotos, listings, tracks, users, type ListingCategory } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { avatarUrl } from "@/lib/avatar-files";
-import { LISTING_LABEL, LISTING_PHOTO_PREFIX } from "@/lib/listing-shared";
+import { LISTING_LABEL, LISTING_PHOTO_PREFIX, formatPrice } from "@/lib/listing-shared";
 import { deleteListing, setListingStatus } from "@/lib/listing-actions";
 import { school3isEmail } from "@/lib/people-shared";
 import { ListingForm } from "@/components/listing-forms";
@@ -83,7 +83,7 @@ export default async function AnnoncesPage({ searchParams }: PageProps<"/annonce
               )}
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-full border border-line px-2 py-0.5 text-[11px] font-semibold text-muted">{LISTING_LABEL[l.category]}</span>
-                {l.price && <span className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-bold text-accent-fg">{l.price}</span>}
+                {formatPrice(l.price) && <span className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-bold text-accent-fg">{formatPrice(l.price)}</span>}
               </div>
               <h2 className="text-lg font-semibold leading-snug"><Link href={`/annonces/${l.id}`} className="hover:text-accent">{l.title}</Link></h2>
               <p className="whitespace-pre-line text-sm text-muted">{l.description}</p>

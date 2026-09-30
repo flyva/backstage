@@ -1,21 +1,31 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Check, CheckCheck } from "lucide-react";
 import { markConversationRead } from "@/lib/message-actions";
 import type { LiveMessage } from "@/lib/message-bus";
 
 const dayFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+const timeFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit" });
+const TYPING_MS = 4000; // « écrit… » disparaît 4 s après le dernier signal
 
 /**
- * Fil de la conversation en direct : les nouveaux messages arrivent par un flux (EventSource) sans recharger la page.
- * Si le flux est coupé (réseau, proxy), on interroge le serveur toutes les 4 s en attendant qu'il revienne.
+ * Fil de la conversation en direct : les nouveaux messages arrivent par un flux (EventSource) sans recharger la page, avec
+ * l'indication « est en train d'écrire » et « Vu » sous ton dernier message. Si le flux est coupé (réseau, proxy), on interroge
+ * le serveur toutes les 4 s en attendant qu'il revienne.
  */
-export function LiveThread({ conversationId, meId, initial }: { conversationId: number; meId: number; initial: LiveMessage[] }) {
+export function LiveThread({ conversationId, meId, otherName, otherReadAt, initial }: {
+  conversationId: number; meId: number; otherName: string; otherReadAt: string | null; initial: LiveMessage[];
+}) {
   const [items, setItems] = useState<LiveMessage[]>(initial);
   const [live, setLive] = useState(false);
+  const [typing, setTyping] = useState(false);
+  const [readAt, setReadAt] = useState<string | null>(otherReadAt);
   const lastId = useRef(initial.at(-1)?.id ?? 0);
+  const [openedAtId] = useState(initial.at(-1)?.id ?? 0); // les messages plus récents que l'ouverture arrivent avec une animation
   const bottom = useRef<HTMLDivElement>(null);
   const first = useRef(true);
+  const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Ajoute les messages nouveaux (sans doublon : le flux et la synchronisation peuvent livrer le même).
   const add = useRef((incoming: LiveMessage[]) => {
@@ -45,7 +55,18 @@ export function LiveThread({ conversationId, meId, initial }: { conversationId: 
     es.addEventListener("message", (e) => {
       const m = JSON.parse((e as MessageEvent<string>).data) as LiveMessage;
       add.current([m]);
-      if (m.senderId !== meId) read();
+      if (m.senderId !== meId) { setTyping(false); read(); }
+    });
+    es.addEventListener("typing", (e) => {
+      const { userId } = JSON.parse((e as MessageEvent<string>).data) as { userId: number };
+      if (userId === meId) return;
+      setTyping(true);
+      if (typingTimer.current) clearTimeout(typingTimer.current);
+      typingTimer.current = setTimeout(() => setTyping(false), TYPING_MS);
+    });
+    es.addEventListener("read", (e) => {
+      const { userId, at } = JSON.parse((e as MessageEvent<string>).data) as { userId: number; at: string };
+      if (userId !== meId) setReadAt(at);
     });
     es.onerror = () => setLive(false);
     // Repli : tant que le flux n'est pas ouvert, on interroge le serveur.
@@ -55,14 +76,20 @@ export function LiveThread({ conversationId, meId, initial }: { conversationId: 
     window.addEventListener("conv-sync", onSync);
     document.addEventListener("visibilitychange", read);
 
-    return () => { es.close(); clearInterval(poll); window.removeEventListener("conv-sync", onSync); document.removeEventListener("visibilitychange", read); };
+    return () => {
+      es.close(); clearInterval(poll); if (typingTimer.current) clearTimeout(typingTimer.current);
+      window.removeEventListener("conv-sync", onSync); document.removeEventListener("visibilitychange", read);
+    };
   }, [conversationId, meId]);
 
-  // Défilement vers le dernier message (sans animation à l'ouverture).
+  // Défilement vers le dernier message (sans animation à l'ouverture), aussi quand « écrit… » apparaît.
   useEffect(() => {
     bottom.current?.scrollIntoView({ behavior: first.current ? "auto" : "smooth", block: "nearest" });
     first.current = false;
-  }, [items.length]);
+  }, [items.length, typing]);
+
+  // « Vu » : sous mon dernier message, une fois que l'autre personne a ouvert la conversation après son envoi.
+  const lastMineId = [...items].reverse().find((m) => m.senderId === meId)?.id;
 
   return (
     <div>
@@ -70,15 +97,29 @@ export function LiveThread({ conversationId, meId, initial }: { conversationId: 
       <ul className="max-h-[60vh] space-y-3 overflow-y-auto pr-1" aria-live="polite" data-live={live ? "on" : "off"}>
         {items.map((m) => {
           const mine = m.senderId === meId;
+          const seen = mine && m.id === lastMineId && !!readAt && new Date(readAt).getTime() >= new Date(m.createdAt).getTime();
           return (
-            <li key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+            <li key={m.id} className={`flex flex-col ${mine ? "items-end" : "items-start"} ${m.id > openedAtId ? "anim-msg-in" : ""}`}>
               <div className={`max-w-[85%] rounded-2xl px-4 py-2 text-sm ${mine ? "bg-accent text-accent-fg" : "border border-line bg-bg"}`}>
                 <p className="whitespace-pre-line break-words">{m.body}</p>
                 <p className={`mt-1 text-[11px] ${mine ? "opacity-70" : "text-muted"}`}>{dayFmt.format(new Date(m.createdAt))}</p>
               </div>
+              {mine && m.id === lastMineId && (
+                seen ? (
+                  <span key="seen" className="anim-seen-in mt-0.5 flex items-center gap-1 text-[11px] text-green-600 dark:text-green-400"><CheckCheck size={13} aria-hidden /> Vu à {timeFmt.format(new Date(readAt!))}</span>
+                ) : (
+                  <span className="mt-0.5 flex items-center gap-1 text-[11px] text-muted"><Check size={13} aria-hidden /> Envoyé</span>
+                )
+              )}
             </li>
           );
         })}
+        {typing && (
+          <li className="anim-msg-in flex items-center gap-2 text-muted" aria-label={`${otherName} est en train d'écrire`}>
+            <span className="flex items-center gap-1 rounded-2xl border border-line bg-bg px-4 py-3" aria-hidden><i className="typing-dot" /><i className="typing-dot" /><i className="typing-dot" /></span>
+            <span className="text-xs">{otherName} écrit…</span>
+          </li>
+        )}
         <div ref={bottom} />
       </ul>
       <p className="mt-2 flex items-center gap-1.5 text-[11px] text-muted">
