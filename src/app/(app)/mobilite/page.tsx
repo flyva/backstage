@@ -38,9 +38,9 @@ async function Place({ title, address, origin }: { title: string; address: strin
               <span className="shrink-0 rounded-full border border-line px-2.5 py-0.5 text-sm text-muted">{fmtDistance(s.distance)}</span>
             </div>
             {s.departures.length === 0 && <p className="text-base text-muted">Pas de passage prévu prochainement.</p>}
-            <ul className="space-y-2">
+            <ul className="divide-y divide-line">
               {s.departures.slice(0, 5).map((d) => (
-                <li key={d.line + d.destination} className="flex items-center gap-3">
+                <li key={d.line + d.destination} className="flex items-center gap-3 py-2 first:pt-0 last:pb-0">
                   <span
                     title={d.lineName}
                     className={`inline-flex min-w-11 justify-center rounded-lg px-2.5 py-1 text-base font-bold ${
