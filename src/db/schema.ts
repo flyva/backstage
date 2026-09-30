@@ -672,3 +672,20 @@ export const ridePassengers = mysqlTable(
   },
   (t) => [primaryKey({ columns: [t.rideId, t.userId] })],
 );
+
+// ---------- Annuaire de l'école ----------
+
+export const contacts = mysqlTable(
+  "contacts",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    groupName: varchar("group_name", { length: 80 }).notNull(), // Direction, Coordination pédagogique, Magasin…
+    name: varchar("name", { length: 120 }).notNull(),
+    role: varchar("role", { length: 160 }),
+    email: varchar("email", { length: 190 }),
+    phone: varchar("phone", { length: 30 }),
+    note: varchar("note", { length: 300 }),
+    position: int("position").notNull().default(0),
+  },
+  (t) => [index("contact_group_idx").on(t.groupName, t.position)],
+);

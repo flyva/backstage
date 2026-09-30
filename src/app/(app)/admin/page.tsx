@@ -4,6 +4,7 @@ import { users } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 import { SettingsForm } from "@/components/forms";
+import { ImportGuideButton } from "@/components/guide-forms";
 import { approveUser, rejectUser } from "@/lib/actions";
 
 export const metadata = { title: "Administration" };
@@ -17,6 +18,12 @@ export default async function AdminPage() {
 
   return (
     <div className="space-y-8">
+      <section className="card space-y-3">
+        <h2 className="font-semibold">Guide de rentrée de l&apos;école</h2>
+        <p className="text-sm text-muted">Remplit Backstage avec les informations du guide de rentrée 2026-2027 : annuaire des contacts, FAQ, liens utiles, pages du wiki, adresse de l&apos;école et Wi-Fi. Tu peux le relancer sans risque : rien de ce qui existe déjà n&apos;est écrasé.</p>
+        <ImportGuideButton />
+      </section>
+
       <section className="card space-y-3">
         <h2 className="font-semibold">Paramètres de l&apos;école</h2>
         <SettingsForm values={settings as Record<string, string>} />
