@@ -7,6 +7,9 @@ import nodemailer, { type Transporter } from "nodemailer";
 
 export const mailEnabled = () => !!process.env.MAIL_HOST;
 
+/** La confirmation de l'adresse à l'inscription est active dès que l'envoi de mails et l'adresse publique du site sont configurés. */
+export const verificationEnabled = () => mailEnabled() && !!publicBaseUrl();
+
 /** Adresse publique du site pour les liens des mails (APP_URL en production ; localhost en développement). */
 export function publicBaseUrl(): string | null {
   const fixed = process.env.APP_URL?.trim().replace(/\/+$/, "");

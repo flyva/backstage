@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import type { FormState } from "@/lib/actions";
 import { requestPasswordReset, resetPassword } from "@/lib/password-reset";
 import { PasswordField } from "@/components/PasswordField";
+import { confirmRegistration } from "@/lib/registration-verify";
 
 function Feedback({ state }: { state: FormState }) {
   if (state?.error) return <p className="text-sm text-danger" role="alert">{state.error}</p>;
@@ -40,6 +41,18 @@ export function ResetForm({ token }: { token: string }) {
       </div>
       <Feedback state={state} />
       <button className="btn w-full" disabled={pending || mismatch}>{pending ? "Enregistrement…" : "Changer le mot de passe"}</button>
+    </form>
+  );
+}
+
+export function VerifyForm({ token }: { token: string }) {
+  const [state, action, pending] = useActionState(confirmRegistration, undefined);
+  return (
+    <form action={action} className="space-y-4">
+      <input type="hidden" name="token" value={token} />
+      <p className="text-sm text-muted">Un dernier clic pour activer ton compte.</p>
+      <Feedback state={state} />
+      <button className="btn w-full" disabled={pending}>{pending ? "Activation…" : "Activer mon compte"}</button>
     </form>
   );
 }

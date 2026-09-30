@@ -55,7 +55,7 @@ export function RegisterForm({ codeRequired = false, emailDomain }: { codeRequir
         </div>
       )}
       <Feedback state={state} />
-      <button className="btn w-full" disabled={pending || mismatch}>{pending ? "Création…" : "Créer mon compte"}</button>
+      <button className="btn w-full" disabled={pending || mismatch || !!state?.ok}>{pending ? "Création…" : "Créer mon compte"}</button>
     </form>
   );
 }

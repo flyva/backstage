@@ -299,3 +299,7 @@ Backstage n'envoie qu'un type de mail : le lien « Mot de passe oublié » (vala
 3. Renseigne `MAIL_HOST`, `MAIL_PORT` (587), `MAIL_USER`, `MAIL_PASS` et `MAIL_FROM` (par exemple `Backstage <noreply@ton-domaine.fr>`) dans le fichier d'environnement, et `APP_URL` avec l'adresse publique du site. Redémarre le service.
 
 Sur un VPS OVH, le port 25 sortant est bloqué par défaut : on n'en a pas besoin, on utilise le port 587 d'un service d'envoi. N'installe pas de serveur de mail sur le VPS. Sans `MAIL_HOST`, aucun mail n'est envoyé (en développement, le lien s'affiche dans la console du serveur). Migration : 0029.
+
+### Confirmation de l'adresse à l'inscription
+
+Dès que `MAIL_HOST` **et** `APP_URL` sont définis, une nouvelle inscription n'est plus immédiate : la personne reçoit un lien (valable 24 h) et son compte n'est créé qu'après avoir cliqué sur « Activer mon compte ». Seul le tout premier compte (l'administrateur) en est dispensé. Sans mail configuré, l'inscription reste immédiate ; dans ce cas, garde `REGISTRATION_CODE`. Avec la confirmation par mail, le code n'est plus nécessaire.

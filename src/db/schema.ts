@@ -704,3 +704,16 @@ export const passwordResets = mysqlTable(
   },
   (t) => [index("pr_user_idx").on(t.userId)],
 );
+
+// ---------- Inscription en attente de confirmation par e-mail ----------
+
+export const pendingRegistrations = mysqlTable("pending_registrations", {
+  id: int("id").primaryKey().autoincrement(),
+  email: varchar("email", { length: 190 }).notNull().unique(),
+  firstName: varchar("first_name", { length: 60 }).notNull(),
+  lastName: varchar("last_name", { length: 60 }).notNull(),
+  passwordHash: varchar("password_hash", { length: 255 }).notNull(),
+  tokenHash: varchar("token_hash", { length: 64 }).notNull().unique(), // sha256 du jeton envoyé par mail
+  expiresAt: datetime("expires_at").notNull(),
+  createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+});

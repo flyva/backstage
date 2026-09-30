@@ -23,6 +23,8 @@ import { skinFrom } from "@/lib/skin";
 import { writeSkinCookies } from "@/lib/skin-cookies";
 import { timingSafeEqual } from "node:crypto";
 import { fetchIcal, clearIcalCache } from "@/lib/ical";
+import { startVerifiedRegistration } from "@/lib/registration-verify";
+import { verificationEnabled } from "@/lib/mail";
 
 export type FormState = { error?: string; ok?: string; values?: Record<string, string> } | undefined;
 
@@ -82,6 +84,15 @@ export async function register(_: FormState, fd: FormData): Promise<FormState> {
 
   const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
   if (existing) return { error: "Un compte existe déjà avec cet email", values: keep };
+
+  // Avec l'envoi de mails configuré, l'adresse doit être confirmée par un lien : le compte n'est créé qu'après le clic (sauf le tout premier, l'administrateur).
+  if (verificationEnabled()) {
+    const [{ active }] = await db.select({ active: count() }).from(users).where(eq(users.status, "active"));
+    if (active > 0) {
+      const result = await startVerifiedRegistration({ email, firstName, lastName, passwordHash: await hashPassword(password) });
+      return result?.error ? { ...result, values: keep } : result;
+    }
+  }
 
   // Le tout premier compte devient administrateur.
   // Seuls les comptes ACTIFS comptent : un compte Google en attente ne doit pas empêcher le premier vrai compte de devenir administrateur.
