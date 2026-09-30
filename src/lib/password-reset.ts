@@ -8,12 +8,11 @@ import { passwordResets, sessions, users } from "@/db/schema";
 import { hashPassword } from "@/lib/auth";
 import { allow, clientIp } from "@/lib/rate-limit";
 import { publicBaseUrl, sendMail } from "@/lib/mail";
+import { renderMail } from "@/lib/mail-template";
 import type { FormState } from "@/lib/actions";
 
 const sha256 = (s: string) => createHash("sha256").update(s).digest("hex");
 const TTL_MS = 60 * 60 * 1000; // le lien est valable 1 heure
-
-const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 /**
  * Demande de nouveau mot de passe. La réponse est TOUJOURS la même (compte existant ou non) : on ne révèle pas
@@ -40,7 +39,7 @@ export async function requestPasswordReset(_: FormState, fd: FormData): Promise<
   const link = `${base}/reinitialiser?token=${token}`;
   const name = user.firstName || user.name;
   const text = `Bonjour ${name},\n\nTu as demandé à changer ton mot de passe Backstage. Ouvre ce lien (valable 1 heure) :\n${link}\n\nSi tu n'es pas à l'origine de cette demande, ignore ce message : ton mot de passe ne change pas.\n`;
-  const html = `<p>Bonjour ${esc(name)},</p><p>Tu as demandé à changer ton mot de passe Backstage.</p><p><a href="${link}" style="display:inline-block;padding:10px 18px;background:#111;color:#fff;border-radius:8px;text-decoration:none">Choisir un nouveau mot de passe</a></p><p style="color:#666;font-size:13px">Le lien est valable 1 heure. Si tu n'es pas à l'origine de cette demande, ignore ce message : ton mot de passe ne change pas.</p>`;
+  const html = renderMail({ preview: "Choisis un nouveau mot de passe (lien valable 1 heure).", title: "Nouveau mot de passe", paragraphs: [`Bonjour ${name},`, "Tu as demandé à changer ton mot de passe Backstage. Clique sur le bouton pour en choisir un nouveau."], button: { label: "Choisir un nouveau mot de passe", url: link }, note: "Le lien est valable 1 heure. Si tu n'es pas à l'origine de cette demande, ignore ce message : ton mot de passe ne change pas." });
   await sendMail(user.email, "Backstage : nouveau mot de passe", text, html);
   return neutral;
 }

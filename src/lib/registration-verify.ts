@@ -10,11 +10,11 @@ import { newUserRoleId } from "@/lib/roles";
 import { allow, clientIp } from "@/lib/rate-limit";
 import { joinName } from "@/lib/names";
 import { publicBaseUrl, sendMail } from "@/lib/mail";
+import { renderMail } from "@/lib/mail-template";
 import type { FormState } from "@/lib/actions";
 
 const sha256 = (s: string) => createHash("sha256").update(s).digest("hex");
 const TTL_MS = 24 * 60 * 60 * 1000; // le lien est valable 24 heures
-const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 /** Enregistre l'inscription en attente et envoie le lien de confirmation. Le compte n'existe qu'après le clic sur le lien. */
 export async function startVerifiedRegistration(p: { email: string; firstName: string; lastName: string; passwordHash: string }): Promise<FormState> {
@@ -26,7 +26,7 @@ export async function startVerifiedRegistration(p: { email: string; firstName: s
 
   const link = `${base}/verifier?token=${token}`;
   const text = `Bonjour ${p.firstName},\n\nPour activer ton compte Backstage, ouvre ce lien (valable 24 heures) :\n${link}\n\nSi tu n'as pas créé de compte, ignore ce message.\n`;
-  const html = `<p>Bonjour ${esc(p.firstName)},</p><p>Pour activer ton compte Backstage :</p><p><a href="${link}" style="display:inline-block;padding:10px 18px;background:#111;color:#fff;border-radius:8px;text-decoration:none">Activer mon compte</a></p><p style="color:#666;font-size:13px">Le lien est valable 24 heures. Si tu n'as pas créé de compte, ignore ce message.</p>`;
+  const html = renderMail({ preview: "Un dernier clic pour activer ton compte (lien valable 24 heures).", title: "Active ton compte", paragraphs: [`Bonjour ${p.firstName},`, "Bienvenue sur Backstage ! Un dernier clic pour confirmer ton adresse et activer ton compte."], button: { label: "Activer mon compte", url: link }, note: "Le lien est valable 24 heures. Si tu n'as pas créé de compte, ignore ce message." });
   const sent = await sendMail(p.email, "Backstage : active ton compte", text, html);
   if (!sent) {
     await db.delete(pendingRegistrations).where(eq(pendingRegistrations.email, p.email));
