@@ -26,7 +26,7 @@ export default async function AlbumPage({ params }: PageProps<"/galerie/[id]">) 
     .where(eq(galleryItems.albumId, albumId))
     .orderBy(desc(galleryItems.createdAt), desc(galleryItems.id));
 
-  const staff = user.role === "admin" || user.role === "bde";
+  const staff = user.perms.galerie;
   const items = rows.map(({ item, uploader }) => ({
     id: item.id,
     kind: item.kind,

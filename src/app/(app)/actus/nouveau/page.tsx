@@ -10,7 +10,7 @@ export default async function NewNewsPage() {
     <div className="space-y-4">
       <Link href="/actus" className="text-sm text-muted hover:text-fg">← Actualités</Link>
       <h1 className="text-2xl font-bold">Nouvel article</h1>
-      <NewsForm isAdmin={user.role === "admin"} scope={user.role === "bde" ? "bde" : "ecole"} />
+      <NewsForm isAdmin={user.perms.admin} scope={!user.perms.admin && user.perms.bde && !user.perms.actus ? "bde" : "ecole"} />
     </div>
   );
 }

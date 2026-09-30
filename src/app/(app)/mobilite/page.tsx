@@ -199,7 +199,7 @@ export default async function MobilitePage() {
       </header>
 
       {trips.map((t) => (
-        <TripCard key={t.title} title={t.title} trip={t.trip} transit={t.transit} isAdmin={user.role === "admin"} />
+        <TripCard key={t.title} title={t.title} trip={t.trip} transit={t.transit} isAdmin={user.perms.administration} />
       ))}
 
       {!home && (
@@ -214,7 +214,7 @@ export default async function MobilitePage() {
       )}
       {!school && (
         <div className="card text-sm text-muted">
-          L&apos;adresse de l&apos;école n&apos;est pas configurée{user.role === "admin" && <> (<Link href="/admin" className="text-accent underline">Admin → Paramètres</Link>)</>}.
+          L&apos;adresse de l&apos;école n&apos;est pas configurée{user.perms.administration && <> (<Link href="/admin" className="text-accent underline">Admin → Paramètres</Link>)</>}.
         </div>
       )}
 

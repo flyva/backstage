@@ -3,6 +3,7 @@ import { count, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { sessions, users, type User } from "@/db/schema";
 import { createSession, hashPassword } from "@/lib/auth";
+import { newUserRoleId } from "@/lib/roles";
 import { allowedDomainsFromEnv, emailInDomains } from "@/lib/email-domain";
 import { challengeFor, newSecret } from "@/lib/microsoft";
 import { joinName, splitName } from "@/lib/names";
@@ -115,7 +116,7 @@ export async function signInWithGoogle(identity: GoogleIdentity): Promise<{ user
     lastName: identity.lastName,
     passwordHash: await hashPassword(newSecret(48)), // pas de mot de passe local : la connexion passe par Google
     // Jamais d'administrateur par Google personnel : le premier admin vient d'une adresse autorisée.
-    role: total === 0 && identity.trusted ? "admin" : "member",
+    roleId: await newUserRoleId(total === 0 && identity.trusted),
     status,
     googleSub: identity.sub,
   });

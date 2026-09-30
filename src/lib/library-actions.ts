@@ -15,7 +15,7 @@ const refresh = () => revalidatePath("/bibliotheque", "layout");
 const opt = (v: FormDataEntryValue | null, max: number) => String(v ?? "").trim().slice(0, max) || null;
 
 /** Créateur de l'entrée, ou admin / référent matériel. */
-const canManage = (user: { id: number; role: string }, createdBy: number) => user.id === createdBy || user.role === "admin" || user.role === "materiel";
+const canManage = (user: { id: number; perms: { materiel: boolean } }, createdBy: number) => user.id === createdBy || user.perms.materiel;
 
 // ---------- Modèles d'appareils ----------
 

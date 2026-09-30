@@ -180,7 +180,7 @@ export async function deleteIdea(fd: FormData) {
   const user = await requireUser();
   const [idea] = await db.select().from(bdeIdeas).where(eq(bdeIdeas.id, id.parse(fd.get("ideaId")))).limit(1);
   if (!idea) return;
-  const isPublisher = user.role === "admin" || user.role === "bde";
+  const isPublisher = user.perms.bde;
   if (idea.userId !== user.id && !isPublisher) return; // l'auteur ou l'équipe BDE
   await db.delete(bdeIdeas).where(eq(bdeIdeas.id, idea.id));
   refresh();

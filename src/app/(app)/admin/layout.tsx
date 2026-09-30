@@ -3,6 +3,8 @@ import { ProjectTabs } from "@/components/ProjectTabs";
 
 const TABS = [
   { slug: "", label: "Général" },
+  { slug: "utilisateurs", label: "Utilisateurs" },
+  { slug: "roles", label: "Rôles" },
   { slug: "checklists", label: "Checklists" },
   { slug: "faq", label: "FAQ" },
   { slug: "liens", label: "Liens utiles" },

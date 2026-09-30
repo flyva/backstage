@@ -13,6 +13,7 @@ import {
   createSession, destroyOtherSessions, destroySession, hashPassword, verifyPassword,
   requireUser, requireAdmin,
 } from "@/lib/auth";
+import { newUserRoleId } from "@/lib/roles";
 import { SETTING_KEYS } from "@/lib/settings";
 import { geocode } from "@/lib/mobility";
 import { allow, clientIp } from "@/lib/rate-limit";
@@ -47,6 +48,7 @@ export async function login(_: FormState, fd: FormData): Promise<FormState> {
   // Même message que l'email ou le mot de passe soit faux.
   if (!user || !(await verifyPassword(parsed.data.password, user.passwordHash)))
     return { error: "Identifiants incorrects", values: keep };
+  if (user.status === "disabled") return { error: "Ce compte est désactivé. Contacte un administrateur.", values: keep };
   await createSession(user.id);
   await writeSkinCookies(skinFrom(user)); // retrouve son skin sur cet appareil
   redirect("/");
@@ -86,7 +88,7 @@ export async function register(_: FormState, fd: FormData): Promise<FormState> {
   const [{ total }] = await db.select({ total: count() }).from(users).where(eq(users.status, "active"));
   const [res] = await db.insert(users).values({
     email, firstName, lastName, name: joinName(firstName, lastName), passwordHash: await hashPassword(password),
-    role: total === 0 ? "admin" : "member",
+    roleId: await newUserRoleId(total === 0),
   });
   await createSession(res.insertId);
   redirect("/profil?bienvenue=1");
@@ -250,16 +252,6 @@ export async function deleteLink(fd: FormData) {
   await db.delete(usefulLinks).where(eq(usefulLinks.id, Number(fd.get("id"))));
   revalidatePath("/liens");
   revalidatePath("/admin", "layout");
-}
-
-export async function setRole(fd: FormData) {
-  const admin = await requireAdmin();
-  const id = Number(fd.get("id"));
-  const role = z.enum(["admin", "materiel", "bde", "member"]).safeParse(fd.get("role"));
-  // Un admin ne peut pas se retirer ses propres droits par erreur.
-  if (role.success && id !== admin.id)
-    await db.update(users).set({ role: role.data }).where(eq(users.id, id));
-  revalidatePath("/admin");
 }
 
 const IMAGE_TYPES: Record<string, string> = {

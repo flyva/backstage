@@ -23,7 +23,7 @@ export default async function MemoriesPage({ searchParams }: PageProps<"/bibliot
     .orderBy(desc(consoleMemories.updatedAt));
   const consoles = [...new Set(rows.map((r) => r.m.console).filter((c): c is string => !!c))].sort();
   const list = rows.filter(({ m }) => (!console_ || m.console === console_) && (!q || `${m.title} ${m.number ?? ""} ${m.category ?? ""} ${m.tags ?? ""} ${m.notes ?? ""}`.toLowerCase().includes(q)));
-  const canManage = (createdBy: number) => user.id === createdBy || user.role === "admin" || user.role === "materiel";
+  const canManage = (createdBy: number) => user.id === createdBy || user.perms.materiel;
 
   return (
     <div className="space-y-6">

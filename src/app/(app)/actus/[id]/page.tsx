@@ -25,7 +25,7 @@ export default async function ActuPage({ params }: PageProps<"/actus/[id]">) {
     .limit(1);
   if (!row) notFound();
   const { post, author } = row;
-  const mine = canPublish(user) && (user.role === "admin" || post.authorId === user.id);
+  const mine = canPublish(user) && (user.perms.admin || post.authorId === user.id);
 
   return (
     <article className="space-y-4">

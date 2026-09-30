@@ -4,6 +4,7 @@ import { count, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { sessions, users, type User } from "@/db/schema";
 import { createSession, hashPassword } from "@/lib/auth";
+import { newUserRoleId } from "@/lib/roles";
 import { allowedDomainsFromEnv, emailInDomains } from "@/lib/email-domain";
 import { splitName } from "@/lib/names";
 import { skinFrom } from "@/lib/skin";
@@ -183,7 +184,7 @@ export async function signInWithMicrosoft(identity: Identity): Promise<{ user: U
     firstName: splitName(identity.name).first,
     lastName: splitName(identity.name).last,
     passwordHash: await hashPassword(newSecret(48)), // pas de mot de passe local : la connexion passe par Microsoft
-    role: total === 0 ? "admin" : "member",
+    roleId: await newUserRoleId(total === 0),
     msOid: identity.key,
   });
   const [created] = await db.select().from(users).where(eq(users.id, res.insertId)).limit(1);

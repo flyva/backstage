@@ -4,12 +4,12 @@ import { users } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 import { SettingsForm } from "@/components/forms";
-import { setRole, approveUser, rejectUser } from "@/lib/actions";
+import { approveUser, rejectUser } from "@/lib/actions";
 
 export const metadata = { title: "Administration" };
 
 export default async function AdminPage() {
-  const admin = await requireAdmin();
+  await requireAdmin();
   const [settings, allUsers] = await Promise.all([
     getSettings(),
     db.select().from(users).orderBy(asc(users.createdAt)),
@@ -43,33 +43,6 @@ export default async function AdminPage() {
         </section>
       )}
 
-      <section className="card space-y-3">
-        <h2 className="font-semibold">Utilisateurs ({allUsers.filter((u) => u.status === "active").length})</h2>
-        <ul className="divide-y divide-line text-sm">
-          {allUsers.filter((u) => u.status === "active").map((u) => (
-            <li key={u.id} className="flex flex-wrap items-center gap-3 py-2">
-              <div className="min-w-0 flex-1">
-                <div className="truncate font-medium">{u.name}</div>
-                <div className="truncate text-xs text-muted">{u.email}</div>
-              </div>
-              {u.id === admin.id ? (
-                <span className="text-xs text-muted">Toi (admin)</span>
-              ) : (
-                <form action={setRole} className="flex gap-2">
-                  <input type="hidden" name="id" value={u.id} />
-                  <select name="role" defaultValue={u.role} className="input w-auto">
-                    <option value="member">Membre</option>
-                    <option value="materiel">Référent matériel</option>
-                    <option value="bde">BDE</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                  <button className="btn-ghost">OK</button>
-                </form>
-              )}
-            </li>
-          ))}
-        </ul>
-      </section>
     </div>
   );
 }

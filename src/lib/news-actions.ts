@@ -32,12 +32,14 @@ export async function saveNews(_: FormState, fd: FormData): Promise<FormState> {
     pinned: fd.get("pinned") === "on",
   });
   if (!p.success) return { error: p.error.issues[0].message };
+  // Chaque rubrique demande son droit : « BDE » ou « Actualités de l'école ».
+  if (p.data.scope === "bde" ? !user.perms.bde : !user.perms.actus) return { error: "Tu n'as pas le droit de publier dans cette rubrique" };
   const postId = Number(fd.get("postId") || 0);
   const now = new Date();
 
   if (!postId) {
     // Seul un admin épingle un article.
-    const pinned = user.role === "admin" && p.data.pinned;
+    const pinned = user.perms.admin && p.data.pinned;
     const [res] = await db.insert(newsPosts).values({ ...p.data, pinned, authorId: user.id, createdAt: now, updatedAt: now });
     refresh();
     // Après la réponse : la publication n'attend pas l'envoi des notifications.
@@ -47,8 +49,8 @@ export async function saveNews(_: FormState, fd: FormData): Promise<FormState> {
   const [post] = await db.select({ authorId: newsPosts.authorId, pinned: newsPosts.pinned }).from(newsPosts).where(eq(newsPosts.id, postId)).limit(1);
   if (!post) return { error: "Article introuvable" };
   // Un rédacteur BDE ne modifie que ses articles ; l'admin modifie tout.
-  if (user.role !== "admin" && post.authorId !== user.id) return { error: "Tu ne peux modifier que tes propres articles" };
-  await db.update(newsPosts).set({ ...p.data, pinned: user.role === "admin" ? p.data.pinned : post.pinned, updatedAt: now }).where(eq(newsPosts.id, postId));
+  if (!user.perms.admin && post.authorId !== user.id) return { error: "Tu ne peux modifier que tes propres articles" };
+  await db.update(newsPosts).set({ ...p.data, pinned: user.perms.admin ? p.data.pinned : post.pinned, updatedAt: now }).where(eq(newsPosts.id, postId));
   refresh();
   redirect(`/actus/${postId}`);
 }
@@ -57,7 +59,7 @@ export async function deleteNews(fd: FormData) {
   const user = await requirePublisher();
   const postId = Number(fd.get("postId"));
   const [post] = await db.select({ authorId: newsPosts.authorId }).from(newsPosts).where(eq(newsPosts.id, postId)).limit(1);
-  if (!post || (user.role !== "admin" && post.authorId !== user.id)) return;
+  if (!post || (!user.perms.admin && post.authorId !== user.id)) return;
   await db.delete(newsPosts).where(eq(newsPosts.id, postId));
   refresh();
   redirect("/actus");

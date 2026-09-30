@@ -2,10 +2,11 @@ import "server-only";
 import { and, eq, inArray } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
-import { equipmentItems, loans, type LoanStatus, type User } from "@/db/schema";
+import { equipmentItems, loans, type LoanStatus } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 
-export const isManager = (u: Pick<User, "role">) => u.role === "admin" || u.role === "materiel";
+/** Gère le matériel : les rôles avec le droit « Matériel » (les admins ont tout). */
+export const isManager = (u: { perms: { materiel: boolean } }) => u.perms.materiel;
 
 export async function requireManager() {
   const user = await requireUser();

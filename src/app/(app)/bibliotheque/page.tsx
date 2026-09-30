@@ -19,7 +19,7 @@ export default async function FixtureLibraryPage({ searchParams }: PageProps<"/b
     .innerJoin(users, eq(users.id, fixtureModels.createdBy))
     .orderBy(asc(fixtureModels.name), asc(fixtureModels.mode));
   const list = q ? rows.filter(({ f }) => `${f.name} ${f.mode ?? ""} ${f.notes ?? ""}`.toLowerCase().includes(q)) : rows;
-  const canManage = (createdBy: number) => user.id === createdBy || user.role === "admin" || user.role === "materiel";
+  const canManage = (createdBy: number) => user.id === createdBy || user.perms.materiel;
 
   return (
     <div className="space-y-6">

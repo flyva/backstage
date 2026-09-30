@@ -73,7 +73,7 @@ export default async function WikiPage({ params }: PageProps<"/wiki/[slug]">) {
           </ul>
         </section>
       )}
-      {user.role === "admin" && (
+      {user.perms.administration && (
         <form action={deletePage}>
           <input type="hidden" name="pageId" value={page.id} />
           <ConfirmButton message="Supprimer définitivement cette page et son historique ?" className="text-xs text-muted hover:text-danger">

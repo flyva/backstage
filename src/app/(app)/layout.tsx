@@ -19,7 +19,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
   const limit = tomorrow.toISOString().slice(0, 10);
   const manager = isManager(user);
-  const admin = user.role === "admin";
+  const admin = user.perms.administration;
 
   const [mineDue, requested, lateAll, pendingUsers, news, events, albums, lastLoans, myCards] = await Promise.all([
     // Mes prêts à rendre demain ou en retard (alertes à traiter)
@@ -109,7 +109,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
 
   return (
     <AppShell
-      sidebar={<Sidebar user={{ name: user.name, email: user.email, role: user.role }} loanBadge={loanBadge} />}
+      sidebar={<Sidebar user={{ name: user.name, email: user.email, roleName: user.roleName, isAdmin: user.perms.administration, hasUsers: user.perms.administration }} loanBadge={loanBadge} />}
       bell={<><QuickTheme initial={skinFrom(user)} /><NotificationBell items={items} unread={unread} /></>}
       menu={<UserMenu name={user.name} email={user.email} />}
     >

@@ -1,7 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
-import { and, eq, inArray, lte } from "drizzle-orm";
+import { and, eq, inArray, lte, or } from "drizzle-orm";
 import { db } from "@/db";
-import { equipmentItems, loans, users, workDays } from "@/db/schema";
+import { equipmentItems, loans, roles, users, workDays } from "@/db/schema";
 import { daysBetween, todayParis } from "@/lib/equipment";
 import { notifyUser } from "@/lib/push";
 import { cardHref, dueCards } from "@/lib/reminders";
@@ -42,7 +42,7 @@ async function run(req: Request) {
   const overdue = due.filter((l) => l.dueDate < today).length;
   let managers = 0;
   if (overdue > 0) {
-    const staff = await db.select({ id: users.id }).from(users).where(inArray(users.role, ["admin", "materiel"]));
+    const staff = await db.select({ id: users.id }).from(users).innerJoin(roles, eq(roles.id, users.roleId)).where(or(eq(roles.isAdmin, true), eq(roles.permMateriel, true)));
     for (const s of staff) {
       managers += await notifyUser(s.id, { title: "Prêts en retard", body: `${overdue} prêt(s) de matériel en retard.`, url: "/materiel/gestion", tag: "loans-overdue" }, "loans");
     }

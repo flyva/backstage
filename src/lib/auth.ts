@@ -6,7 +6,8 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { sessions, users, type User } from "@/db/schema";
+import { roles, sessions, users, type User } from "@/db/schema";
+import { permsOf, type Perms } from "@/lib/perms";
 
 const scrypt = promisify(scryptCb) as (pw: string, salt: Buffer, len: number) => Promise<Buffer>;
 
@@ -30,7 +31,13 @@ export async function verifyPassword(password: string, stored: string) {
 
 const sha256 = (s: string) => createHash("sha256").update(s).digest("hex");
 
+/** Personne connectée : ses infos, son rôle et ses droits. */
+export type SessionUser = User & { perms: Perms; roleName: string };
+
 export async function createSession(userId: number) {
+  // Un compte désactivé ne peut plus ouvrir de session (aucune connexion possible, même via Google ou Microsoft).
+  const [u] = await db.select({ status: users.status }).from(users).where(eq(users.id, userId)).limit(1);
+  if (!u || u.status === "disabled") return;
   const token = randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + SESSION_DAYS * 864e5);
   await db.insert(sessions).values({ id: sha256(token), userId, expiresAt });
@@ -59,25 +66,26 @@ export async function destroyOtherSessions(userId: number) {
 }
 
 /** Personne connectée, quel que soit son statut (y compris « en attente de validation »). */
-export const getSessionUser = cache(async (): Promise<User | null> => {
+export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
   const token = (await cookies()).get(COOKIE)?.value;
   if (!token) return null;
   const rows = await db
-    .select({ user: users, expiresAt: sessions.expiresAt })
+    .select({ user: users, role: roles, expiresAt: sessions.expiresAt })
     .from(sessions)
     .innerJoin(users, eq(users.id, sessions.userId))
+    .leftJoin(roles, eq(roles.id, users.roleId))
     .where(eq(sessions.id, sha256(token)))
     .limit(1);
   const row = rows[0];
-  if (!row || row.expiresAt < new Date()) return null;
-  return row.user;
+  if (!row || row.expiresAt < new Date() || row.user.status === "disabled") return null;
+  return { ...row.user, perms: permsOf(row.role), roleName: row.role?.name ?? "Membre" };
 });
 
 /**
  * Personne connectée ET validée. Un compte « en attente » (Google personnel) n'a accès à rien : ni pages, ni fichiers,
  * ni API (getUser renvoie null pour lui, donc toutes les routes le traitent comme non connecté).
  */
-export const getUser = cache(async (): Promise<User | null> => {
+export const getUser = cache(async (): Promise<SessionUser | null> => {
   const user = await getSessionUser();
   return user && user.status === "active" ? user : null;
 });
@@ -91,6 +99,6 @@ export async function requireUser() {
 
 export async function requireAdmin() {
   const user = await requireUser();
-  if (user.role !== "admin") redirect("/");
+  if (!user.perms.administration) redirect("/");
   return user;
 }

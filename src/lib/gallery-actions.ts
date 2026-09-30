@@ -10,7 +10,6 @@ import { requireUser } from "@/lib/auth";
 import { removeMedia } from "@/lib/gallery";
 import type { FormState } from "@/lib/actions";
 
-const isStaff = (role: string) => role === "admin" || role === "bde";
 const refresh = () => revalidatePath("/galerie", "layout");
 
 export async function createAlbum(_: FormState, fd: FormData): Promise<FormState> {
@@ -28,7 +27,7 @@ export async function deleteItem(fd: FormData) {
   const user = await requireUser();
   const [item] = await db.select().from(galleryItems).where(eq(galleryItems.id, Number(fd.get("itemId")))).limit(1);
   // L'auteur de l'envoi, ou l'équipe (admin / BDE) pour modérer.
-  if (!item || (item.uploaderId !== user.id && !isStaff(user.role))) return;
+  if (!item || (item.uploaderId !== user.id && !user.perms.galerie)) return;
   await db.delete(galleryItems).where(eq(galleryItems.id, item.id));
   await removeMedia(item.file, item.thumb);
   refresh();
@@ -38,7 +37,7 @@ export async function deleteAlbum(fd: FormData) {
   const user = await requireUser();
   const albumId = Number(fd.get("albumId"));
   const [album] = await db.select().from(galleryAlbums).where(eq(galleryAlbums.id, albumId)).limit(1);
-  if (!album || (album.createdBy !== user.id && !isStaff(user.role))) return;
+  if (!album || (album.createdBy !== user.id && !user.perms.galerie)) return;
   const items = await db.select().from(galleryItems).where(eq(galleryItems.albumId, albumId));
   await db.delete(galleryAlbums).where(eq(galleryAlbums.id, albumId)); // les lignes d'items suivent (cascade)
   for (const i of items) await removeMedia(i.file, i.thumb);

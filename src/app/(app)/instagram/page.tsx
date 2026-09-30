@@ -31,7 +31,7 @@ export default async function InstagramPage() {
       {!feed && (
         <div className="card space-y-2 text-sm">
           <p>Le flux n&apos;est pas encore configuré.</p>
-          {user.role === "admin" ? (
+          {user.perms.administration ? (
             <p className="text-muted">
               Crée un flux JSON gratuit avec un service comme Behold à partir du compte Instagram de l&apos;école, puis colle son lien dans{" "}
               <Link href="/admin" className="text-accent underline">Admin → Paramètres</Link> (« Flux Instagram »).

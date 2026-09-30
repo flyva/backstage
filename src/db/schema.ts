@@ -13,6 +13,22 @@ import {
   mediumtext,
 } from "drizzle-orm/mysql-core";
 
+// Rôles (comme dans Oasis / Adie) : un nom et des droits par domaine. « admin » donne tout. Les rôles « système »
+// (clé renseignée) existent d'origine ; les autres sont créés par les admins.
+export const roles = mysqlTable("roles", {
+  id: int("id").primaryKey().autoincrement(),
+  name: varchar("name", { length: 60 }).notNull().unique(),
+  key: varchar("key", { length: 20 }).unique(), // admin | materiel | bde | member pour les rôles d'origine, sinon null
+  description: varchar("description", { length: 200 }),
+  isAdmin: boolean("is_admin").notNull().default(false),
+  permAdministration: boolean("perm_administration").notNull().default(false), // pages d'administration (utilisateurs, rôles, réglages…)
+  permMateriel: boolean("perm_materiel").notNull().default(false), // gérer l'inventaire et les prêts
+  permBde: boolean("perm_bde").notNull().default(false), // publier pour le BDE (évènements, actus BDE)
+  permActus: boolean("perm_actus").notNull().default(false), // publier des actus de l'école
+  permGalerie: boolean("perm_galerie").notNull().default(false), // gérer la galerie
+  createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+});
+
 export const users = mysqlTable("users", {
   id: int("id").primaryKey().autoincrement(),
   email: varchar("email", { length: 190 }).notNull().unique(),
@@ -21,7 +37,7 @@ export const users = mysqlTable("users", {
   lastName: varchar("last_name", { length: 60 }).notNull().default(""),
   name: varchar("name", { length: 120 }).notNull(),
   passwordHash: varchar("password_hash", { length: 255 }).notNull(),
-  role: mysqlEnum("role", ["admin", "materiel", "bde", "member"]).notNull().default("member"),
+  roleId: int("role_id").references(() => roles.id),
   theme: mysqlEnum("theme", ["system", "light", "dark"]).notNull().default("light"),
   // Skin personnel (panneau de droite) : couleur d'accent et couleur du menu.
   accent: mysqlEnum("accent", ["ambre", "bleu", "indigo", "vert", "rose", "blanc", "noir"]).notNull().default("blanc"),
@@ -39,8 +55,9 @@ export const users = mysqlTable("users", {
   // Dernière ouverture de la cloche : les nouveautés plus récentes comptent comme « non lues ».
   notifSeenAt: datetime("notif_seen_at"),
   // Identifiant Microsoft (« oid » Entra ID) une fois le compte lié à Office 365.
-  // « active » : accès normal ; « pending » : compte Google personnel en attente de validation par un admin.
-  status: mysqlEnum("status", ["active", "pending"]).notNull().default("active"),
+  // « active » : accès normal ; « pending » : compte Google personnel en attente de validation par un admin ;
+  // « disabled » : compte désactivé par un admin (plus de connexion possible, données conservées).
+  status: mysqlEnum("status", ["active", "pending", "disabled"]).notNull().default("active"),
   googleSub: varchar("google_sub", { length: 40 }).unique(), // identifiant Google (« sub »)
   msOid: varchar("ms_oid", { length: 80 }).unique(), // « tid.oid » : organisation + identifiant dans l'organisation
   notifyNews: boolean("notify_news").notNull().default(true),
@@ -86,6 +103,7 @@ export const settings = mysqlTable("settings", {
 });
 
 export type User = typeof users.$inferSelect;
+export type Role = typeof roles.$inferSelect;
 export type Project = typeof projects.$inferSelect;
 
 // ---------- Projets ----------
