@@ -105,6 +105,17 @@ body {
 .slim-scroll::-webkit-scrollbar-thumb { background: transparent; border-radius: 999px; }
 .slim-scroll:hover::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--side-muted, #8b949e) 55%, transparent); }
 
+/* Accent « noir » : la couleur d'accent se confond avec le fond (noir sur noir en sombre, gris clair sur blanc en clair).
+   Les textes et bordures d'accent reprennent la couleur du texte, et les boutons pleins reçoivent un contour. */
+:root[data-accent="noir"] .text-accent,
+:root[data-accent="noir"] .prose-wiki a { color: var(--fg); }
+:root[data-accent="noir"] .border-accent,
+:root[data-accent="noir"] .border-l-accent { border-color: color-mix(in srgb, var(--fg) 55%, transparent); }
+:root[data-accent="noir"] .btn { border: 1px solid color-mix(in srgb, var(--fg) 45%, transparent); }
+:root[data-accent="noir"] .bg-accent\/5,
+:root[data-accent="noir"] .bg-accent\/10,
+:root[data-accent="noir"] .bg-accent\/15 { background-color: color-mix(in srgb, var(--fg) 10%, transparent); }
+
 @layer components {
   .card {
     @apply rounded-2xl border border-line bg-surface p-5 shadow-[0_1px_2px_rgba(16,24,40,0.06)];

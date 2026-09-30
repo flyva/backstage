@@ -6,12 +6,14 @@ import { workDays } from "@/db/schema";
 import { KIND_CLASS, KIND_LABEL } from "@/lib/alternance";
 import { requireUser } from "@/lib/auth";
 import { refreshAgenda } from "@/lib/actions";
+import { WeekGrid } from "@/components/WeekGrid";
 import { dayKey, getEvents, rangeOfWeek, weekDays, type AgendaEvent } from "@/lib/ical";
 
 export const metadata = { title: "Agenda" };
 
 const timeFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit" });
 const dayFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long" });
+const nowFmt = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 const rangeFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "UTC", day: "numeric", month: "short" });
 
 function EventCard({ e }: { e: AgendaEvent }) {
@@ -49,6 +51,8 @@ export default async function AgendaPage({ searchParams }: PageProps<"/agenda">)
   const byDay = Map.groupBy(events, (e) => dayKey(e.start));
   // Planning de l'alternance (école / entreprise / congé / férié) : affiché même sans lien iCal.
   const kinds = new Map((await db.select({ day: workDays.day, kind: workDays.kind }).from(workDays).where(and(eq(workDays.userId, user.id), inArray(workDays.day, days.map((d) => d.key))))).map((r) => [r.day, r.kind]));
+  const np = nowFmt.formatToParts(new Date());
+  const nowMinutes = Number(np.find((p) => p.type === "hour")?.value) * 60 + Number(np.find((p) => p.type === "minute")?.value);
   const label = `${rangeFmt.format(days[0].date)} – ${rangeFmt.format(days[6].date)}`;
 
   return (
@@ -83,8 +87,10 @@ export default async function AgendaPage({ searchParams }: PageProps<"/agenda">)
         </div>
       )}
 
+      {!error && <div className="hidden md:block"><WeekGrid days={days} byDay={byDay} kinds={kinds} today={today} nowMinutes={nowMinutes} /></div>}
+
       {!error && (
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-7">
+        <div className="grid gap-3 md:hidden">
           {days.map(({ key, date }) => {
             const list = byDay.get(key) ?? [];
             const isToday = key === today;

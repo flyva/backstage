@@ -17,8 +17,8 @@ export type ThemeMode = "light" | "dark";
 
 export const isAccent = (v: unknown): v is Accent => typeof v === "string" && (ACCENTS as readonly string[]).includes(v);
 export const skinFrom = (v: { theme?: string; accent?: string; sidebar?: string }) => ({
-  // « system » (ancien réglage) est traité comme clair : le blanc est le thème par défaut.
-  theme: (v.theme === "dark" ? "dark" : "light") as ThemeMode,
+  // Sombre par défaut (aussi pour l'ancien réglage « system » et pour un visiteur sans préférence enregistrée).
+  theme: (v.theme === "light" ? "light" : "dark") as ThemeMode,
   accent: (isAccent(v.accent) ? v.accent : "blanc") as Accent,
   sidebar: (v.sidebar === "light" ? "light" : "dark") as SidebarSkin,
 });

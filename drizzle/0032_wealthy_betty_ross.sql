@@ -1,0 +1,1 @@
+ALTER TABLE `users` MODIFY COLUMN `theme` enum('system','light','dark') NOT NULL DEFAULT 'dark';

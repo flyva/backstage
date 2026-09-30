@@ -225,6 +225,13 @@
       "when": 1790787565152,
       "tag": "0031_cuddly_morbius",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "5",
+      "when": 1790790823648,
+      "tag": "0032_wealthy_betty_ross",
+      "breakpoints": true
     }
   ]
 }
