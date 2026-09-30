@@ -20,6 +20,7 @@ cd /tmp
 curl -O https://nodejs.org/dist/latest-v22.x/node-v22.23.3-linux-armv7l.tar.xz
 sudo tar -xJf node-v22.23.3-linux-armv7l.tar.xz -C /usr/local --strip-components=1
 node -v && npm -v
+sudo ln -sf /usr/local/bin/node /usr/bin/node   # le service systemd cherche /usr/bin/node
 ```
 
 Sur un Pi 64 bits, prendre `linux-arm64` à la place.
