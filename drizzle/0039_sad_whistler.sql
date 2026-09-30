@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD `show_company` boolean DEFAULT false NOT NULL;

@@ -274,6 +274,13 @@
       "when": 1790799856416,
       "tag": "0038_lethal_kid_colt",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "5",
+      "when": 1790800303099,
+      "tag": "0039_sad_whistler",
+      "breakpoints": true
     }
   ]
 }

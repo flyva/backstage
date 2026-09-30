@@ -84,7 +84,7 @@ export function AvatarForm({ name, url }: { name: string; url: string | null }) 
 
 export function FicheForm(props: {
   tracks: { id: number; name: string }[]; trackId: number | null; headline: string; phone: string; contactEmail: string;
-  showInDirectory: boolean; showPhone: boolean; cardShowPhone: boolean; discord: string; cardShowDiscord: boolean; loginEmail: string;
+  showInDirectory: boolean; showPhone: boolean; cardShowPhone: boolean; discord: string; cardShowDiscord: boolean; showCompany: boolean; companyName: string; loginEmail: string;
 }) {
   const [state, action, pending] = useActionState(saveFiche, undefined);
   return (
@@ -120,6 +120,13 @@ export function FicheForm(props: {
         <label className="flex items-start gap-2"><input type="checkbox" name="showPhone" defaultChecked={props.showPhone} className="mt-1" /> <span>Afficher mon téléphone dans l&apos;annuaire de la promo</span></label>
         <label className="flex items-start gap-2"><input type="checkbox" name="cardShowPhone" defaultChecked={props.cardShowPhone} className="mt-1" /> <span>Afficher mon téléphone sur ma carte de visite (publique)</span></label>
         <label className="flex items-start gap-2"><input type="checkbox" name="cardShowDiscord" defaultChecked={props.cardShowDiscord} className="mt-1" /> <span>Afficher mon Discord sur ma carte de visite (publique)</span></label>
+        <label className="flex items-start gap-2">
+          <input type="checkbox" name="showCompany" defaultChecked={props.showCompany} className="mt-1" />
+          <span>
+            Afficher mon entreprise d&apos;alternance dans l&apos;annuaire et sur ma fiche
+            <span className="block text-xs text-muted">{props.companyName ? <>Seul le nom est montré : « {props.companyName} ». L&apos;adresse reste privée.</> : "Renseigne d'abord « Entreprise d'alternance » dans les informations de ton profil, plus haut."}</span>
+          </span>
+        </label>
       </div>
       <p className="text-xs text-muted">
         L&apos;annuaire montre ton adresse <strong className="text-fg">{props.loginEmail}</strong> seulement si elle se termine par @3is.fr. Il est réservé aux personnes connectées à Backstage.

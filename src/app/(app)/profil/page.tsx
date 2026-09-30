@@ -58,7 +58,7 @@ export default async function ProfilPage({ searchParams }: PageProps<"/profil">)
         </div>
         <FicheForm
           tracks={allTracks.map((t) => ({ id: t.id, name: t.name }))} trackId={user.trackId} headline={user.headline ?? ""} phone={user.phone ?? ""}
-          contactEmail={user.contactEmail ?? ""} showInDirectory={user.showInDirectory} showPhone={user.showPhone} cardShowPhone={user.cardShowPhone} discord={user.discord ?? ""} cardShowDiscord={user.cardShowDiscord} loginEmail={user.email}
+          contactEmail={user.contactEmail ?? ""} showInDirectory={user.showInDirectory} showPhone={user.showPhone} cardShowPhone={user.cardShowPhone} discord={user.discord ?? ""} cardShowDiscord={user.cardShowDiscord} showCompany={user.showCompany} companyName={user.companyName ?? ""} loginEmail={user.email}
         />
       </div>
 

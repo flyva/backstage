@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { and, asc, desc, eq, gt } from "drizzle-orm";
-import { Mail, Phone } from "lucide-react";
+import { Building2, Mail, Phone } from "lucide-react";
 import { db } from "@/db";
 import { listings, reviews, tracks, userLinks, users } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
@@ -54,6 +54,7 @@ export default async function MemberPage({ params }: PageProps<"/annuaire/[id]">
           <div className="space-y-1.5">
             <h1 className="text-2xl font-bold">{u.name}</h1>
             {u.headline && <p className="text-muted">{u.headline}</p>}
+            {u.showCompany && u.companyName && <p className="flex items-center justify-center gap-1.5 text-sm text-muted"><Building2 size={14} aria-hidden /> Alternance chez {u.companyName}</p>}
             {trackRow[0] && <span className="inline-block rounded-full border border-line px-2.5 py-0.5 text-xs font-semibold text-muted">{trackRow[0].name}</span>}
             {rating && <div><RatingBadge avg={rating.avg} n={rating.n} /></div>}
           </div>

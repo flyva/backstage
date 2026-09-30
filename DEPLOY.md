@@ -340,3 +340,5 @@ La **messagerie des annonces** (migration 0035) met en relation acheteur et vend
 **Discord** (migration 0038) : champ « pseudo Discord » dans le profil ; il apparaît dans l'annuaire dès qu'il est renseigné (un clic le copie, Discord n'ayant pas de lien direct par pseudo), et sur la carte de visite publique seulement si la case correspondante est cochée.
 
 **Fiche dans Backstage** : chaque personne visible dans l'annuaire a une fiche (`/annuaire/<n>`), réservée aux membres connectés : coordonnées choisies pour l'annuaire, liens, annonces en cours et avis reçus. Elle est accessible depuis l'annuaire, les annonces et les messages ; le profil permet de la voir « comme les autres ».
+
+**Entreprise d'alternance** (migration 0039) : le nom de l'entreprise saisi dans le profil peut être affiché dans l'annuaire et sur la fiche si la personne coche la case correspondante (désactivée par défaut). L'adresse de l'entreprise n'est jamais montrée.
