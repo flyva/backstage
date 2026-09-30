@@ -112,8 +112,8 @@ export async function runHealth(): Promise<Check[]> {
   // --- Sauvegardes ---
   const backupDir = process.env.BACKUP_DIR || "/opt/backstage/backups";
   try {
-    const files = (await readdir(backupDir)).filter((f) => /^db-.*\.sql\.gz$/.test(f));
-    const stats = await Promise.all(files.map(async (f) => ({ f, s: await stat(path.join(backupDir, f)) })));
+    const files = (await readdir(/*turbopackIgnore: true*/ backupDir)).filter((f) => /^db-.*\.sql\.gz$/.test(f));
+    const stats = await Promise.all(files.map(async (f) => ({ f, s: await stat(path.join(/*turbopackIgnore: true*/ backupDir, f)) })));
     const last = stats.sort((a, b) => b.s.mtimeMs - a.s.mtimeMs)[0];
     if (!last) add("Sauvegardes", "Dernière sauvegarde", "warn", "Aucune sauvegarde trouvée : vérifie backstage-backup.timer");
     else {

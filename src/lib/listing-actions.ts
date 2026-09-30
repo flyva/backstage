@@ -41,7 +41,7 @@ export async function createListing(_: FormState, fd: FormData): Promise<FormSta
     if (!type) return { error: "Format de photo non pris en charge (JPEG, PNG ou WebP)" };
     await ensureListingDir();
     photoFile = newListingPhotoName(type.ext);
-    await writeFile(path.join(listingDir(), photoFile), buf);
+    await writeFile(path.join(/*turbopackIgnore: true*/ listingDir(), photoFile), buf);
   }
 
   await db.insert(listings).values({

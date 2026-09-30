@@ -1,7 +1,7 @@
 // Construit l'archive de déploiement : dist/backstage-<date>.tar.gz
 //   npm run package
 // À lancer sur le PC (jamais sur le Pi : trop peu de RAM pour compiler Next.js).
-import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 
@@ -18,9 +18,12 @@ if (!existsSync(path.join(standalone, "server.js"))) throw new Error("Build stan
 
 rmSync(stage, { recursive: true, force: true });
 mkdirSync(path.join(stage, "app"), { recursive: true });
+const MAX_ARCHIVE_MB = 200; // un paquet normal fait environ 25 Mo
 
 console.log("→ Assemblage…");
 cpSync(standalone, path.join(stage, "app"), { recursive: true });
+// Garde-fou : le traçage de Next peut recopier dist/ (les anciens paquets) dans le build autonome, et la taille double alors à chaque version.
+for (const junk of ["dist", ".claude", "data", ".git"]) rmSync(path.join(stage, "app", junk), { recursive: true, force: true });
 cpSync(path.join(root, ".next", "static"), path.join(stage, "app", ".next", "static"), { recursive: true });
 cpSync(path.join(root, "public"), path.join(stage, "app", "public"), { recursive: true });
 cpSync(path.join(root, "drizzle"), path.join(stage, "drizzle"), { recursive: true });
@@ -48,5 +51,11 @@ const archive = path.join(out, `backstage-${stamp}.tar.gz`);
 console.log("→ Archive…");
 // Chemins relatifs + cwd : GNU tar (Git Bash) prend « C:\… » pour un hôte distant.
 run("tar", ["-czf", path.basename(archive), "backstage"], { cwd: out });
+const sizeMb = statSync(archive).size / 1048576;
+if (sizeMb > MAX_ARCHIVE_MB) throw new Error(`Archive anormalement grosse (${Math.round(sizeMb)} Mo, attendu ~25 Mo) : le build autonome contient sans doute des fichiers en trop. Vérifie « Dynamic filesystem access » dans les avertissements de la compilation.`);
+// On ne garde que les 2 derniers paquets (les plus anciens ne servent à rien).
+const all = readdirSync(out).filter((f) => /^backstage-\d+\.tar\.gz$/.test(f)).sort();
+for (const old of all.slice(0, -2)) rmSync(path.join(out, old), { force: true });
 writeFileSync(path.join(out, "LATEST"), path.basename(archive));
-console.log(`\n✓ ${archive}\n  Envoi sur le Pi :  scp "${archive}" pi@raspberrypi.local:/tmp/\n  Puis sur le Pi  :  sudo /opt/backstage/install.sh /tmp/${path.basename(archive)}`);
+console.log(`  Taille : ${sizeMb.toFixed(1)} Mo`);
+console.log(`\n✓ ${archive}\n  Envoi sur le Pi :  scp "${archive}" pi@raspberrypi.local:\n  Puis sur le Pi  :  sudo /opt/backstage/install.sh ~/${path.basename(archive)}`);

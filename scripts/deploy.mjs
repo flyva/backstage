@@ -24,9 +24,9 @@ if (archives.length === 0) { console.error("Aucune archive dans dist/ : lance d'
 archives.sort((a, b) => statSync(path.join(dist, b)).mtimeMs - statSync(path.join(dist, a)).mtimeMs);
 const archive = archives[0];
 console.log(`→ Envoi de ${archive} vers ${host}`);
-run("scp", [path.join(dist, archive), path.join(root, "deploy", "install.sh"), path.join(root, "deploy", "backup.sh"), `${host}:/tmp/`], { shell: false });
+run("scp", [path.join(dist, archive), path.join(root, "deploy", "install.sh"), path.join(root, "deploy", "backup.sh"), `${host}:`], { shell: false }); // dossier personnel (carte SD) : /tmp du Pi est en mémoire et se remplit vite
 
 console.log("→ Installation sur le Pi (le mot de passe sudo peut être demandé)");
 // shell:false : sinon cmd.exe coupe la commande distante aux « && » et la lance sur le PC. -t : terminal interactif pour que sudo puisse demander le mot de passe.
-run("ssh", ["-t", host, `sudo install -m 755 /tmp/install.sh /tmp/backup.sh /opt/backstage/ && sudo /opt/backstage/install.sh /tmp/${archive} && rm -f /tmp/${archive}`], { shell: false });
+run("ssh", ["-t", host, `sudo install -m 755 ~/install.sh ~/backup.sh /opt/backstage/ && sudo /opt/backstage/install.sh ~/${archive} && rm -f ~/${archive} ~/install.sh ~/backup.sh`], { shell: false });
 console.log("✓ Déploiement terminé");
