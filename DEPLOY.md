@@ -344,3 +344,7 @@ La **messagerie des annonces** (migration 0035) met en relation acheteur et vend
 **Entreprise d'alternance** (migration 0039) : le nom de l'entreprise saisi dans le profil peut être affiché dans l'annuaire et sur la fiche si la personne coche la case correspondante (désactivée par défaut). L'adresse de l'entreprise n'est jamais montrée.
 
 **Carte de visite : école** (migration 0040) : un interrupteur « Afficher l'école (3iS Bègles) » ajoute un bouton vers le site de l'école sur la carte publique. L'adresse se règle dans Administration → Général (« Site web de l'école », `https://www.3is.fr` par défaut). Les cases du profil sont désormais des interrupteurs regroupés : « Dans l'annuaire » et « Sur ma carte de visite ».
+
+### Erreur 500 sur les téléchargements, les images ou l'adresse (corrigé)
+
+Symptôme : toutes les routes qui lisent la session (exports CSV/HTML/Markdown, plan de l'école, galerie, fichiers du wiki et des projets, photos d'annonces, auto-complétion d'adresse, messages en direct) renvoient « Internal Server Error », alors que les pages s'affichent. Le journal indique `cookies was called outside a request scope`. Cause : le réglage `outputFileTracingExcludes` (motif `./dist/**/*`) retirait aussi `node_modules/next/dist` du paquet. Il est supprimé ; `npm run package` vérifie maintenant la présence de ces fichiers internes et refuse de créer un paquet incomplet. Ces erreurs n'existent pas en développement : pour les tester, lancer le build autonome (`node .next/standalone/server.js`).

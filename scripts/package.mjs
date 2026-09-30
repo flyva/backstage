@@ -30,6 +30,15 @@ cpSync(path.join(root, "drizzle"), path.join(stage, "drizzle"), { recursive: tru
 cpSync(path.join(root, "deploy"), path.join(stage, "deploy"), { recursive: true });
 cpSync(path.join(root, "deploy", "migrate"), path.join(stage, "migrate"), { recursive: true });
 
+// Garde-fou : des fichiers internes de Next doivent être présents, sinon TOUTES les routes qui lisent la session plantent en production
+// (erreur « cookies was called outside a request scope » : téléchargements, images, API). Cela est arrivé avec outputFileTracingExcludes.
+const appRender = path.join(stage, "app", "node_modules", "next", "dist", "server", "app-render");
+for (const needed of ["work-unit-async-storage.external.js", "work-async-storage.external.js"]) {
+  if (!existsSync(path.join(appRender, needed))) {
+    throw new Error(`Fichier interne de Next manquant dans le paquet : ${needed}. Ne PAS utiliser outputFileTracingExcludes avec un motif « dist » : il exclut aussi node_modules/next/dist.`);
+  }
+}
+
 // Binaires sharp propres à Windows/x64, inutiles sur le Pi (images non optimisées). NE PAS retirer @swc : Next en a besoin (@swc/helpers).
 for (const dir of ["@img", "sharp"]) rmSync(path.join(stage, "app", "node_modules", dir), { recursive: true, force: true });
 

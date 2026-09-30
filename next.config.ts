@@ -10,7 +10,6 @@ const nextConfig: NextConfig = {
   // Lecture des calendriers PDF (pdfjs) : chargé tel quel côté serveur, avec son fichier « worker » inclus dans le build autonome.
   serverExternalPackages: ["pdfjs-dist"],
   // Le dossier dist/ (anciens paquets) et les caches ne doivent jamais se retrouver dans le paquet de déploiement.
-  outputFileTracingExcludes: { "*": ["./dist/**/*", "./.next/cache/**/*", "./.claude/**/*", "./data/**/*"] },
   outputFileTracingIncludes: { "/api/alternance/calendar": ["./node_modules/pdfjs-dist/legacy/build/**"] },
 };
 
