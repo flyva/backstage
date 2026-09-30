@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { workDays, workLogs, WORK_KINDS } from "@/db/schema";
@@ -122,4 +122,32 @@ export async function deleteLog(fd: FormData) {
   const user = await requireUser();
   await db.delete(workLogs).where(and(eq(workLogs.id, Number(fd.get("id"))), eq(workLogs.userId, user.id)));
   refresh();
+}
+
+// ---------- Import du calendrier de l'école (PDF) ----------
+
+const importSchema = z.array(z.object({ day: z.string().refine(isDay), kind: z.enum(["ecole", "entreprise", "ferie"]) })).min(1).max(1500);
+
+/**
+ * Applique le calendrier lu dans le PDF. Sur la période couverte, les jours école / entreprise / férié déjà saisis sont
+ * remplacés par ceux du PDF ; les congés que tu as posés toi-même sont conservés.
+ */
+export async function importCalendar(payload: string): Promise<FormState> {
+  const user = await requireUser();
+  let raw: unknown;
+  try { raw = JSON.parse(payload); } catch { return { error: "Données invalides" }; }
+  const p = importSchema.safeParse(raw);
+  if (!p.success) return { error: "Données invalides" };
+  const days = p.data.map((d) => d.day).sort();
+  const from = days[0];
+  const to = days[days.length - 1];
+  await db.transaction(async (tx) => {
+    await tx.delete(workDays).where(and(eq(workDays.userId, user.id), gte(workDays.day, from), lte(workDays.day, to), inArray(workDays.kind, ["ecole", "entreprise", "ferie"])));
+    for (let i = 0; i < p.data.length; i += 200) {
+      await tx.insert(workDays).values(p.data.slice(i, i + 200).map((d) => ({ userId: user.id, day: d.day, kind: d.kind }))).onDuplicateKeyUpdate({ set: { kind: sql.raw("values(`kind`)") } });
+    }
+  });
+  refresh();
+  revalidatePath("/agenda");
+  return { ok: `${p.data.length} jour(s) importés du ${from} au ${to}` };
 }

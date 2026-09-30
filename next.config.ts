@@ -5,6 +5,9 @@ const nextConfig: NextConfig = {
   output: "standalone",
   // sharp n'a pas de binaire prêt pour ARM 32 bits : pas d'optimisation d'image.
   images: { unoptimized: true },
+  // Lecture des calendriers PDF (pdfjs) : chargé tel quel côté serveur, avec son fichier « worker » inclus dans le build autonome.
+  serverExternalPackages: ["pdfjs-dist"],
+  outputFileTracingIncludes: { "/api/alternance/calendar": ["./node_modules/pdfjs-dist/legacy/build/**"] },
 };
 
 export default nextConfig;

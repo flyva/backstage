@@ -1,5 +1,9 @@
 import Link from "next/link";
+import { and, eq, inArray } from "drizzle-orm";
 import { ChevronLeft, ChevronRight, MapPin, RefreshCw } from "lucide-react";
+import { db } from "@/db";
+import { workDays } from "@/db/schema";
+import { KIND_CLASS, KIND_LABEL } from "@/lib/alternance";
 import { requireUser } from "@/lib/auth";
 import { refreshAgenda } from "@/lib/actions";
 import { dayKey, getEvents, rangeOfWeek, weekDays, type AgendaEvent } from "@/lib/ical";
@@ -43,6 +47,8 @@ export default async function AgendaPage({ searchParams }: PageProps<"/agenda">)
     }
   }
   const byDay = Map.groupBy(events, (e) => dayKey(e.start));
+  // Planning de l'alternance (école / entreprise / congé / férié) : affiché même sans lien iCal.
+  const kinds = new Map((await db.select({ day: workDays.day, kind: workDays.kind }).from(workDays).where(and(eq(workDays.userId, user.id), inArray(workDays.day, days.map((d) => d.key))))).map((r) => [r.day, r.kind]));
   const label = `${rangeFmt.format(days[0].date)} – ${rangeFmt.format(days[6].date)}`;
 
   return (
@@ -77,16 +83,20 @@ export default async function AgendaPage({ searchParams }: PageProps<"/agenda">)
         </div>
       )}
 
-      {user.icalUrl && !error && (
+      {!error && (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-7">
           {days.map(({ key, date }) => {
             const list = byDay.get(key) ?? [];
             const isToday = key === today;
+            const kind = kinds.get(key);
             return (
-              <section key={key} className={`card space-y-2 p-3 ${isToday ? "border-accent" : ""} ${list.length === 0 ? "opacity-70" : ""}`}>
-                <h2 className={`text-sm font-semibold capitalize ${isToday ? "text-accent" : ""}`}>{dayFmt.format(date)}</h2>
+              <section key={key} className={`card space-y-2 p-3 ${isToday ? "border-accent" : ""} ${list.length === 0 && !kind ? "opacity-70" : ""}`}>
+                <h2 className={`flex flex-wrap items-center justify-between gap-1 text-sm font-semibold capitalize ${isToday ? "text-accent" : ""}`}>
+                  {dayFmt.format(date)}
+                  {kind && <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold normal-case ${KIND_CLASS[kind]}`}>{KIND_LABEL[kind]}</span>}
+                </h2>
                 {list.length === 0 ? (
-                  <p className="text-xs text-muted">Rien de prévu</p>
+                  <p className="text-xs text-muted">{kind === "entreprise" ? "Journée en entreprise" : kind === "ferie" ? "Jour férié" : kind === "conge" ? "Congé" : "Rien de prévu"}</p>
                 ) : (
                   <ul className="space-y-2">{list.map((e) => <EventCard key={e.id} e={e} />)}</ul>
                 )}

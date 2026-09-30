@@ -8,6 +8,7 @@ import { todayParis } from "@/lib/equipment";
 import { KIND_CLASS, KIND_LABEL, addMonths, isMonth, isWeekend, monthGrid, monthLabel } from "@/lib/alternance";
 import { cycleDay } from "@/lib/alternance-actions";
 import { RangeForm, RhythmForm } from "@/components/alternance-forms";
+import { CalendarImport } from "@/components/CalendarImport";
 
 export const metadata = { title: "Planning de l'alternance" };
 
@@ -68,15 +69,26 @@ export default async function AlternancePage({ searchParams }: PageProps<"/alter
       </section>
 
       <section className="card space-y-3">
+        <h2 className="font-semibold">Importer le calendrier de l&apos;école</h2>
+        <p className="text-sm text-muted">Envoie le PDF du calendrier de formation : les périodes à l&apos;école, en entreprise et les jours fériés se placent tout seuls, ici et dans l&apos;agenda.</p>
+        <CalendarImport />
+      </section>
+
+      <details className="card space-y-3">
+        <summary className="cursor-pointer font-semibold">Autres façons de planifier</summary>
+        <div className="space-y-6 pt-3">
+      <section className="space-y-3">
         <h2 className="font-semibold">Planifier un rythme</h2>
         <p className="text-sm text-muted">Par exemple 1 semaine à l&apos;école puis 3 semaines en entreprise, répété 8 fois. Les jours du lundi au vendredi sont remplis.</p>
         <RhythmForm today={today} />
       </section>
 
-      <section className="card space-y-3">
+      <section className="space-y-3">
         <h2 className="font-semibold">Appliquer à une période</h2>
         <RangeForm today={today} />
       </section>
+        </div>
+      </details>
     </div>
   );
 }
