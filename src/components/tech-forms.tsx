@@ -7,6 +7,7 @@ import type { FormState } from "@/lib/actions";
 import { addInput, addLight, importLights, updateInput, updateLight } from "@/lib/tech-actions";
 import { parseCsv } from "@/lib/csv";
 import { mapLightCsv } from "@/lib/tech";
+import { LightToLibraryButton } from "@/components/library-forms";
 
 function Feedback({ state }: { state: FormState }) {
   if (state?.error) return <p className="text-sm text-danger" role="alert">{state.error}</p>;
@@ -35,11 +36,33 @@ function LightFields({ d }: { d: LightDefaults }) {
   );
 }
 
-export function AddLightForm({ projectId }: { projectId: number }) {
+export type LightModel = { id: number; name: string; mode: string | null; footprint: number; notes: string | null };
+
+export function AddLightForm({ projectId, models = [] }: { projectId: number; models?: LightModel[] }) {
   const [state, action, pending] = useActionState(addLight, undefined);
+  const form = useRef<HTMLFormElement>(null);
+  // Choisir un appareil de la bibliothèque remplit le nom, le mode et le nombre de canaux.
+  const fill = (modelId: string) => {
+    const m = models.find((x) => String(x.id) === modelId);
+    const el = form.current?.elements;
+    if (!m || !el) return;
+    (el.namedItem("label") as HTMLInputElement).value = m.name;
+    (el.namedItem("mode") as HTMLInputElement).value = m.mode ?? "";
+    (el.namedItem("footprint") as HTMLInputElement).value = String(m.footprint);
+    (el.namedItem("notes") as HTMLInputElement).value = m.notes ?? "";
+  };
   return (
-    <form action={action} className="space-y-3">
+    <form ref={form} action={action} className="space-y-3">
       <input type="hidden" name="projectId" value={projectId} />
+      {models.length > 0 && (
+        <div>
+          <label className="label" htmlFor="lib-model">Depuis la bibliothèque</label>
+          <select id="lib-model" defaultValue="" onChange={(e) => fill(e.target.value)} className="input">
+            <option value="">Choisir un appareil… (ou remplis à la main)</option>
+            {models.map((m) => <option key={m.id} value={m.id}>{m.name}{m.mode ? ` · ${m.mode}` : ""} · {m.footprint} ch</option>)}
+          </select>
+        </div>
+      )}
       <LightFields d={{}} />
       <Feedback state={state} />
       <button className="btn" disabled={pending}>{pending ? "Ajout…" : "Ajouter le projecteur"}</button>
@@ -54,7 +77,10 @@ export function EditLightForm({ light }: { light: LightDefaults & { id: number }
       <input type="hidden" name="lightId" value={light.id} />
       <LightFields d={light} />
       <Feedback state={state} />
-      <button className="btn" disabled={pending}>{pending ? "…" : "Enregistrer"}</button>
+      <div className="flex flex-wrap items-center gap-2">
+        <button className="btn" disabled={pending}>{pending ? "…" : "Enregistrer"}</button>
+        <LightToLibraryButton lightId={light.id} />
+      </div>
     </form>
   );
 }

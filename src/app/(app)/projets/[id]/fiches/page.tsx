@@ -2,10 +2,12 @@ import Link from "next/link";
 import { and, asc, eq, isNull } from "drizzle-orm";
 import { AlertTriangle, Download, FileText, Pencil, Printer, Trash2 } from "lucide-react";
 import { db } from "@/db";
-import { projectFiles, techInputs, techLights } from "@/db/schema";
+import { fixtureModels, projectFiles, techInputs, techLights } from "@/db/schema";
+import { listSourceProjects } from "@/lib/library";
 import { can, requireProject } from "@/lib/projects";
 import { deleteInput, deleteLight, deleteProjectFile } from "@/lib/tech-actions";
 import { findConflicts, patchLabel } from "@/lib/tech";
+import { CopyTechForm } from "@/components/library-forms";
 import { AddInputForm, AddLightForm, EditInputForm, EditLightForm, FileUploader, ImportLightsForm } from "@/components/tech-forms";
 
 export const metadata = { title: "Fiches techniques" };
@@ -14,9 +16,10 @@ const sizeFmt = (n: number) => (n > 1_048_576 ? `${(n / 1_048_576).toFixed(1)} M
 
 export default async function TechSheetsPage({ params }: PageProps<"/projets/[id]/fiches">) {
   const { id } = await params;
-  const { project, role } = await requireProject(Number(id));
+  const { user, project, role } = await requireProject(Number(id));
   const canEdit = can(role, "editor");
 
+  const [models, sources] = canEdit ? await Promise.all([db.select().from(fixtureModels).orderBy(asc(fixtureModels.name)), listSourceProjects(user.id, project.id)]) : [[], []];
   const [lights, inputs, files] = await Promise.all([
     db.select().from(techLights).where(eq(techLights.projectId, project.id)).orderBy(asc(techLights.channel), asc(techLights.universe), asc(techLights.address), asc(techLights.id)),
     db.select().from(techInputs).where(eq(techInputs.projectId, project.id)).orderBy(asc(techInputs.channel), asc(techInputs.id)),
@@ -34,6 +37,13 @@ export default async function TechSheetsPage({ params }: PageProps<"/projets/[id
         <p className="text-sm text-muted">Patch lumière, liste d&apos;entrées son et fiches papier du projet.</p>
         <Link href={`${base}/imprimer`} className="btn-ghost"><Printer size={16} /> Vue imprimable / PDF</Link>
       </div>
+
+      {canEdit && sources.length > 0 && (
+        <section className="card space-y-2" aria-label="Copier depuis un autre projet">
+          <h2 className="text-sm font-semibold">Réutiliser les fiches d&apos;un autre projet</h2>
+          <CopyTechForm projectId={project.id} sources={sources} />
+        </section>
+      )}
 
       {/* ---------- Lumière ---------- */}
       <section className="space-y-3" aria-labelledby="lumiere">
@@ -89,7 +99,7 @@ export default async function TechSheetsPage({ params }: PageProps<"/projets/[id
 
         {canEdit && (
           <div className="grid gap-4 lg:grid-cols-2">
-            <div className="card space-y-3"><h3 className="font-semibold">Ajouter un projecteur</h3><AddLightForm projectId={project.id} /></div>
+            <div className="card space-y-3"><h3 className="font-semibold">Ajouter un projecteur</h3><AddLightForm projectId={project.id} models={models} /></div>
             <div className="card space-y-3">
               <h3 className="font-semibold">Importer un patch (CSV)</h3>
               <p className="text-xs text-muted">Colonnes reconnues automatiquement : circuit, nom/type, mode, univers, adresse (ou « 2.045 »), nb canaux, position, gélatine, notes.</p>
