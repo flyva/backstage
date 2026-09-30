@@ -65,6 +65,7 @@ export default async function BdeEventsPage() {
               </form>
             </div>
             {e.description && <div className="text-sm"><Markdown breaks>{e.description}</Markdown></div>}
+            <a href={`/covoiturage?titre=${encodeURIComponent(e.title)}`} className="text-xs text-accent underline">Proposer un covoiturage</a>
             {registered && <p className="text-xs text-accent">Tu es inscrit(e) ✓</p>}
 
             {manager && (
