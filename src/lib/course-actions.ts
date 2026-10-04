@@ -7,9 +7,7 @@ import { and, eq, like } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
 import { parseParisInput } from "@/lib/paris";
 import { db } from "@/db";
-import { courseSheets, courses } from "@/db/schema";
-import { aiEnabled, generateRevisionSheet } from "@/lib/ai";
-import { loadSubjects, sheetKey } from "@/lib/subjects";
+import { courses } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { MANUAL_PREFIX, syncCourses } from "@/lib/courses";
 import { allow } from "@/lib/rate-limit";
@@ -33,26 +31,6 @@ export async function syncCoursesNow() {
   if (user.icalUrl && allow(`course-sync:${user.id}`, 6, 10 * 60e3)) await syncCourses(user.id, user.icalUrl);
   revalidatePath("/cours");
   revalidatePath("/agenda");
-}
-
-/** Génère (ou régénère) la fiche de révision d'une matière à partir des notes de la personne. */
-export async function generateSheet(_: FormState, fd: FormData): Promise<FormState> {
-  const user = await requireUser();
-  const key = String(fd.get("key") ?? "");
-  if (!aiEnabled()) return { error: "L'IA n'est pas configurée sur ce serveur (MISTRAL_API_KEY manquante)." };
-  if (!allow(`ai-sheet:${user.id}`, 8, 24 * 3600e3) || !allow("ai-sheet:all", 300, 24 * 3600e3)) return { error: "Limite du jour atteinte (8 fiches par jour). Réessaie demain." };
-  const subject = (await loadSubjects(user.id)).find((s) => s.key === key);
-  if (!subject || subject.noted.length === 0) return { error: "Cette matière n'a pas encore de notes." };
-  const day = new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", day: "numeric", month: "long", year: "numeric" });
-  try {
-    const content = await generateRevisionSheet(subject.name, subject.noted.map((c) => ({ date: day.format(c.startsAt), text: c.note ?? "" })));
-    await db.insert(courseSheets).values({ userId: user.id, subjectKey: sheetKey(key), content }).onDuplicateKeyUpdate({ set: { content, updatedAt: new Date() } });
-  } catch (e) {
-    console.error("[ai]", e instanceof Error ? e.message : e);
-    return { error: e instanceof Error ? e.message : "Génération impossible" };
-  }
-  revalidatePath("/cours/fiches");
-  return { ok: "Fiche générée" };
 }
 
 /** Ajoute un cours (ou une simple note) hors planning de l'école, puis ouvre sa page pour écrire. */

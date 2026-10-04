@@ -942,15 +942,3 @@ export const courses = mysqlTable(
   (t) => [uniqueIndex("course_user_uid").on(t.userId, t.uid), index("course_user_start").on(t.userId, t.startsAt)],
 );
 
-// Fiche de révision générée par IA à partir des notes d'une matière (une par personne et par matière).
-export const courseSheets = mysqlTable(
-  "course_sheets",
-  {
-    id: int("id").primaryKey().autoincrement(),
-    userId: int("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-    subjectKey: varchar("subject_key", { length: 190 }).notNull(),
-    content: mediumtext("content").notNull(),
-    updatedAt: datetime("updated_at").notNull().$defaultFn(() => new Date()),
-  },
-  (t) => [uniqueIndex("sheet_user_subject").on(t.userId, t.subjectKey)],
-);

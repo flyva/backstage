@@ -1,5 +1,5 @@
 import { getUser } from "@/lib/auth";
-import { loadSheets, loadSubjects, sheetKey } from "@/lib/subjects";
+import { loadSubjects } from "@/lib/subjects";
 
 // Export Markdown des notes de cours, par matière (une matière ou toutes).
 const dayFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", weekday: "long", day: "numeric", month: "long", year: "numeric" });
@@ -10,10 +10,9 @@ export async function GET(req: Request) {
   const user = await getUser();
   if (!user) return new Response("Non autorisé", { status: 401 });
   const only = new URL(req.url).searchParams.get("matiere");
-  const sheets = await loadSheets(user.id);
   const subjects = (await loadSubjects(user.id)).filter((s) => s.noted.length > 0 && (!only || s.key === only));
   const md = subjects
-    .map((s) => `# ${s.name}\n\n` + (sheets.get(sheetKey(s.key)) ? `> Fiche de révision générée par IA à partir de mes notes\n\n${sheets.get(sheetKey(s.key))!.content}\n\n---\n\n` : "") + s.noted.map((c) => `## ${dayFmt.format(c.startsAt)} · ${c.allDay ? "journée" : `${timeFmt.format(c.startsAt)}–${timeFmt.format(c.endsAt)}`}${c.location ? ` · ${c.location}` : ""}\n\n${c.note}\n`).join("\n"))
+    .map((s) => `# ${s.name}\n\n` + s.noted.map((c) => `## ${dayFmt.format(c.startsAt)} · ${c.allDay ? "journée" : `${timeFmt.format(c.startsAt)}–${timeFmt.format(c.endsAt)}`}${c.location ? ` · ${c.location}` : ""}\n\n${c.note}\n`).join("\n"))
     .join("\n");
   return new Response(md || "Aucune note.\n", {
     headers: {

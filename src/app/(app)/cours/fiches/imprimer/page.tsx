@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
-import { loadSheets, loadSubjects, sheetKey } from "@/lib/subjects";
+import { loadSubjects } from "@/lib/subjects";
 import { Markdown } from "@/components/Markdown";
 import { PrintButton } from "@/components/PrintButton";
 
@@ -13,7 +13,6 @@ const timeFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", hou
 export default async function FichesPrintPage({ searchParams }: PageProps<"/cours/fiches/imprimer">) {
   const user = await requireUser();
   const only = (await searchParams).matiere;
-  const sheets = await loadSheets(user.id);
   const subjects = (await loadSubjects(user.id)).filter((s) => s.noted.length > 0 && (typeof only !== "string" || s.key === only));
 
   return (
@@ -30,12 +29,6 @@ export default async function FichesPrintPage({ searchParams }: PageProps<"/cour
       {subjects.map((s) => (
         <section key={s.key} className="space-y-3">
           {subjects.length > 1 && <h2 className="text-xl font-bold">{s.name}</h2>}
-          {sheets.get(sheetKey(s.key)) && (
-            <article className="break-inside-avoid space-y-1 rounded-xl border border-line p-3">
-              <h3 className="font-semibold">Fiche de révision <span className="text-xs font-normal text-muted">(générée par IA à partir de mes notes)</span></h3>
-              <Markdown>{sheets.get(sheetKey(s.key))!.content}</Markdown>
-            </article>
-          )}
           {s.noted.map((c) => (
             <article key={c.id} className="break-inside-avoid space-y-1 border-b border-line pb-3">
               <h3 className="font-semibold capitalize">{dayFmt.format(c.startsAt)} <span className="font-normal normal-case text-muted">· {c.allDay ? "journée" : `${timeFmt.format(c.startsAt)}–${timeFmt.format(c.endsAt)}`}{c.location ? ` · ${c.location}` : ""}</span></h3>

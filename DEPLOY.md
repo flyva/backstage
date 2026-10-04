@@ -353,6 +353,6 @@ Symptôme : toutes les routes qui lisent la session (exports CSV/HTML/Markdown, 
 
 **Messagerie : saisie, « Vu », offre et notifications** (migration 0042) : les conversations montrent en direct « X écrit… » (signal envoyé par `POST /api/messages/<id>/typing`, rien n'est enregistré) et « Vu à HH:MM » sous le dernier message lu ; Entrée envoie, Maj + Entrée retourne à la ligne. À droite, le panneau « L'offre » affiche l'annonce, son prix (avec €) et, pour le vendeur, les boutons « Valider la vente » (conclut avec l'acheteur et ouvre les avis) et « Vendu ailleurs » (retire l'annonce). Notifications push (Paramètres → Notifications) : « Messages de mes annonces » (activé par défaut) et « Nouvelles annonces publiées par la promo » (désactivé par défaut) ; elles exigent les clés VAPID dans `.env`.
 
-## Fiches de révision par IA (Mistral)
+## Mes cours
 
-Ajoute dans `/opt/backstage/.env` : `MISTRAL_API_KEY="ta-cle"` (facultatif : `MISTRAL_MODEL`, par défaut `mistral-small-latest`), puis `sudo systemctl restart backstage`. Sans clé, le bouton « Générer » de Mes cours > Fiches par matière n'apparaît pas. Limite : 8 fiches par personne et par jour, 300 au total. Les notes de la matière sont envoyées à Mistral. Migrations 0043 (cours) et 0044 (fiches).
+Les cours du lien iCalendar de l'école sont copiés en base (migration 0043) et lisibles même si le lien tombe en panne ; chacun a une page de notes, et les fiches par matière s'exportent en PDF (impression) ou Markdown. Aucune clé ni service externe n'est nécessaire.

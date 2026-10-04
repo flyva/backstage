@@ -1,17 +1,13 @@
 import Link from "next/link";
 import { FileDown, Printer } from "lucide-react";
 import { requireUser } from "@/lib/auth";
-import { aiEnabled } from "@/lib/ai";
-import { SheetButton } from "@/components/SheetButton";
-import { loadSheets, loadSubjects, sheetKey } from "@/lib/subjects";
-import { Markdown } from "@/components/Markdown";
+import { loadSubjects } from "@/lib/subjects";
 
 export const metadata = { title: "Fiches par matière" };
 
 export default async function FichesPage() {
   const user = await requireUser();
-  const [subjects, sheets] = await Promise.all([loadSubjects(user.id), loadSheets(user.id)]);
-  const ai = aiEnabled();
+  const subjects = await loadSubjects(user.id);
   const withNotes = subjects.filter((s) => s.noted.length > 0);
 
   return (
@@ -19,7 +15,7 @@ export default async function FichesPage() {
       <header className="space-y-1">
         <p className="text-sm"><Link href="/cours" className="text-muted underline">← Mes cours</Link></p>
         <h1 className="text-2xl font-bold">Fiches par matière</h1>
-        <p className="text-sm text-muted">Tes notes regroupées par matière et classées par date. Imprime-les ou enregistre-les en PDF depuis la page d&apos;impression.{ai && " Le bouton « Générer » envoie tes notes de la matière à Mistral (IA) pour en tirer une fiche de révision."}</p>
+        <p className="text-sm text-muted">Tes notes regroupées par matière et classées par date. Imprime-les ou enregistre-les en PDF depuis la page d&apos;impression.</p>
       </header>
 
       {withNotes.length > 0 && (
@@ -50,18 +46,6 @@ export default async function FichesPage() {
               </span>
             ) : <span className="text-xs text-muted">Pas encore de notes</span>}
             </div>
-            {ai && s.noted.length > 0 && (
-              <div className="space-y-2">
-                <SheetButton subjectKey={s.key} again={sheets.has(sheetKey(s.key))} />
-                {sheets.get(sheetKey(s.key)) && (
-                  <details className="rounded-xl border border-line bg-bg p-3 text-sm">
-                    <summary className="cursor-pointer text-muted">Fiche de révision générée par IA</summary>
-                    <div className="mt-2"><Markdown>{sheets.get(sheetKey(s.key))!.content}</Markdown></div>
-                    <p className="mt-2 text-[11px] text-muted">Générée à partir de tes notes par Mistral : relis-la, elle peut contenir des erreurs.</p>
-                  </details>
-                )}
-              </div>
-            )}
           </li>
         ))}
       </ul>
