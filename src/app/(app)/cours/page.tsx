@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { and, asc, desc, eq, gt, lte } from "drizzle-orm";
-import { AlertTriangle, MapPin, NotebookPen, RefreshCw } from "lucide-react";
+import { AlertTriangle, FileText, MapPin, NotebookPen, RefreshCw } from "lucide-react";
 import { db } from "@/db";
 import { courses } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
@@ -38,11 +38,14 @@ export default async function CoursPage({ searchParams }: PageProps<"/cours">) {
           <h1 className="text-2xl font-bold">Mes cours</h1>
           <p className="text-sm text-muted">Copiés depuis ton planning de l&apos;école : ils restent ici même si le lien est en panne. Ajoute tes notes sur chaque cours.</p>
         </div>
-        {user.icalUrl && (
-          <form action={syncCoursesNow}>
-            <button className="btn-ghost text-sm"><RefreshCw size={15} aria-hidden /> Synchroniser</button>
-          </form>
-        )}
+        <div className="flex flex-wrap gap-2">
+          <Link href="/cours/fiches" className="btn-ghost text-sm"><FileText size={15} aria-hidden /> Fiches par matière</Link>
+          {user.icalUrl && (
+            <form action={syncCoursesNow}>
+              <button className="btn-ghost text-sm"><RefreshCw size={15} aria-hidden /> Synchroniser</button>
+            </form>
+          )}
+        </div>
       </header>
 
       {!user.icalUrl ? (
