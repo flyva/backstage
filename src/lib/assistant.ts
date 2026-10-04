@@ -3,7 +3,7 @@ import { and, asc, desc, eq, gte, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { bdeEvents, contacts, equipmentItems, faqItems, loans, newsPosts, usefulLinks, wikiPages, workDays } from "@/db/schema";
 import { getSettings } from "@/lib/settings";
-import { getEvents } from "@/lib/ical";
+import { courseEvents } from "@/lib/courses";
 import { homeGlance } from "@/lib/glance";
 import { cardHref, dueCards } from "@/lib/reminders";
 import { todayParis } from "@/lib/equipment";
@@ -213,7 +213,7 @@ async function personal(q: string, user: SessionUser): Promise<AssistantReply | 
     if (!user.icalUrl) return { text: "Je ne vois pas encore ton emploi du temps. Ajoute ton **lien iCalendar Ypareo** dans ton profil, et je pourrai te dire tes prochains cours.", sources: [{ title: "Mon profil", href: "/profil" }] };
     try {
       const now = new Date();
-      const list = (await getEvents(user.icalUrl, new Date(now.getTime() - 864e5), new Date(now.getTime() + 7 * 864e5))).filter((e) => !e.allDay && e.end >= now).sort((a, b) => a.start.getTime() - b.start.getTime());
+      const list = (await courseEvents(user, new Date(now.getTime() - 864e5), new Date(now.getTime() + 7 * 864e5))).filter((e) => !e.allDay && e.end >= now).sort((a, b) => a.start.getTime() - b.start.getTime());
       if (list.length === 0) return { text: "Je ne trouve aucun cours dans les 7 prochains jours.", sources: [{ title: "Mon agenda", href: "/agenda" }] };
       const lines = list.slice(0, 4).map((e) => `- **${fmtDay.format(e.start)}**, ${fmtTime.format(e.start)}–${fmtTime.format(e.end)} : ${e.title}${e.location ? ` (${e.location})` : ""}`);
       return { text: `Tes prochains cours :\n${lines.join("\n")}`, sources: [{ title: "Mon agenda", href: "/agenda" }] };

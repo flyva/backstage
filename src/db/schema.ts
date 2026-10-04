@@ -11,6 +11,7 @@ import {
   primaryKey,
   date,
   mediumtext,
+  uniqueIndex,
 } from "drizzle-orm/mysql-core";
 
 // Rôles (comme dans Oasis / Adie) : un nom et des droits par domaine. « admin » donne tout. Les rôles « système »
@@ -59,6 +60,9 @@ export const users = mysqlTable("users", {
   homeLat: double("home_lat"),
   homeLng: double("home_lng"),
   icalUrl: varchar("ical_url", { length: 1000 }),
+  icalSyncedAt: datetime("ical_synced_at"), // dernière synchronisation réussie du planning
+  icalTriedAt: datetime("ical_tried_at"), // dernière tentative (réussie ou non)
+  icalError: varchar("ical_error", { length: 200 }), // motif du dernier échec (vide si tout va bien)
   // Entreprise d'alternance (facultatif) : trajets et transports autour de son adresse.
   companyName: varchar("company_name", { length: 120 }),
   companyAddress: varchar("company_address", { length: 255 }),
@@ -915,4 +919,25 @@ export const listingPhotos = mysqlTable(
     createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
   },
   (t) => [index("lp_listing_idx").on(t.listingId, t.position)],
+);
+
+// Cours copiés depuis le lien iCalendar de l'école : ils restent consultables même si le lien tombe en panne. À chaque
+// synchronisation un cours modifié est mis à jour, un cours disparu du planning est supprimé (ou marqué « retiré » s'il porte une note).
+export const courses = mysqlTable(
+  "courses",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    userId: int("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    uid: varchar("uid", { length: 255 }).notNull(), // identifiant de l'évènement dans le calendrier source
+    title: varchar("title", { length: 255 }).notNull(),
+    location: varchar("location", { length: 255 }).notNull().default(""),
+    description: text("description"),
+    startsAt: datetime("starts_at").notNull(),
+    endsAt: datetime("ends_at").notNull(),
+    allDay: boolean("all_day").notNull().default(false),
+    note: text("note"), // notes personnelles de l'étudiant sur ce cours
+    removed: boolean("removed").notNull().default(false), // disparu du planning, gardé parce qu'il a une note
+    updatedAt: datetime("updated_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [uniqueIndex("course_user_uid").on(t.userId, t.uid), index("course_user_start").on(t.userId, t.startsAt)],
 );

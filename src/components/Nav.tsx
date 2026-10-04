@@ -65,6 +65,7 @@ const GROUPS: Group[] = [
   {
     id: "ecole", title: "École",
     items: [
+      { href: "/cours", label: "Mes cours", icon: NotebookPen },
       { href: "/ecole", label: "Wi-Fi et plan", icon: School },
       { href: "/contacts", label: "Contacts", icon: BookUser },
       { href: "/liens", label: "Liens utiles", icon: Link2 },

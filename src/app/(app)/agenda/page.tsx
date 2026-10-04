@@ -7,7 +7,8 @@ import { KIND_CLASS, KIND_LABEL } from "@/lib/alternance";
 import { requireUser } from "@/lib/auth";
 import { refreshAgenda } from "@/lib/actions";
 import { WeekGrid } from "@/components/WeekGrid";
-import { dayKey, getEvents, rangeOfWeek, weekDays, type AgendaEvent } from "@/lib/ical";
+import { courseEvents } from "@/lib/courses";
+import { dayKey, rangeOfWeek, weekDays, type AgendaEvent } from "@/lib/ical";
 
 export const metadata = { title: "Agenda" };
 
@@ -43,7 +44,7 @@ export default async function AgendaPage({ searchParams }: PageProps<"/agenda">)
   if (user.icalUrl) {
     try {
       const { from, to } = rangeOfWeek(days);
-      events = await getEvents(user.icalUrl, from, to);
+      events = await courseEvents(user, from, to);
     } catch (e) {
       error = e instanceof Error ? e.message : "erreur inconnue";
     }

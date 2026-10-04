@@ -5,7 +5,8 @@ import { db } from "@/db";
 import { equipmentItems, loans, newsPosts } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
-import { dayKey, getEvents, type AgendaEvent } from "@/lib/ical";
+import { courseEvents } from "@/lib/courses";
+import { dayKey, type AgendaEvent } from "@/lib/ical";
 import { daysBetween, STATUS_LABEL, todayParis } from "@/lib/equipment";
 import { homeGlance } from "@/lib/glance";
 import { ago } from "@/lib/relative-time";
@@ -34,7 +35,7 @@ export default async function HomePage() {
       try {
         const now = new Date();
         // Deux semaines : assez loin pour retrouver le prochain cours même après un week-end ou des vacances courtes.
-        return await getEvents(user.icalUrl, new Date(now.getTime() - 864e5), new Date(now.getTime() + 14 * 864e5));
+        return await courseEvents(user, new Date(now.getTime() - 864e5), new Date(now.getTime() + 14 * 864e5));
       } catch {
         return null;
       }
