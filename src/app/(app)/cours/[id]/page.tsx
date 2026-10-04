@@ -46,7 +46,7 @@ export default async function CoursePage({ params, searchParams }: PageProps<"/c
               {!course.allDay && <span className="flex items-center gap-1.5"><Clock size={15} aria-hidden /> {timeFmt.format(course.startsAt)}–{timeFmt.format(course.endsAt)}</span>}
               {course.location && <span className="flex items-center gap-1.5"><MapPin size={15} aria-hidden /> {course.location}</span>}
             </p>
-            {manual && <p className="inline-block rounded-full border border-line px-2.5 py-0.5 text-xs text-muted">Ajouté par toi (hors planning de l&apos;école)</p>}
+            {manual && <p className="inline-block rounded-full border border-line px-2.5 py-0.5 text-xs text-muted">Externe : ajouté par toi, hors planning de l&apos;école</p>}
             {course.removed && <p className="inline-block rounded-full border border-danger/50 px-2.5 py-0.5 text-xs text-danger">Ce cours a été retiré du planning de l&apos;école</p>}
             {course.description && <p className="whitespace-pre-line text-sm text-muted">{course.description}</p>}
           </header>
