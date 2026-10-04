@@ -27,6 +27,7 @@ export default async function FichesPage() {
           <span className="text-sm font-medium">Toutes les matières ({withNotes.length})</span>
           <span className="flex gap-2">
             <Link href="/cours/fiches/imprimer" className="btn-ghost text-sm"><Printer size={15} aria-hidden /> PDF / imprimer</Link>
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- téléchargement de fichier */}
             <a href="/cours/fiches/export" className="btn-ghost text-sm"><FileDown size={15} aria-hidden /> Markdown</a>
           </span>
         </div>

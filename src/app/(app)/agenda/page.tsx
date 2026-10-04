@@ -19,11 +19,11 @@ const rangeFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "UTC", day: "numer
 
 function EventCard({ e }: { e: AgendaEvent }) {
   return (
-    <li className="rounded-lg border border-line border-l-4 border-l-accent bg-bg p-2.5 text-sm">
+    <li className="relative rounded-lg border border-line border-l-4 border-l-accent bg-bg p-2.5 text-sm hover:border-accent">
       <div className="text-xs font-medium tabular-nums text-accent">
         {e.allDay ? "Toute la journée" : `${timeFmt.format(e.start)} – ${timeFmt.format(e.end)}`}
       </div>
-      <div className="font-medium leading-snug">{e.title}</div>
+      <div className="font-medium leading-snug">{/^cd+$/.test(e.id) ? <Link href={`/cours/${e.id.slice(1)}`} className="after:absolute after:inset-0">{e.title}</Link> : e.title}</div>
       {e.location && (
         <div className="mt-0.5 flex items-center gap-1 text-xs text-muted"><MapPin size={12} /> {e.location}</div>
       )}

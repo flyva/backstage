@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { MapPin } from "lucide-react";
 import { KIND_CLASS, KIND_LABEL } from "@/lib/alternance";
 import type { WorkKind } from "@/db/schema";
@@ -8,6 +9,8 @@ import type { AgendaEvent } from "@/lib/ical";
 // Hauteur de la grille : s'adapte à l'écran (l'agenda tient sans faire défiler la page), entre 420 et 860 px.
 const GRID_HEIGHT = "clamp(420px, calc(100vh - 18.5rem), 860px)";
 const MIN_EVENT_PX = 28;
+/** Page du cours (notes) : les évènements de l'agenda viennent de la copie en base, leur identifiant est « c » + numéro. */
+const courseHref = (id: string) => (/^cd+$/.test(id) ? `/cours/${id.slice(1)}` : null);
 const dayFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "UTC", weekday: "short", day: "numeric" });
 const timeFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit" });
 const partsFmt = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
@@ -85,7 +88,7 @@ export function WeekGrid({ days, byDay, kinds, today, nowMinutes }: {
             {days.map(({ key }) => (
               <div key={key} className="space-y-1 border-l border-line p-1">
                 {(byDay.get(key) ?? []).filter((e) => e.allDay).map((e) => (
-                  <div key={e.id} className="truncate rounded-md border-l-4 border-accent bg-accent/15 px-2 py-1 text-xs font-medium" title={e.title}>{e.title}</div>
+                  <Link key={e.id} href={courseHref(e.id) ?? "/cours"} className="block truncate rounded-md border-l-4 border-accent bg-accent/15 px-2 py-1 text-xs font-medium hover:bg-accent/25" title={e.title}>{e.title}</Link>
                 ))}
               </div>
             ))}
@@ -111,16 +114,17 @@ export function WeekGrid({ days, byDay, kinds, today, nowMinutes }: {
                 {placed.map(({ e, s, en, lane, lanes }) => {
                   const long = en - s >= 90; // assez haut pour afficher aussi la salle
                   return (
-                    <div
+                    <Link
                       key={e.id}
-                      className="absolute overflow-hidden rounded-lg border border-line border-l-4 border-l-accent bg-surface p-1.5 text-xs shadow-sm"
+                      href={courseHref(e.id) ?? "/cours"}
+                      className="absolute overflow-hidden rounded-lg border border-line border-l-4 border-l-accent bg-surface p-1.5 text-xs shadow-sm transition hover:border-accent hover:shadow-md"
                       style={{ top: pct(s - startH * 60), height: `calc(${pct(en - s)} - 2px)`, minHeight: MIN_EVENT_PX, left: `calc(${(lane / lanes) * 100}% + 2px)`, width: `calc(${100 / lanes}% - 4px)` }}
                       title={`${e.title}\n${timeFmt.format(e.start)} – ${timeFmt.format(e.end)}${e.location ? `\n${e.location}` : ""}`}
                     >
                       <div className="font-semibold leading-tight text-accent tabular-nums">{timeFmt.format(e.start)} – {timeFmt.format(e.end)}</div>
                       <div className="mt-0.5 text-[13px] font-medium leading-snug">{e.title}</div>
                       {e.location && long && <div className="mt-0.5 flex items-center gap-1 text-muted"><MapPin size={11} /> <span className="truncate">{e.location}</span></div>}
-                    </div>
+                    </Link>
                   );
                 })}
                 {key === today && nowMinutes >= startH * 60 && nowMinutes <= endH * 60 && (

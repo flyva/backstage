@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import type { FormState } from "@/lib/actions";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { courseSheets, courses } from "@/db/schema";
@@ -10,14 +12,17 @@ import { requireUser } from "@/lib/auth";
 import { syncCourses } from "@/lib/courses";
 import { allow } from "@/lib/rate-limit";
 
-/** Enregistre les notes personnelles d'un cours (vide = supprime la note). */
-export async function saveCourseNote(fd: FormData) {
+/** Enregistre les notes d'un cours (vide = supprime la note), puis revient sur la page du cours. */
+export async function saveCourseNote(_: FormState, fd: FormData): Promise<FormState> {
   const user = await requireUser();
   const id = Number(fd.get("id"));
-  if (!Number.isInteger(id)) return;
-  const note = String(fd.get("note") ?? "").trim().slice(0, 10000);
-  await db.update(courses).set({ note: note || null }).where(and(eq(courses.id, id), eq(courses.userId, user.id)));
-  revalidatePath("/cours");
+  if (!Number.isInteger(id)) return { error: "Cours introuvable" };
+  const note = String(fd.get("note") ?? "").trim().slice(0, 20000);
+  const [row] = await db.select({ id: courses.id }).from(courses).where(and(eq(courses.id, id), eq(courses.userId, user.id))).limit(1);
+  if (!row) return { error: "Cours introuvable" };
+  await db.update(courses).set({ note: note || null }).where(eq(courses.id, id));
+  revalidatePath("/cours", "layout");
+  redirect(`/cours/${id}`);
 }
 
 /** Synchronise tout de suite avec le lien iCalendar de l'école. */

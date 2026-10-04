@@ -5,7 +5,7 @@ import { db } from "@/db";
 import { courses } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { courseSyncStatus, syncCourses } from "@/lib/courses";
-import { saveCourseNote, syncCoursesNow } from "@/lib/course-actions";
+import { syncCoursesNow } from "@/lib/course-actions";
 import { dayKey } from "@/lib/ical";
 
 export const metadata = { title: "Mes cours" };
@@ -36,7 +36,7 @@ export default async function CoursPage({ searchParams }: PageProps<"/cours">) {
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Mes cours</h1>
-          <p className="text-sm text-muted">Copiés depuis ton planning de l&apos;école : ils restent ici même si le lien est en panne. Ajoute tes notes sur chaque cours.</p>
+          <p className="text-sm text-muted">Copiés depuis ton planning de l&apos;école : ils restent ici même si le lien est en panne. Ouvre un cours pour écrire tes notes.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href="/cours/fiches" className="btn-ghost text-sm"><FileText size={15} aria-hidden /> Fiches par matière</Link>
@@ -69,25 +69,17 @@ export default async function CoursPage({ searchParams }: PageProps<"/cours">) {
           <h2 className="text-sm font-semibold capitalize text-muted">{dayFmt.format(list[0].startsAt)}</h2>
           <ul className="space-y-2">
             {list.map((c) => (
-              <li key={c.id} className="card p-0">
-                <details>
-                  <summary className="flex cursor-pointer items-start gap-3 p-4">
-                    <span className="w-24 shrink-0 text-sm font-semibold tabular-nums">{c.allDay ? "Journée" : `${timeFmt.format(c.startsAt)}–${timeFmt.format(c.endsAt)}`}</span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block font-medium leading-snug">{c.title}</span>
-                      {c.location && <span className="mt-0.5 flex items-center gap-1 text-xs text-muted"><MapPin size={12} aria-hidden /> {c.location}</span>}
-                      {c.removed && <span className="mt-1 inline-block rounded-full border border-danger/50 px-2 py-0.5 text-[11px] text-danger">Retiré du planning de l&apos;école</span>}
-                    </span>
-                    {c.note?.trim() && <NotebookPen size={16} className="mt-0.5 shrink-0 text-accent" aria-label="Ce cours a une note" />}
-                  </summary>
-                  <form action={saveCourseNote} className="space-y-2 border-t border-line p-4">
-                    <input type="hidden" name="id" value={c.id} />
-                    {c.description && <p className="whitespace-pre-line text-xs text-muted">{c.description}</p>}
-                    <label className="label" htmlFor={`note-${c.id}`}>Mes notes</label>
-                    <textarea id={`note-${c.id}`} name="note" defaultValue={c.note ?? ""} rows={5} maxLength={10000} className="input" placeholder="Points clés, consignes, matériel à prévoir, devoirs…" />
-                    <button className="btn text-sm">Enregistrer</button>
-                  </form>
-                </details>
+              <li key={c.id}>
+                <Link href={`/cours/${c.id}`} className="card flex items-start gap-3 p-4 hover:border-accent">
+                  <span className="w-24 shrink-0 text-sm font-semibold tabular-nums">{c.allDay ? "Journée" : `${timeFmt.format(c.startsAt)}–${timeFmt.format(c.endsAt)}`}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-medium leading-snug">{c.title}</span>
+                    {c.location && <span className="mt-0.5 flex items-center gap-1 text-xs text-muted"><MapPin size={12} aria-hidden /> {c.location}</span>}
+                    {c.note?.trim() && <span className="mt-1 line-clamp-2 block text-xs text-muted">{c.note.replace(/[#*_>`[]()-]/g, "").trim()}</span>}
+                    {c.removed && <span className="mt-1 inline-block rounded-full border border-danger/50 px-2 py-0.5 text-[11px] text-danger">Retiré du planning de l&apos;école</span>}
+                  </span>
+                  <NotebookPen size={16} className={`mt-0.5 shrink-0 ${c.note?.trim() ? "text-accent" : "text-line"}`} aria-label={c.note?.trim() ? "Ce cours a des notes" : "Ajouter des notes"} />
+                </Link>
               </li>
             ))}
           </ul>
