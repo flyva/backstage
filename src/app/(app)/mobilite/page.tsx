@@ -27,68 +27,102 @@ const TRAFFIC = {
   bouchons: { label: "Embouteillages", cls: "bg-[#dc3545] text-white" },
 } as const;
 
-async function Place({ title, address, origin, plan, today }: { title: string; address: string; origin: LatLng; plan?: { trip: Trip; transit: TransitPlan | null; from: string }; today?: boolean }) {
-  const [stops, bikes, alerts] = await Promise.all([nearbyStops(origin), nearbyBikeStations(origin), alertsNear([origin])]);
+type Plan = { trip: Trip; transit: TransitPlan | null };
+
+// Tram d'abord, puis bus, puis bateau.
+const modeRank = (d: { tram: boolean; boat: boolean }) => (d.tram ? 0 : d.boat ? 2 : 1);
+
+/**
+ * Un sens du trajet du jour (« Domicile → École » ou « École → Domicile ») : le meilleur trajet en transport, la voiture
+ * et le vélo (toujours affichés), les prochains passages près du point de départ (tram, puis bus, puis bateau) et, très
+ * discrètement, les vélos libres.
+ */
+async function Leg({ title, from, fromLabel, origin, plan }: { title: string; from: string; fromLabel: string; origin: LatLng; plan: Plan | null }) {
+  const [stops, bikes, alerts] = await Promise.all([nearbyStops(origin), nearbyBikeStations(origin, { max: 2 }), alertsNear([origin])]);
+  const ordered = stops
+    .map((s) => ({ ...s, departures: [...s.departures].sort((a, b) => modeRank(a) - modeRank(b) || a.minutes[0] - b.minutes[0]) }))
+    .sort((a, b) => Math.min(...a.departures.map(modeRank), 3) - Math.min(...b.departures.map(modeRank), 3) || a.distance - b.distance);
+  const trip = plan?.trip;
   return (
-    <section className="min-w-0 space-y-4">
+    <section className="card min-w-0 space-y-4 p-5">
       <div>
-        <h2 className="flex flex-wrap items-center gap-2 text-xl font-semibold">{title}{today && <span className="rounded-full bg-accent px-2.5 py-0.5 text-xs font-semibold text-accent-fg">Aujourd&apos;hui</span>}</h2>
-        <p className="text-sm text-muted">{address}</p>
+        <h2 className="text-lg font-semibold">{title}</h2>
+        <p className="truncate text-xs text-muted">Départ : {fromLabel || from}</p>
       </div>
 
-      <div className="card space-y-5 p-6">
-        <h3 className="flex items-center gap-2 text-base font-semibold"><TramFront size={20} className="text-accent" /> Bus, tram et bateau à proximité</h3>
-        {plan && <BestRoute plan={plan} />}
+      {plan && <BestRoute plan={{ trip: plan.trip, transit: plan.transit, from }} />}
+
+      {trip && (trip.car || trip.bike) && (
+        <ul className="grid grid-cols-2 gap-2">
+          {trip.car && (
+            <li className="rounded-xl border border-line bg-bg px-3 py-2">
+              <div className="flex items-center gap-1.5 text-xs text-muted"><Car size={14} className="text-accent" aria-hidden /> Voiture</div>
+              <div className="text-lg font-bold tabular-nums">{fmtTrip(trip.car.minutes)}</div>
+              <div className="text-[11px] text-muted">
+                {trip.car.km} km{trip.car.level ? <> · <span className={trip.car.level === "bouchons" ? "text-danger" : ""}>{TRAFFIC[trip.car.level].label.toLowerCase()}</span></> : " · sans trafic"}
+              </div>
+            </li>
+          )}
+          {trip.bike && (
+            <li className="rounded-xl border border-line bg-bg px-3 py-2">
+              <div className="flex items-center gap-1.5 text-xs text-muted"><Bike size={14} className="text-accent" aria-hidden /> Vélo</div>
+              <div className="text-lg font-bold tabular-nums">{fmtTrip(trip.bike.minutes)}</div>
+              <div className="text-[11px] text-muted">{trip.bike.km} km</div>
+            </li>
+          )}
+        </ul>
+      )}
+
+      <div className="space-y-2.5">
+        <h3 className="flex items-center gap-2 text-sm font-semibold text-muted"><TramFront size={16} className="text-accent" aria-hidden /> Prochains passages près de {from}</h3>
         <TransitAlerts alerts={alerts} title="Alertes TBM près d'ici" />
-        {stops.length === 0 && <p className="text-base text-muted">Aucun arrêt TBM à moins de 800 m.</p>}
-        {stops.map((s) => (
-          <div key={s.name} className="space-y-2.5 rounded-xl border border-line bg-bg p-4">
+        {ordered.length === 0 && <p className="text-sm text-muted">Aucun arrêt TBM à moins de 800 m.</p>}
+        {ordered.map((s) => (
+          <div key={s.name} className="space-y-2 rounded-xl border border-line bg-bg p-3">
             <div className="flex items-baseline justify-between gap-3">
-              <span className="text-lg font-semibold leading-tight">{s.name}</span>
-              <span className="shrink-0 rounded-full border border-line px-2.5 py-0.5 text-sm text-muted">{fmtDistance(s.distance)}</span>
+              <span className="min-w-0 truncate font-semibold leading-tight">{s.name}</span>
+              <span className="shrink-0 text-xs text-muted">{fmtDistance(s.distance)}</span>
             </div>
-            {s.departures.length === 0 && <p className="text-base text-muted">Pas de passage prévu prochainement.</p>}
-            {/* Un groupe par ligne (avec ses directions), séparés par un trait. */}
-            {[...Map.groupBy(s.departures, (d) => d.line)].slice(0, 5).map(([line, list], gi) => (
-              <div key={line}>
-                {gi > 0 && <hr className="mb-2.5 border-line" />}
-                <div className="flex items-start gap-3">
-                  <LineBadge code={line} name={list[0].lineName} tram={list[0].tram} boat={list[0].boat} className="min-w-11 shrink-0 px-2.5 py-1 text-base" />
-                  <ul className="min-w-0 flex-1 space-y-1.5">
-                    {list.map((d) => (
-                      <li key={d.destination} className="flex items-center gap-3">
-                        <span className="min-w-0 flex-1 truncate text-base">{d.destination}</span>
-                        <span className="shrink-0 text-base font-semibold tabular-nums">{d.minutes.map(fmtMinutes).join(" · ")}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+            {s.departures.length === 0 && <p className="text-sm text-muted">Pas de passage prévu prochainement.</p>}
+            {[...Map.groupBy(s.departures, (d) => d.line)].slice(0, 4).map(([line, list]) => (
+              <div key={line} className="flex items-start gap-2.5">
+                <LineBadge code={line} name={list[0].lineName} tram={list[0].tram} boat={list[0].boat} className="min-w-10 shrink-0 px-2 py-0.5 text-sm" />
+                <ul className="min-w-0 flex-1 space-y-1">
+                  {list.map((d) => (
+                    <li key={d.destination} className="flex items-center gap-2 text-sm">
+                      <span className="min-w-0 flex-1 truncate">{d.destination}</span>
+                      <span className="shrink-0 font-semibold tabular-nums">{d.minutes.map(fmtMinutes).join(" · ")}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             ))}
           </div>
         ))}
       </div>
 
-      <div className="card space-y-3 p-6">
-        <h3 className="flex items-center gap-2 text-base font-semibold"><Bike size={20} className="text-accent" /> Stations Le Vélo (V³)</h3>
-        {bikes.length === 0 && <p className="text-base text-muted">Aucune station à moins de 900 m (ou données indisponibles).</p>}
-        <ul className="space-y-2">
+      {bikes.length > 0 && (
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted">
+          <Bike size={12} aria-hidden />
           {bikes.map((b) => (
-            <li key={b.name} className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-line bg-bg px-4 py-3">
-              <span className="min-w-0 flex-1 basis-40">
-                <span className="block text-lg font-semibold leading-tight">{b.name}</span>
-                <span className="text-sm text-muted">{fmtDistance(b.distance)}</span>
-              </span>
-              <span className={`text-lg font-semibold tabular-nums ${b.bikes === 0 ? "text-danger" : ""}`} title="Vélos disponibles (dont électriques)">
-                {b.bikes} vélo{b.bikes > 1 ? "s" : ""}{b.electric > 0 && <span className="text-sm font-normal text-muted"> ({b.electric} ⚡)</span>}
-              </span>
-              <span className="text-base tabular-nums text-muted" title="Places libres">{b.docks} places</span>
-            </li>
+            <span key={b.name} title={`${b.docks} places libres`}>{b.name} · {fmtDistance(b.distance)} · <span className={b.bikes === 0 ? "text-danger" : ""}>{b.bikes} vélo{b.bikes > 1 ? "s" : ""}</span></span>
           ))}
-        </ul>
-      </div>
+        </p>
+      )}
     </section>
   );
+}
+
+/** Ligne discrète : un sens vers l'autre destination (durées seulement). */
+function MiniTrip({ label, plan }: { label: string; plan: Plan | null }) {
+  if (!plan) return null;
+  const { trip, transit } = plan;
+  const parts = [
+    transit && `transport ${fmtTrip(transit.totalMin)}`,
+    trip.car && `voiture ${fmtTrip(trip.car.minutes)}`,
+    trip.bike && `vélo ${fmtTrip(trip.bike.minutes)}`,
+  ].filter(Boolean);
+  return <li className="flex flex-wrap justify-between gap-x-3"><span className="font-medium text-fg">{label}</span><span>{parts.join(" · ")}</span></li>;
 }
 
 type Trip = Awaited<ReturnType<typeof tripEstimates>>;
@@ -130,11 +164,6 @@ function BestRoute({ plan }: { plan: { trip: Trip; transit: TransitPlan | null; 
         </>
       ) : (
         <p className="mt-1 text-sm text-muted">Pas de trajet en transport en commun disponible pour le moment.</p>
-      )}
-      {(trip.car || trip.bike) && (
-        <p className="mt-2 text-xs text-muted">
-          À comparer : {[trip.car && `voiture ${fmtTrip(trip.car.minutes)}`, trip.bike && `vélo ${fmtTrip(trip.bike.minutes)}`].filter(Boolean).join(" · ")}
-        </p>
       )}
     </div>
   );
@@ -235,18 +264,22 @@ export default async function MobilitePage({ searchParams }: PageProps<"/mobilit
   const home: LatLng | null = user.homeLat != null && user.homeLng != null ? { lat: user.homeLat, lng: user.homeLng } : null;
   const school: LatLng | null = s.school_lat && s.school_lng ? { lat: Number(s.school_lat), lng: Number(s.school_lng) } : null;
   const company: LatLng | null = user.companyLat != null && user.companyLng != null ? { lat: user.companyLat, lng: user.companyLng } : null;
-  const companyLabel = user.companyName || "l'entreprise";
-  // Un trajet par destination connue : l'école et, si renseignée, l'entreprise d'alternance.
-  const plan = async (dest: LatLng | null) =>
-    home && dest ? { trip: await tripEstimates(home, dest), transit: await bestTransitCached(home, dest).catch(() => null) } : null;
-  const [toSchool, toCompany] = await Promise.all([plan(school), plan(company)]);
+  const companyLabel = user.companyName || "Entreprise";
 
-  // Aujourd'hui : école → le trajet et les arrêts de l'école d'abord ; sinon → ceux de l'entreprise (ou de l'école s'il n'y en a pas).
+  // Destination du jour : école (jour d'école) ou entreprise (jour de travail). ?dest= permet de changer à la main.
   const [dayRow] = await db.select({ kind: workDays.kind }).from(workDays).where(and(eq(workDays.userId, user.id), eq(workDays.day, todayParis()))).limit(1);
-  const primary: "school" | "company" = dayRow?.kind === "ecole" && school ? "school" : company ? "company" : "school";
-  const tripSchool = toSchool ? [{ id: "school", title: "Domicile → École", ...toSchool }] : [];
-  const tripCompany = toCompany ? [{ id: "company", title: `Domicile → ${companyLabel}`, ...toCompany }] : [];
-  const trips = primary === "school" ? [...tripSchool, ...tripCompany] : [...tripCompany, ...tripSchool];
+  const auto: "school" | "company" = dayRow?.kind === "ecole" && school ? "school" : company ? "company" : "school";
+  const asked = param(sp.dest);
+  const primary: "school" | "company" = asked === "school" && school ? "school" : asked === "company" && company ? "company" : auto;
+  const other = primary === "school" ? "company" : "school";
+  const dest = { school: { name: "École", pt: school, address: s.school_address ?? "" }, company: { name: companyLabel, pt: company, address: user.companyAddress ?? "" } };
+  const main = dest[primary];
+  const alt = dest[other];
+
+  // Un sens = les trajets (voiture, vélo, transport) entre deux points.
+  const plan = async (a: LatLng | null, b: LatLng | null): Promise<Plan | null> =>
+    a && b ? { trip: await tripEstimates(a, b), transit: await bestTransitCached(a, b).catch(() => null) } : null;
+  const [go, back, altGo, altBack] = await Promise.all([plan(home, main.pt), plan(main.pt, home), plan(home, alt.pt), plan(alt.pt, home)]);
 
   // Calculateur libre : d'une adresse quelconque à une autre (le départ vide = chez toi).
   let free: { title: string; trip: Trip; transit: TransitPlan | null } | { error: string } | null = null;
@@ -263,66 +296,69 @@ export default async function MobilitePage({ searchParams }: PageProps<"/mobilit
     }
   }
 
+  const pill = (active: boolean) => `rounded-full border px-3 py-1 text-sm ${active ? "border-accent bg-accent text-accent-fg" : "border-line text-muted hover:text-fg"}`;
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <AutoRefresh seconds={30} />
-      <header>
+      <header className="space-y-2">
         <h1 className="text-2xl font-bold">Mobilité</h1>
         <p className="text-sm text-muted">
           {dayRow?.kind === "ecole" ? "Aujourd'hui : école. " : dayRow?.kind === "entreprise" ? "Aujourd'hui : entreprise. " : ""}
-          Horaires en temps réel TBM et disponibilité des vélos, autour de chez toi et de {primary === "school" ? "l'école" : "ton entreprise"}.
+          Temps réel TBM : tram, bus puis bateau, avec la voiture et le vélo en comparaison.
         </p>
+        {school && company && (
+          <nav className="flex flex-wrap gap-2" aria-label="Destination">
+            <Link href="/mobilite?dest=school" className={pill(primary === "school")}>École</Link>
+            <Link href="/mobilite?dest=company" className={pill(primary === "company")}>{companyLabel}</Link>
+          </nav>
+        )}
       </header>
-
-      <section className="card space-y-4 p-6">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><Route size={20} className="text-accent" /> Calculer un trajet</h2>
-        <form action="/mobilite" method="get" className="grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
-          <AddressField id="de" name="de" label="Départ" defaultValue={fromQ} placeholder={home ? "Vide = chez toi" : "12 rue Exemple, Bordeaux"} />
-          <AddressField id="vers" name="vers" label="Arrivée" defaultValue={toQ} placeholder="Une adresse, un lieu, une salle…" />
-          <button className="btn">Calculer</button>
-        </form>
-        {free && "error" in free && <p className="text-sm text-danger" role="alert">{free.error}</p>}
-      </section>
-      {free && !("error" in free) && <TripCard title={free.title} trip={free.trip} transit={free.transit} isAdmin={user.perms.administration} />}
-
-      {trips.map((t) => (
-        <TripCard key={t.id} title={t.title} trip={t.trip} transit={t.transit} isAdmin={user.perms.administration} />
-      ))}
 
       {!home && (
         <div className="card border-accent text-sm">
           Renseigne ton adresse dans ton <Link href="/profil" className="font-medium text-accent underline">profil</Link> pour voir les transports près de chez toi.
         </div>
       )}
-      {home && !company && (
+      {!main.pt && (
         <div className="card text-sm text-muted">
-          Tu es en alternance ? Ajoute l&apos;adresse de ton entreprise dans ton <Link href="/profil" className="text-accent underline">profil</Link> pour voir le trajet et les transports jusqu&apos;à ton lieu de travail.
-        </div>
-      )}
-      {!school && (
-        <div className="card text-sm text-muted">
-          L&apos;adresse de l&apos;école n&apos;est pas configurée{user.perms.administration && <> (<Link href="/admin" className="text-accent underline">Admin → Paramètres</Link>)</>}.
+          {primary === "school"
+            ? <>L&apos;adresse de l&apos;école n&apos;est pas configurée{user.perms.administration && <> (<Link href="/admin" className="text-accent underline">Admin → Paramètres</Link>)</>}.</>
+            : <>Ajoute l&apos;adresse de ton entreprise dans ton <Link href="/profil" className="text-accent underline">profil</Link>.</>}
         </div>
       )}
 
-      <div className="grid gap-8 xl:grid-cols-2">
-        {primary === "school" ? (
-          <>
-            {school && <Place title="Près de l'école" address={s.school_address ?? ""} origin={school} plan={toSchool ? { ...toSchool, from: "chez toi" } : undefined} today={!!dayRow} />}
-            {home && <Place title="Près de chez toi" address={user.homeAddress ?? ""} origin={home} />}
-            {company && <Place title={`Près de ${companyLabel}`} address={user.companyAddress ?? ""} origin={company} plan={toCompany ? { ...toCompany, from: "chez toi" } : undefined} />}
-          </>
-        ) : (
-          <>
-            {company && <Place title={`Près de ${companyLabel}`} address={user.companyAddress ?? ""} origin={company} plan={toCompany ? { ...toCompany, from: "chez toi" } : undefined} today={!!dayRow} />}
-            {home && <Place title="Près de chez toi" address={user.homeAddress ?? ""} origin={home} />}
-            {school && <Place title="Près de l'école" address={s.school_address ?? ""} origin={school} plan={toSchool ? { ...toSchool, from: "chez toi" } : undefined} />}
-          </>
-        )}
-      </div>
+      {home && main.pt && (
+        <div className="grid items-start gap-5 lg:grid-cols-2">
+          <Leg title={`Domicile → ${main.name}`} from="chez toi" fromLabel={user.homeAddress ?? ""} origin={home} plan={go} />
+          <Leg title={`${main.name} → Domicile`} from={main.name} fromLabel={main.address} origin={main.pt} plan={back} />
+        </div>
+      )}
+
+      {home && alt.pt && (
+        <details className="card p-4 text-sm">
+          <summary className="cursor-pointer text-muted">Autre destination : {alt.name}</summary>
+          <ul className="mt-3 space-y-1.5 text-xs text-muted">
+            <MiniTrip label={`Domicile → ${alt.name}`} plan={altGo} />
+            <MiniTrip label={`${alt.name} → Domicile`} plan={altBack} />
+          </ul>
+          <p className="mt-3 text-xs"><Link href={`/mobilite?dest=${other}`} className="text-accent underline">Voir le détail complet de {alt.name}</Link></p>
+        </details>
+      )}
+
+      <details className="card p-4 text-sm" open={!!toQ}>
+        <summary className="flex cursor-pointer items-center gap-2 text-muted"><Route size={16} className="text-accent" aria-hidden /> Calculer un autre trajet</summary>
+        <form action="/mobilite" method="get" className="mt-4 grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
+          <AddressField id="de" name="de" label="Départ" defaultValue={fromQ} placeholder={home ? "Vide = chez toi" : "12 rue Exemple, Bordeaux"} />
+          <AddressField id="vers" name="vers" label="Arrivée" defaultValue={toQ} placeholder="Une adresse, un lieu, une salle…" />
+          <button className="btn">Calculer</button>
+        </form>
+        {free && "error" in free && <p className="mt-3 text-sm text-danger" role="alert">{free.error}</p>}
+      </details>
+      {free && !("error" in free) && <TripCard title={free.title} trip={free.trip} transit={free.transit} isAdmin={user.perms.administration} />}
 
       <p className="text-xs text-muted">
-        Sources : Bordeaux Métropole (SIRI Lite, GBFS), Base Adresse Nationale, OpenStreetMap{process.env.TOMTOM_API_KEY ? ", TomTom (trafic)" : ""}. Mise à jour automatique toutes les 30 s.
+        Sources : Bordeaux Métropole (SIRI Lite, GBFS), Transitous, Base Adresse Nationale, OpenStreetMap{process.env.TOMTOM_API_KEY ? ", TomTom (trafic)" : ""}. Mise à jour automatique toutes les 30 s.
       </p>
     </div>
   );

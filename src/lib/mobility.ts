@@ -125,7 +125,7 @@ export async function fetchVisits(ref: string) {
 }
 
 export async function nearbyStops(origin: LatLng, opts: { maxDistance?: number; maxStops?: number } = {}): Promise<StopResult[]> {
-  const { maxDistance = 800, maxStops = 3 } = opts;
+  const { maxDistance = 800, maxStops = 4 } = opts;
   const [points, lines] = await Promise.all([getStopPoints(), getLines()]);
 
   const near = points
@@ -137,7 +137,9 @@ export async function nearbyStops(origin: LatLng, opts: { maxDistance?: number; 
   const groups = [...byName]
     .map(([name, items]) => {
       const min = Math.min(...items.map((i) => i.d));
-      return { name, distance: min, refs: items.filter((i) => i.d <= min + 120).map((i) => i.p.ref).slice(0, 4) };
+      const kept = items.filter((i) => i.d <= min + 120).slice(0, 4);
+      // Lignes réellement déclarées sur ces quais : on n'affiche rien d'autre (pas de ligne « voisine » ajoutée à un arrêt).
+      return { name, distance: min, refs: kept.map((i) => i.p.ref), lines: new Set(kept.flatMap((i) => i.p.lines)) };
     })
     .sort((a, b) => a.distance - b.distance)
     .slice(0, maxStops);
@@ -149,7 +151,9 @@ export async function nearbyStops(origin: LatLng, opts: { maxDistance?: number; 
       const buckets = new Map<string, Departure>();
       for (const v of visits) {
         const j = v.MonitoredVehicleJourney;
-        const iso = j.MonitoredCall.ExpectedDepartureTime ?? j.MonitoredCall.ExpectedArrivalTime ?? j.MonitoredCall.AimedDepartureTime;
+        if (!grp.lines.has(j.LineRef.value)) continue;
+        if (j.DestinationName?.[0]?.value === grp.name) continue; // terminus : le véhicule s'arrête ici, il ne repart pas
+        const iso =j.MonitoredCall.ExpectedDepartureTime ?? j.MonitoredCall.ExpectedArrivalTime ?? j.MonitoredCall.AimedDepartureTime;
         if (!iso) continue;
         const minutes = Math.round((new Date(iso).getTime() - now) / 60000);
         if (minutes < 0 || minutes > 90) continue;
