@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { and, eq } from "drizzle-orm";
-import { CalendarDays, Clock, FileText, MapPin, NotebookPen, Pencil, Printer } from "lucide-react";
+import { CalendarDays, Clock, Trash2, FileText, MapPin, NotebookPen, Pencil, Printer } from "lucide-react";
 import { db } from "@/db";
 import { courses } from "@/db/schema";
+import { deleteManualCourse } from "@/lib/course-actions";
+import { MANUAL_PREFIX } from "@/lib/courses";
+import { ConfirmButton } from "@/components/ConfirmButton";
 import { requireUser } from "@/lib/auth";
 import { loadSubjects, subjectKey } from "@/lib/subjects";
 import { CourseNoteEditor } from "@/components/CourseNoteEditor";
@@ -28,6 +31,7 @@ export default async function CoursePage({ params, searchParams }: PageProps<"/c
   const hasNote = !!course.note?.trim();
   const editing = (await searchParams).modifier === "1" || (!hasNote && (await searchParams).modifier !== "0");
   const here = `/cours/${course.id}`;
+  const manual = course.uid.startsWith(MANUAL_PREFIX);
 
   return (
     <div className="max-w-6xl space-y-5">
@@ -42,6 +46,7 @@ export default async function CoursePage({ params, searchParams }: PageProps<"/c
               {!course.allDay && <span className="flex items-center gap-1.5"><Clock size={15} aria-hidden /> {timeFmt.format(course.startsAt)}–{timeFmt.format(course.endsAt)}</span>}
               {course.location && <span className="flex items-center gap-1.5"><MapPin size={15} aria-hidden /> {course.location}</span>}
             </p>
+            {manual && <p className="inline-block rounded-full border border-line px-2.5 py-0.5 text-xs text-muted">Ajouté par toi (hors planning de l&apos;école)</p>}
             {course.removed && <p className="inline-block rounded-full border border-danger/50 px-2.5 py-0.5 text-xs text-danger">Ce cours a été retiré du planning de l&apos;école</p>}
             {course.description && <p className="whitespace-pre-line text-sm text-muted">{course.description}</p>}
           </header>
@@ -74,6 +79,12 @@ export default async function CoursePage({ params, searchParams }: PageProps<"/c
                 </li>
               ))}
             </ul>
+            {manual && (
+              <form action={deleteManualCourse} className="border-t border-line pt-3">
+                <input type="hidden" name="id" value={course.id} />
+                <ConfirmButton className="btn-ghost w-full text-xs text-danger" message="Supprimer ce cours et ses notes ?"><Trash2 size={14} aria-hidden /> Supprimer ce cours</ConfirmButton>
+              </form>
+            )}
             {subject && subject.noted.length > 0 && (
               <div className="flex flex-col gap-2 border-t border-line pt-3">
                 <Link href={`/cours/fiches/imprimer?matiere=${encodeURIComponent(subject.key)}`} className="btn-ghost text-xs"><Printer size={14} aria-hidden /> Fiche PDF de la matière</Link>

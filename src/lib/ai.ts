@@ -29,7 +29,12 @@ export async function generateRevisionSheet(subject: string, notes: { date: stri
     signal: AbortSignal.timeout(60000),
     cache: "no-store",
   });
-  if (!res.ok) throw new Error(res.status === 429 ? "Trop de demandes à l'IA, réessaie plus tard" : `Réponse ${res.status} de l'IA`);
+  if (!res.ok) {
+    const detail = ((await res.json().catch(() => null)) as { message?: string } | null)?.message;
+    if (res.status === 429) throw new Error("Trop de demandes à l'IA, réessaie plus tard");
+    if (res.status === 401 || res.status === 403) throw new Error(`Clé Mistral refusée (${res.status})${detail ? ` : ${String(detail).slice(0, 120)}` : ""}`);
+    throw new Error(`Réponse ${res.status} de l'IA${detail ? ` : ${String(detail).slice(0, 120)}` : ""}`);
+  }
   const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
   const text = data.choices?.[0]?.message?.content?.trim();
   if (!text) throw new Error("Réponse vide de l'IA");

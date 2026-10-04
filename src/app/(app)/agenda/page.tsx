@@ -41,13 +41,11 @@ export default async function AgendaPage({ searchParams }: PageProps<"/agenda">)
 
   let events: AgendaEvent[] = [];
   let error: string | null = null;
-  if (user.icalUrl) {
-    try {
-      const { from, to } = rangeOfWeek(days);
-      events = await courseEvents(user, from, to);
-    } catch (e) {
-      error = e instanceof Error ? e.message : "erreur inconnue";
-    }
+  try {
+    const { from, to } = rangeOfWeek(days);
+    events = await courseEvents(user, from, to);
+  } catch (e) {
+    error = e instanceof Error ? e.message : "erreur inconnue";
   }
   const byDay = Map.groupBy(events, (e) => dayKey(e.start));
   // Planning de l'alternance (école / entreprise / congé / férié) : affiché même sans lien iCal.

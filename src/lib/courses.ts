@@ -18,6 +18,9 @@ const running = (g.__courseSync ??= new Map());
 
 export type SyncResult = { ok: true; count: number } | { ok: false; error: string };
 
+/** Les cours ajoutés à la main (hors planning de l'école) ne sont jamais touchés par la synchronisation. */
+export const MANUAL_PREFIX = "manual-";
+
 const clip = (s: string, n: number) => s.slice(0, n);
 
 async function doSync(userId: number, url: string): Promise<SyncResult> {
@@ -51,7 +54,7 @@ async function doSync(userId: number, url: string): Promise<SyncResult> {
     // Cours à venir qui ne sont plus dans le planning : annulés. Un planning entièrement vide est traité comme suspect (on ne supprime rien).
     if (events.length > 0) {
       for (const old of existing.values()) {
-        if (seen.has(old.uid) || old.startsAt <= now || old.startsAt > to || old.removed) continue;
+        if (seen.has(old.uid) || old.uid.startsWith(MANUAL_PREFIX) || old.startsAt <= now || old.startsAt > to || old.removed) continue;
         if (old.note?.trim()) await db.update(courses).set({ removed: true, updatedAt: now }).where(eq(courses.id, old.id));
         else await db.delete(courses).where(eq(courses.id, old.id));
       }
@@ -79,12 +82,11 @@ export function syncCourses(userId: number, url: string): Promise<SyncResult> {
  * ne l'attend pas) ; la toute première est attendue pour que la page ne soit pas vide.
  */
 export async function courseEvents(user: { id: number; icalUrl: string | null }, from: Date, to: Date): Promise<AgendaEvent[]> {
-  if (!user.icalUrl) return [];
   const url = user.icalUrl;
-  const [u] = await db.select({ synced: users.icalSyncedAt, tried: users.icalTriedAt, error: users.icalError }).from(users).where(eq(users.id, user.id)).limit(1);
+  const [u] = url ? await db.select({ synced: users.icalSyncedAt, tried: users.icalTriedAt, error: users.icalError }).from(users).where(eq(users.id, user.id)).limit(1) : [];
   const interval = u?.error ? RETRY_AFTER_ERROR : SYNC_EVERY;
-  const due = !u?.tried || Date.now() - u.tried.getTime() > interval;
-  if (due) {
+  const due = !!url && (!u?.tried || Date.now() - u.tried.getTime() > interval);
+  if (url && due) {
     if (!u?.synced) await syncCourses(user.id, url);
     else {
       try { after(() => { void syncCourses(user.id, url); }); } catch { void syncCourses(user.id, url); }

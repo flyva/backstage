@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { FileDown, Printer, Sparkles } from "lucide-react";
+import { FileDown, Printer } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { aiEnabled } from "@/lib/ai";
-import { generateSheet } from "@/lib/course-actions";
+import { SheetButton } from "@/components/SheetButton";
 import { loadSheets, loadSubjects, sheetKey } from "@/lib/subjects";
 import { Markdown } from "@/components/Markdown";
 
@@ -52,10 +52,7 @@ export default async function FichesPage() {
             </div>
             {ai && s.noted.length > 0 && (
               <div className="space-y-2">
-                <form action={generateSheet}>
-                  <input type="hidden" name="key" value={s.key} />
-                  <button className="btn-ghost text-xs"><Sparkles size={14} aria-hidden /> {sheets.has(sheetKey(s.key)) ? "Régénérer la fiche de révision" : "Générer une fiche de révision (IA)"}</button>
-                </form>
+                <SheetButton subjectKey={s.key} again={sheets.has(sheetKey(s.key))} />
                 {sheets.get(sheetKey(s.key)) && (
                   <details className="rounded-xl border border-line bg-bg p-3 text-sm">
                     <summary className="cursor-pointer text-muted">Fiche de révision générée par IA</summary>
