@@ -31,7 +31,7 @@ export async function generateRevisionSheet(subject: string, notes: { date: stri
   });
   if (!res.ok) {
     const detail = ((await res.json().catch(() => null)) as { message?: string } | null)?.message;
-    if (res.status === 429) throw new Error("Trop de demandes à l'IA, réessaie plus tard");
+    if (res.status === 429) throw new Error(`Mistral refuse pour l'instant (limite de ton compte atteinte, erreur 429)${detail ? ` : ${String(detail).slice(0, 160)}` : ". Attends une minute ; si ça persiste, vérifie ton plan et tes crédits sur console.mistral.ai"}`);
     if (res.status === 401 || res.status === 403) throw new Error(`Clé Mistral refusée (${res.status})${detail ? ` : ${String(detail).slice(0, 120)}` : ""}`);
     throw new Error(`Réponse ${res.status} de l'IA${detail ? ` : ${String(detail).slice(0, 120)}` : ""}`);
   }
