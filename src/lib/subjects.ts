@@ -1,11 +1,14 @@
 import "server-only";
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { courses } from "@/db/schema";
+import { courseSheets, courses } from "@/db/schema";
 
 // Une « matière » = le titre du cours dans le planning (sans tenir compte des majuscules, accents et espaces en trop).
 export const subjectKey = (title: string) =>
   title.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/\s+/g, " ").trim();
+
+/** Clé stockée pour la fiche générée (colonne limitée à 190 caractères). */
+export const sheetKey = (key: string) => key.slice(0, 190);
 
 export type SubjectCourse = typeof courses.$inferSelect;
 export type Subject = { key: string; name: string; courses: SubjectCourse[]; noted: SubjectCourse[] };
@@ -22,4 +25,10 @@ export async function loadSubjects(userId: number): Promise<Subject[]> {
       return { key, name, courses: list, noted: list.filter((c) => c.note?.trim()) };
     })
     .sort((a, b) => b.noted.length - a.noted.length || a.name.localeCompare(b.name, "fr"));
+}
+
+/** Fiches générées par IA de la personne, par clé de matière. */
+export async function loadSheets(userId: number): Promise<Map<string, { content: string; updatedAt: Date }>> {
+  const rows = await db.select().from(courseSheets).where(eq(courseSheets.userId, userId));
+  return new Map(rows.map((r) => [r.subjectKey, { content: r.content, updatedAt: r.updatedAt }]));
 }

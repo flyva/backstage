@@ -1,13 +1,17 @@
 import Link from "next/link";
-import { FileDown, Printer } from "lucide-react";
+import { FileDown, Printer, Sparkles } from "lucide-react";
 import { requireUser } from "@/lib/auth";
-import { loadSubjects } from "@/lib/subjects";
+import { aiEnabled } from "@/lib/ai";
+import { generateSheet } from "@/lib/course-actions";
+import { loadSheets, loadSubjects, sheetKey } from "@/lib/subjects";
+import { Markdown } from "@/components/Markdown";
 
 export const metadata = { title: "Fiches par matière" };
 
 export default async function FichesPage() {
   const user = await requireUser();
-  const subjects = await loadSubjects(user.id);
+  const [subjects, sheets] = await Promise.all([loadSubjects(user.id), loadSheets(user.id)]);
+  const ai = aiEnabled();
   const withNotes = subjects.filter((s) => s.noted.length > 0);
 
   return (
@@ -15,7 +19,7 @@ export default async function FichesPage() {
       <header className="space-y-1">
         <p className="text-sm"><Link href="/cours" className="text-muted underline">← Mes cours</Link></p>
         <h1 className="text-2xl font-bold">Fiches par matière</h1>
-        <p className="text-sm text-muted">Tes notes regroupées par matière et classées par date. Imprime-les ou enregistre-les en PDF depuis la page d&apos;impression.</p>
+        <p className="text-sm text-muted">Tes notes regroupées par matière et classées par date. Imprime-les ou enregistre-les en PDF depuis la page d&apos;impression.{ai && " Le bouton « Générer » envoie tes notes de la matière à Mistral (IA) pour en tirer une fiche de révision."}</p>
       </header>
 
       {withNotes.length > 0 && (
@@ -32,7 +36,8 @@ export default async function FichesPage() {
 
       <ul className="space-y-2">
         {subjects.map((s) => (
-          <li key={s.key} className="card flex flex-wrap items-center justify-between gap-3">
+          <li key={s.key} className="card space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
             <span className="min-w-0">
               <span className="block font-medium leading-snug">{s.name}</span>
               <span className="text-xs text-muted">{s.courses.length} cours · {s.noted.length} avec notes</span>
@@ -43,6 +48,22 @@ export default async function FichesPage() {
                 <a href={`/cours/fiches/export?matiere=${encodeURIComponent(s.key)}`} className="btn-ghost text-sm"><FileDown size={15} aria-hidden /> .md</a>
               </span>
             ) : <span className="text-xs text-muted">Pas encore de notes</span>}
+            </div>
+            {ai && s.noted.length > 0 && (
+              <div className="space-y-2">
+                <form action={generateSheet}>
+                  <input type="hidden" name="key" value={s.key} />
+                  <button className="btn-ghost text-xs"><Sparkles size={14} aria-hidden /> {sheets.has(sheetKey(s.key)) ? "Régénérer la fiche de révision" : "Générer une fiche de révision (IA)"}</button>
+                </form>
+                {sheets.get(sheetKey(s.key)) && (
+                  <details className="rounded-xl border border-line bg-bg p-3 text-sm">
+                    <summary className="cursor-pointer text-muted">Fiche de révision générée par IA</summary>
+                    <div className="mt-2"><Markdown>{sheets.get(sheetKey(s.key))!.content}</Markdown></div>
+                    <p className="mt-2 text-[11px] text-muted">Générée à partir de tes notes par Mistral : relis-la, elle peut contenir des erreurs.</p>
+                  </details>
+                )}
+              </div>
+            )}
           </li>
         ))}
       </ul>
