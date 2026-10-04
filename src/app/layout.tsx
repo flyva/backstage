@@ -3,15 +3,21 @@ import { Geist } from "next/font/google";
 import { cookies } from "next/headers";
 import "./globals.css";
 import { skinFrom } from "@/lib/skin";
+import { siteIconVersion } from "@/lib/site-icon";
 import { PwaRegister } from "@/components/PwaRegister";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 
-export const metadata: Metadata = {
-  title: { default: "Backstage", template: "%s · Backstage" },
-  description: "Le hub de travail et d'information de la promo 3IS.",
-  appleWebApp: { capable: true, title: "Backstage", statusBarStyle: "black-translucent" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const v = await siteIconVersion();
+  const icon = `/icon-site${v ? `?v=${v}` : ""}`;
+  return {
+    title: { default: "Backstage", template: "%s · Backstage" },
+    description: "Le hub de travail et d'information de la promo 3IS.",
+    appleWebApp: { capable: true, title: "Backstage", statusBarStyle: "black-translucent" },
+    icons: { icon, apple: icon },
+  };
+}
 
 export const viewport: Viewport = { themeColor: "#f59e0b" };
 

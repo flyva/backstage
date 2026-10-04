@@ -1,6 +1,9 @@
 import type { MetadataRoute } from "next";
+import { siteIconVersion } from "@/lib/site-icon";
 
-export default function manifest(): MetadataRoute.Manifest {
+export default async function manifest(): Promise<MetadataRoute.Manifest> {
+  const v = await siteIconVersion();
+  const custom = v ? `/icon-site?v=${v}` : null;
   return {
     name: "Backstage",
     short_name: "Backstage",
@@ -11,11 +14,16 @@ export default function manifest(): MetadataRoute.Manifest {
     display: "standalone",
     background_color: "#0e0e13",
     theme_color: "#f59e0b",
-    icons: [
-      { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
-      { src: "/icon-512.png", sizes: "512x512", type: "image/png" },
-      { src: "/icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
-    ],
+    icons: custom
+      ? [
+          { src: custom, sizes: "512x512", type: "image/png", purpose: "any" },
+          { src: custom, sizes: "512x512", type: "image/png", purpose: "maskable" },
+        ]
+      : [
+          { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
+          { src: "/icon-512.png", sizes: "512x512", type: "image/png" },
+          { src: "/icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+        ],
     shortcuts: [
       { name: "Agenda", url: "/agenda" },
       { name: "Mobilité", url: "/mobilite" },
