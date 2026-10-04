@@ -73,7 +73,10 @@ export default async function CoursePage({ params, searchParams }: PageProps<"/c
                 <li key={c.id}>
                   <Link href={`/cours/${c.id}`} aria-current={c.id === course.id ? "page" : undefined}
                     className={`flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 ${c.id === course.id ? "bg-accent/15 font-semibold" : "hover:bg-bg"}`}>
-                    <span className="capitalize">{shortFmt.format(c.startsAt)}</span>
+                    <span className="min-w-0">
+                      <span className="capitalize">{shortFmt.format(c.startsAt)}</span>
+                      <span className="block text-xs font-normal tabular-nums text-muted">{c.allDay ? "Journée" : `${timeFmt.format(c.startsAt)}–${timeFmt.format(c.endsAt)}`}</span>
+                    </span>
                     {c.note?.trim() && <NotebookPen size={13} className="shrink-0 text-accent" aria-label="Avec notes" />}
                   </Link>
                 </li>
