@@ -658,7 +658,8 @@ export const powerCircuits = mysqlTable(
     projectId: int("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
     name: varchar("name", { length: 60 }).notNull(),
     breakerAmps: int("breaker_amps").notNull().default(16),
-    phase: int("phase").notNull().default(1), // 1, 2 ou 3 (triphasé)
+    phase: int("phase").notNull().default(1), // ancien choix de phase (plus utilisé : les phases sont réparties automatiquement)
+    mode: mysqlEnum("mode", ["mono", "tetra"]).notNull().default("tetra"), // ligne monophasée ou tétraphasée (3 phases + neutre)
     position: int("position").notNull().default(0),
   },
   (t) => [index("pc_project_idx").on(t.projectId)],
@@ -676,14 +677,6 @@ export const powerItems = mysqlTable(
   },
   (t) => [index("pi_project_idx").on(t.projectId)],
 );
-
-// Alimentation du projet : monophasé (une seule phase) ou tétraphasé (3 phases + neutre), et calibre par phase du tableau
-// d'arrivée (ex. 32 A par phase = 96 A au total en tétraphasé).
-export const powerSettings = mysqlTable("power_settings", {
-  projectId: int("project_id").primaryKey().references(() => projects.id, { onDelete: "cascade" }),
-  mode: mysqlEnum("mode", ["mono", "tetra"]).notNull().default("tetra"),
-  supplyAmps: int("supply_amps").notNull().default(32),
-});
 
 // ---------- Covoiturage ----------
 

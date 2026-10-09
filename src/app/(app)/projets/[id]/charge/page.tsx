@@ -1,181 +1,175 @@
 import { asc, eq } from "drizzle-orm";
 import { AlertTriangle, Trash2, Zap } from "lucide-react";
 import { db } from "@/db";
-import { powerCircuits, powerItems, powerSettings } from "@/db/schema";
+import { powerCircuits, powerItems } from "@/db/schema";
 import { can, requireProject } from "@/lib/projects";
-import { balanceCircuitPhases, deleteCircuit, deleteItem, importLightsToPower } from "@/lib/build-actions";
-import { VOLTS, circuitLoads, fmtAmps, fmtNum, fmtWatts, neutralAmps, phaseLoads } from "@/lib/power";
-import { CircuitForm, ItemForm, PowerSupplyForm } from "@/components/build-forms";
+import { deleteCircuit, deleteItem, importLightsToPower } from "@/lib/build-actions";
+import { VOLTS, fmtNum, fmtWatts, lineResult, type LineResult } from "@/lib/power";
+import { ItemForm, LineForm } from "@/components/build-forms";
 
 export const metadata = { title: "Charge électrique" };
 
 const LEVEL_CLASS = { ok: "bg-emerald-500", warn: "bg-amber-500", over: "bg-danger" } as const;
 const LEVEL_TEXT = { ok: "OK", warn: "Charge élevée (> 80 %)", over: "Surcharge" } as const;
+const levelOf = (pct: number) => (pct > 100 ? "over" : pct > 80 ? "warn" : "ok") as keyof typeof LEVEL_CLASS;
+const groupsText = (r: LineResult["phases"][number]) => r.groups.map((g) => `${g.qty} × ${g.name}`).join(" + ");
+
+function Bar({ pct, label }: { pct: number; label: string }) {
+  return (
+    <div className="h-2 overflow-hidden rounded-full bg-line" role="progressbar" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100} aria-label={label}>
+      <div className={`h-full ${LEVEL_CLASS[levelOf(pct)]}`} style={{ width: `${Math.min(100, pct)}%` }} />
+    </div>
+  );
+}
+
+/** Le détail du calcul d'une ligne : chaque étape avec sa formule et les chiffres. */
+function Detail({ r }: { r: LineResult }) {
+  const tetra = r.mode === "tetra";
+  const cal = r.circuit.breakerAmps;
+  const used = r.phases.filter((p) => p.watts > 0);
+  const avgAmps = r.watts / VOLTS / r.phases.length;
+  return (
+    <details open className="rounded-xl border border-line bg-bg p-3 text-xs">
+      <summary className="cursor-pointer font-medium text-muted">Voir le détail du calcul</summary>
+      <ol className="mt-2 list-decimal space-y-2.5 pl-4 leading-relaxed text-muted tabular-nums">
+        <li>
+          <strong className="text-fg">Capacité de la ligne</strong> : P = U × I.
+          {" "}{tetra ? `Chaque phase peut porter ${cal} A, soit ${r.capacityAmps} A au total (3 × ${cal}).` : `La ligne peut porter ${cal} A.`}{" "}
+          Puissance maximale : {VOLTS} V × {r.capacityAmps} A = <strong className="text-fg">{fmtNum(r.capacityWatts)} W</strong>.
+        </li>
+        {tetra && (
+          <li>
+            <strong className="text-fg">Répartition sur les phases</strong> (automatique) : les appareils sont posés un par un, du plus gros au plus petit, sur la phase la moins chargée.
+            <ul className="mt-1 space-y-0.5">
+              {r.phases.map((p) => <li key={p.phase}>L{p.phase} : {p.groups.length ? groupsText(p) : "aucun appareil"}</li>)}
+            </ul>
+          </li>
+        )}
+        <li>
+          <strong className="text-fg">Puissance{tetra ? " de chaque phase" : ""}</strong> : P = somme de (quantité × watts).
+          <ul className="mt-1 space-y-0.5">
+            {r.phases.map((p) => (
+              <li key={p.phase}>{tetra ? `L${p.phase} : ` : ""}{p.groups.length ? `${p.groups.map((g) => `${g.qty} × ${fmtNum(g.watts)} W`).join(" + ")} = ` : ""}<strong className="text-fg">{fmtNum(p.watts)} W</strong></li>
+            ))}
+          </ul>
+        </li>
+        <li>
+          <strong className="text-fg">Intensité</strong> : I = P ÷ U, avec U = {VOLTS} V{tetra ? " (entre une phase et le neutre)" : ""}.
+          <ul className="mt-1 space-y-0.5">
+            {r.phases.map((p) => <li key={p.phase}>{tetra ? `L${p.phase} : ` : ""}{fmtNum(p.watts)} ÷ {VOLTS} = <strong className="text-fg">{fmtNum(p.amps, 2)} A</strong></li>)}
+          </ul>
+        </li>
+        <li>
+          <strong className="text-fg">Résistance équivalente</strong> : R = U ÷ I (loi d&apos;Ohm).
+          <ul className="mt-1 space-y-0.5">
+            {r.phases.map((p) => <li key={p.phase}>{tetra ? `L${p.phase} : ` : ""}{p.amps > 0 ? <>{VOLTS} ÷ {fmtNum(p.amps, 2)} = <strong className="text-fg">{fmtNum(VOLTS / p.amps, 1)} Ω</strong></> : "aucune charge (résistance infinie)"}</li>)}
+          </ul>
+        </li>
+        <li>
+          <strong className="text-fg">Contrôle</strong> : P = U × I.
+          <ul className="mt-1 space-y-0.5">
+            {used.length === 0 ? <li>Aucune puissance à contrôler.</li> : used.map((p) => <li key={p.phase}>{tetra ? `L${p.phase} : ` : ""}{VOLTS} × {fmtNum(p.amps, 2)} = {fmtNum(VOLTS * p.amps)} W ✓</li>)}
+          </ul>
+        </li>
+        <li>
+          <strong className="text-fg">Charge du calibre</strong> : I ÷ calibre.
+          <ul className="mt-1 space-y-0.5">
+            {r.phases.map((p) => <li key={p.phase}>{tetra ? `L${p.phase} : ` : ""}{fmtNum(p.amps, 2)} ÷ {cal} = <strong className="text-fg">{fmtNum(p.pct)} %</strong> : {LEVEL_TEXT[levelOf(p.pct)]}</li>)}
+          </ul>
+          Alerte à 80 % = {fmtNum(cal * 0.8, 1)} A ({fmtNum(cal * 0.8 * VOLTS)} W{tetra ? " par phase" : ""}), maximum à 100 % = {cal} A ({fmtNum(cal * VOLTS)} W{tetra ? " par phase" : ""}).
+        </li>
+        {tetra && (
+          <>
+            <li>
+              <strong className="text-fg">Courant dans le neutre</strong> : In = √(I1² + I2² + I3² − I1·I2 − I2·I3 − I3·I1) = √({r.phases.map((p) => `${fmtNum(p.amps, 2)}²`).join(" + ")} − {fmtNum(r.phases[0].amps, 2)}×{fmtNum(r.phases[1].amps, 2)} − {fmtNum(r.phases[1].amps, 2)}×{fmtNum(r.phases[2].amps, 2)} − {fmtNum(r.phases[2].amps, 2)}×{fmtNum(r.phases[0].amps, 2)}) = <strong className="text-fg">{fmtNum(r.neutral, 2)} A</strong>.
+              Les phases égales s&apos;annulent dans le neutre. Avec des gradateurs et des LED, il peut porter plus : son câble doit être au moins aussi gros que ceux des phases.
+            </li>
+            <li>
+              <strong className="text-fg">Vérification triphasée</strong> : si les 3 phases étaient parfaitement égales, P = √3 × 400 × I, donc I = {fmtNum(r.watts)} ÷ (1,732 × 400) = <strong className="text-fg">{fmtNum(r.watts / (Math.sqrt(3) * 400), 2)} A</strong> par phase (contre {fmtNum(avgAmps, 2)} A en moyenne ici, {fmtNum(Math.max(...r.phases.map((p) => p.amps)), 2)} A sur la plus chargée).
+            </li>
+          </>
+        )}
+      </ol>
+    </details>
+  );
+}
 
 export default async function PowerPage({ params }: PageProps<"/projets/[id]/charge">) {
   const { id } = await params;
   const { project, role } = await requireProject(Number(id));
   const canEdit = can(role, "editor");
 
-  const [circuits, items, [cfg]] = await Promise.all([
+  const [circuits, items] = await Promise.all([
     db.select().from(powerCircuits).where(eq(powerCircuits.projectId, project.id)).orderBy(asc(powerCircuits.position), asc(powerCircuits.id)),
     db.select().from(powerItems).where(eq(powerItems.projectId, project.id)).orderBy(asc(powerItems.name), asc(powerItems.id)),
-    db.select().from(powerSettings).where(eq(powerSettings.projectId, project.id)).limit(1),
   ]);
-  // Alimentation : tétraphasé (3 phases + neutre) par défaut, 32 A par phase. En monophasé, tous les circuits sont sur la même phase.
-  const mode = cfg?.mode ?? "tetra";
-  const supplyAmps = cfg?.supplyAmps ?? 32;
-  const tetra = mode === "tetra";
-  const loads = circuitLoads(circuits.map((c) => ({ ...c, phase: tetra ? c.phase : 1 })), items);
-  const phases = phaseLoads(loads);
+  const lines = circuits.map((c) => lineResult(c, items));
   const totalW = items.reduce((s, i) => s + i.watts * i.qty, 0);
   const unassigned = items.filter((i) => i.circuitId === null);
-  const maxPhase = Math.max(...phases.map((p) => p.watts));
-  const minPhase = Math.min(...phases.map((p) => p.watts));
-  const imbalance = phases.filter((p) => p.watts > 0).length > 1 && maxPhase > 0 ? Math.round(((maxPhase - minPhase) / maxPhase) * 100) : 0;
-  const problems = loads.filter((l) => l.level !== "ok").length;
-  const assignedW = loads.reduce((n, l) => n + l.watts, 0);
-  const capAmps = tetra ? 3 * supplyAmps : supplyAmps;
-  const usedAmps = tetra ? phases.reduce((n, p) => n + p.amps, 0) : assignedW / VOLTS;
-  const levelOf = (pct: number) => (pct > 100 ? "over" : pct > 80 ? "warn" : "ok") as keyof typeof LEVEL_CLASS;
-  const supplyRows = tetra ? phases.map((p) => ({ label: `L${p.phase}`, amps: p.amps })) : [{ label: "Monophasé", amps: usedAmps }];
+  const problems = lines.filter((l) => l.level !== "ok").length;
 
   return (
     <div className="space-y-6">
-      <p className="text-sm text-muted">
-        {tetra
-          ? `Alimentation tétraphasée (3 phases + neutre) : chaque circuit est branché entre une phase (L1, L2 ou L3) et le neutre, donc en ${VOLTS} V (400 V entre deux phases).`
-          : `Alimentation monophasée : tous les circuits sont sur la même phase, en ${VOLTS} V.`}{" "}
-        Estimation avec un facteur de puissance de 1 : intensité = puissance ÷ {VOLTS}. Garde une marge : au-delà de 80 % du calibre, le circuit est signalé.
-      </p>
-
-      <section className="card space-y-4" aria-label="Alimentation">
-        <h2 className="flex items-center gap-2 font-semibold"><Zap size={16} className="text-accent" /> Alimentation du projet</h2>
-        {canEdit && <PowerSupplyForm projectId={project.id} mode={mode} supplyAmps={supplyAmps} />}
-        <div className="rounded-xl border border-line bg-bg p-3 text-xs leading-relaxed text-muted tabular-nums">
-          <p>
-            <strong className="text-fg">Capacité du tableau</strong> :{" "}
-            {tetra ? `3 phases × ${supplyAmps} A = ${capAmps} A` : `${supplyAmps} A`}. En puissance : {capAmps} A × {VOLTS} V = <strong className="text-fg">{fmtNum(capAmps * VOLTS)} W</strong> ({fmtNum((capAmps * VOLTS) / 1000, 2)} kW).
-          </p>
-          <p className="mt-1">
-            <strong className="text-fg">Consommation des circuits</strong> : {fmtNum(assignedW)} W ÷ {VOLTS} V = {fmtNum(usedAmps, 2)} A, soit {fmtNum(usedAmps, 2)} ÷ {capAmps} = <strong className="text-fg">{fmtNum((usedAmps / capAmps) * 100)} % de la capacité</strong>.
-            {unassigned.length > 0 && ` (Les ${unassigned.length} appareil(s) non affecté(s) à un circuit ne sont pas comptés.)`}
-          </p>
-        </div>
-        <ul className="space-y-2">
-          {supplyRows.map((r) => {
-            const limit = tetra ? supplyAmps : capAmps;
-            const pct = (r.amps / limit) * 100;
-            const lvl = levelOf(pct);
-            return (
-              <li key={r.label} className="space-y-1">
-                <div className="flex flex-wrap items-baseline justify-between gap-2 text-sm">
-                  <span className="font-medium">{r.label}</span>
-                  <span className="tabular-nums text-muted">{fmtNum(r.amps, 2)} A ÷ {limit} A = <strong className="text-fg">{fmtNum(pct)} %</strong>{lvl !== "ok" && <span className={lvl === "over" ? " font-medium text-danger" : " font-medium text-amber-600 dark:text-amber-400"}> · {LEVEL_TEXT[lvl]}</span>}</span>
-                </div>
-                <div className="h-2 overflow-hidden rounded-full bg-line" role="progressbar" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100} aria-label={`Charge de ${r.label}`}>
-                  <div className={`h-full ${LEVEL_CLASS[lvl]}`} style={{ width: `${Math.min(100, pct)}%` }} />
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-        {canEdit && tetra && circuits.length > 1 && (
-          <form action={balanceCircuitPhases} className="flex flex-wrap items-center gap-3">
-            <input type="hidden" name="projectId" value={project.id} />
-            <button className="btn-ghost text-sm">Répartir automatiquement les circuits sur L1, L2 et L3</button>
-            <span className="text-xs text-muted">Les circuits les plus gourmands sont placés d&apos;abord, chacun sur la phase la moins chargée.</span>
-          </form>
-        )}
+      <section className="card space-y-2 text-sm">
+        <h2 className="flex items-center gap-2 font-semibold"><Zap size={16} className="text-accent" /> Comment ça marche</h2>
+        <p className="text-muted">
+          Une <strong className="text-fg">ligne</strong> est une alimentation : tu choisis son ampérage (16, 32, 63 ou 125 A) et son type (monophasé ou tétraphasé 3 phases + neutre).
+          Mets tes projecteurs et appareils sur une ligne : Backstage les répartit tout seul sur les phases et calcule la charge, avec le détail.
+        </p>
+        <p className="text-xs text-muted tabular-nums">
+          Formules : <strong className="text-fg">P = U × I</strong> (puissance en W = tension en V × intensité en A), donc <strong className="text-fg">I = P ÷ U</strong> ;
+          <strong className="text-fg"> R = U ÷ I</strong> (résistance en Ω, loi d&apos;Ohm). U = {VOLTS} V entre une phase et le neutre (400 V entre deux phases). Estimation avec un facteur de puissance de 1.
+        </p>
       </section>
 
       <section className="grid gap-3 sm:grid-cols-3">
-        <div className="card"><div className="text-sm text-muted">Puissance totale</div><div className="text-3xl font-bold tabular-nums">{fmtWatts(totalW)}</div><div className="text-sm text-muted">{fmtAmps(totalW / VOLTS)} A en monophasé</div><div className="mt-1 text-[11px] text-muted tabular-nums">Somme de (quantité × puissance) de tous les appareils : {fmtNum(totalW)} W ÷ {VOLTS} V = {fmtNum(totalW / VOLTS, 2)} A</div></div>
-        <div className="card"><div className="text-sm text-muted">Circuits</div><div className="text-3xl font-bold tabular-nums">{circuits.length}</div><div className={`text-sm ${problems ? "font-medium text-danger" : "text-muted"}`}>{problems ? `${problems} à vérifier` : "Tout est dans la limite"}</div></div>
-        <div className="card"><div className="text-sm text-muted">Non affecté</div><div className="text-3xl font-bold tabular-nums">{fmtWatts(unassigned.reduce((s, i) => s + i.watts * i.qty, 0))}</div><div className="text-sm text-muted">{unassigned.length} appareil(s)</div></div>
+        <div className="card"><div className="text-sm text-muted">Puissance totale</div><div className="text-3xl font-bold tabular-nums">{fmtWatts(totalW)}</div><div className="text-[11px] text-muted tabular-nums">Somme de (quantité × watts) de tous les appareils</div></div>
+        <div className="card"><div className="text-sm text-muted">Lignes</div><div className="text-3xl font-bold tabular-nums">{lines.length}</div><div className={`text-sm ${problems ? "font-medium text-danger" : "text-muted"}`}>{problems ? `${problems} à vérifier` : "Tout est dans la limite"}</div></div>
+        <div className="card"><div className="text-sm text-muted">Non affecté</div><div className="text-3xl font-bold tabular-nums">{fmtWatts(unassigned.reduce((s, i) => s + i.watts * i.qty, 0))}</div><div className="text-sm text-muted">{unassigned.length} appareil(s) sans ligne</div></div>
       </section>
 
-      {tetra && circuits.length > 0 && (
-        <section className="card space-y-3" aria-label="Équilibrage des phases">
-          <h2 className="flex items-center gap-2 font-semibold"><Zap size={16} className="text-accent" /> Phases (triphasé)</h2>
-          <ul className="grid gap-3 sm:grid-cols-3">
-            {phases.map((p) => (
-              <li key={p.phase} className="rounded-xl border border-line bg-bg p-3 text-sm">
-                <div className="text-muted">L{p.phase}</div>
-                <div className="text-xl font-bold tabular-nums">{fmtWatts(p.watts)}</div>
-                <div className="text-xs text-muted">{fmtAmps(p.amps)} A sur {supplyAmps} A ({fmtNum((p.amps / supplyAmps) * 100)} %)</div>
-                <p className="mt-2 text-[11px] leading-relaxed text-muted tabular-nums">
-                  {loads.filter((l) => l.circuit.phase === p.phase).length === 0
-                    ? "Aucun circuit sur cette phase."
-                    : <>{loads.filter((l) => l.circuit.phase === p.phase).map((l) => `${l.circuit.name} ${fmtNum(l.watts)} W`).join(" + ")} = {fmtNum(p.watts)} W, puis {fmtNum(p.watts)} ÷ {VOLTS} = {fmtNum(p.amps, 2)} A</>}
-                </p>
-              </li>
-            ))}
-          </ul>
-          <div className="rounded-xl border border-line bg-bg p-3 text-xs">
-            <div className="font-medium text-fg">Courant dans le neutre</div>
-            <p className="mt-1 leading-relaxed text-muted tabular-nums">
-              Si les 3 phases sont également chargées, les courants se compensent et le neutre ne porte presque rien. Plus elles sont déséquilibrées, plus le neutre travaille.
-              Formule : In = √(I1² + I2² + I3² − I1·I2 − I2·I3 − I3·I1) = √({phases.map((p) => `${fmtNum(p.amps, 2)}²`).join(" + ")} − {fmtNum(phases[0].amps, 2)}×{fmtNum(phases[1].amps, 2)} − {fmtNum(phases[1].amps, 2)}×{fmtNum(phases[2].amps, 2)} − {fmtNum(phases[2].amps, 2)}×{fmtNum(phases[0].amps, 2)}) = <strong className="text-fg">{fmtNum(neutralAmps(phases[0].amps, phases[1].amps, phases[2].amps), 2)} A</strong>.
-            </p>
-            <p className="mt-1 text-muted">Avec des gradateurs et des LED, le neutre peut être plus chargé que ce calcul : vérifie que son câble est au moins aussi gros que ceux des phases.</p>
-          </div>
-          {imbalance > 0 && (
-            <p className="text-xs text-muted tabular-nums">
-              Écart entre phases = (phase la plus chargée − la moins chargée) ÷ la plus chargée = ({fmtNum(maxPhase)} − {fmtNum(minPhase)}) ÷ {fmtNum(maxPhase)} = <strong className="text-fg">{imbalance} %</strong> (au-delà de 25 %, on conseille de rééquilibrer).
-            </p>
-          )}
-          {imbalance > 25 && <p className="flex items-center gap-1.5 text-sm font-medium text-amber-600 dark:text-amber-400"><AlertTriangle size={14} /> Phases déséquilibrées ({imbalance} % d&apos;écart) : répartis les circuits entre L1, L2 et L3.</p>}
-        </section>
-      )}
-
       <section className="space-y-3">
-        <h2 className="font-semibold">Circuits</h2>
-        {loads.length === 0 && <p className="text-sm text-muted">Crée un circuit par gradateur ou par prise (avec son calibre), puis affecte-y tes appareils.</p>}
-        {loads.map((l) => {
-          const its = items.filter((i) => i.circuitId === l.circuit.id);
+        <h2 className="font-semibold">Lignes</h2>
+        {lines.length === 0 && <p className="text-sm text-muted">Crée une ligne (par exemple « Ligne scène », 32 A tétraphasé), puis mets-y tes appareils.</p>}
+        {lines.map((r) => {
+          const tetra = r.mode === "tetra";
           return (
-            <div key={l.circuit.id} className="card space-y-2 p-0">
-              <div className="space-y-2 p-3">
+            <div key={r.circuit.id} className="card space-y-3 p-0">
+              <div className="space-y-3 p-4">
                 <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                  <h3 className="font-semibold">{l.circuit.name}</h3>
-                  <span className="text-xs text-muted">{l.circuit.breakerAmps} A{tetra ? ` · L${l.circuit.phase}` : ""}</span>
-                  <span className="ml-auto text-sm tabular-nums">{fmtWatts(l.watts)} · {fmtAmps(l.amps)} A · {Math.round(l.pct)} %</span>
+                  <h3 className="text-lg font-semibold">{r.circuit.name}</h3>
+                  <span className="rounded-full border border-line px-2 py-0.5 text-xs text-muted">{r.circuit.breakerAmps} A · {tetra ? "Tétraphasé" : "Monophasé"}</span>
+                  <span className="ml-auto text-sm tabular-nums">{fmtWatts(r.watts)} sur {fmtWatts(r.capacityWatts)}</span>
                 </div>
-                <div className="h-2 overflow-hidden rounded-full bg-line" role="progressbar" aria-valuenow={Math.round(l.pct)} aria-valuemin={0} aria-valuemax={100} aria-label={`Charge de ${l.circuit.name}`}>
-                  <div className={`h-full ${LEVEL_CLASS[l.level]}`} style={{ width: `${Math.min(100, l.pct)}%` }} />
-                </div>
-                {l.level !== "ok" && <p className={`flex items-center gap-1 text-xs font-medium ${l.level === "over" ? "text-danger" : "text-amber-600 dark:text-amber-400"}`}><AlertTriangle size={12} /> {LEVEL_TEXT[l.level]}</p>}
-                {its.length > 0 && <p className="text-xs text-muted">{its.map((i) => `${i.qty} × ${i.name}`).join(" · ")}</p>}
-                <details open className="rounded-xl border border-line bg-bg p-3 text-xs">
-                  <summary className="cursor-pointer font-medium text-muted">Voir le calcul</summary>
-                  <ol className="mt-2 list-decimal space-y-1.5 pl-4 text-muted">
-                    <li>
-                      <strong className="text-fg">Puissance du circuit</strong> (quantité × puissance de chaque appareil, additionnées) :{" "}
-                      {its.length === 0 ? "aucun appareil, 0 W" : <span className="tabular-nums text-fg">{its.map((i) => `${i.qty} × ${fmtNum(i.watts)} W`).join(" + ")}{its.length > 1 ? ` = ${its.map((i) => `${fmtNum(i.qty * i.watts)} W`).join(" + ")}` : ""} = <strong>{fmtNum(l.watts)} W</strong></span>}
+
+                <ul className="space-y-2">
+                  {r.phases.map((p) => (
+                    <li key={p.phase} className="space-y-1">
+                      <div className="flex flex-wrap items-baseline justify-between gap-x-3 text-sm">
+                        <span className="font-medium">{tetra ? `Phase L${p.phase}` : "Ligne"}</span>
+                        <span className="tabular-nums text-muted">{fmtNum(p.watts)} W · {fmtNum(p.amps, 2)} A ÷ {r.circuit.breakerAmps} A = <strong className="text-fg">{fmtNum(p.pct)} %</strong></span>
+                      </div>
+                      <Bar pct={p.pct} label={`Charge de ${r.circuit.name}${tetra ? ` L${p.phase}` : ""}`} />
+                      {p.groups.length > 0 && <p className="text-xs text-muted">{groupsText(p)}</p>}
                     </li>
-                    <li>
-                      <strong className="text-fg">Intensité</strong> (I = P ÷ U, avec U = {VOLTS} V) : <span className="tabular-nums text-fg">{fmtNum(l.watts)} ÷ {VOLTS} = <strong>{fmtNum(l.amps, 2)} A</strong></span>
-                    </li>
-                    <li>
-                      <strong className="text-fg">Charge du calibre</strong> (intensité ÷ calibre) : <span className="tabular-nums text-fg">{fmtNum(l.amps, 2)} ÷ {l.circuit.breakerAmps} = <strong>{fmtNum(l.pct)} %</strong></span> : {LEVEL_TEXT[l.level]}
-                    </li>
-                    <li>
-                      <strong className="text-fg">Limites de ce circuit</strong> : alerte à 80 % = {fmtNum(l.circuit.breakerAmps * 0.8, 1)} A ({fmtNum(l.circuit.breakerAmps * 0.8 * VOLTS)} W), maximum à 100 % = {l.circuit.breakerAmps} A ({fmtNum(l.circuit.breakerAmps * VOLTS)} W).
-                      {l.level === "over" ? ` Il y a ${fmtNum(l.watts - l.circuit.breakerAmps * VOLTS)} W de trop.` : l.level === "warn" ? ` Marge avant 100 % : ${fmtNum(l.circuit.breakerAmps * VOLTS - l.watts)} W.` : ` Marge avant l'alerte : ${fmtNum(l.circuit.breakerAmps * 0.8 * VOLTS - l.watts)} W.`}
-                    </li>
-                  </ol>
-                </details>
+                  ))}
+                </ul>
+
+                {tetra && <p className="text-xs text-muted tabular-nums">Courant dans le neutre : {fmtNum(r.neutral, 2)} A</p>}
+                {r.level !== "ok" && <p className={`flex items-center gap-1 text-sm font-medium ${r.level === "over" ? "text-danger" : "text-amber-600 dark:text-amber-400"}`}><AlertTriangle size={14} /> {LEVEL_TEXT[r.level]}</p>}
+                {r.watts === 0 && <p className="text-xs text-muted">Aucun appareil sur cette ligne : choisis cette ligne dans la fiche d&apos;un appareil ci-dessous.</p>}
+
+                <Detail r={r} />
               </div>
               {canEdit && (
                 <details className="border-t border-line">
-                  <summary className="cursor-pointer list-none px-3 py-1.5 text-xs text-muted hover:text-fg marker:hidden">Modifier le circuit</summary>
-                  <div className="space-y-3 p-3 pt-1">
-                    <CircuitForm projectId={project.id} id={l.circuit.id} name={l.circuit.name} breakerAmps={l.circuit.breakerAmps} phase={l.circuit.phase} />
+                  <summary className="cursor-pointer list-none px-4 py-2 text-xs text-muted hover:text-fg marker:hidden">Modifier la ligne</summary>
+                  <div className="space-y-3 p-4 pt-1">
+                    <LineForm projectId={project.id} id={r.circuit.id} name={r.circuit.name} breakerAmps={r.circuit.breakerAmps} mode={r.mode} />
                     <form action={deleteCircuit} className="border-t border-line pt-3">
                       <input type="hidden" name="projectId" value={project.id} />
-                      <input type="hidden" name="id" value={l.circuit.id} />
-                      <button className="flex items-center gap-1 text-xs text-muted hover:text-danger"><Trash2 size={14} /> Supprimer (les appareils restent, non affectés)</button>
+                      <input type="hidden" name="id" value={r.circuit.id} />
+                      <button className="flex items-center gap-1 text-xs text-muted hover:text-danger"><Trash2 size={14} /> Supprimer (les appareils restent, sans ligne)</button>
                     </form>
                   </div>
                 </details>
@@ -185,8 +179,8 @@ export default async function PowerPage({ params }: PageProps<"/projets/[id]/cha
         })}
         {canEdit && (
           <div className="card space-y-2">
-            <h3 className="text-sm font-semibold">Ajouter un circuit</h3>
-            <CircuitForm projectId={project.id} />
+            <h3 className="text-sm font-semibold">Ajouter une ligne</h3>
+            <LineForm projectId={project.id} />
           </div>
         )}
       </section>
@@ -208,7 +202,7 @@ export default async function PowerPage({ params }: PageProps<"/projets/[id]/cha
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 p-3 text-sm">
                 <span className="min-w-0 flex-1 font-medium">{i.name}</span>
                 <span className="tabular-nums text-muted">{i.qty} × {i.watts} W = {fmtWatts(i.qty * i.watts)}</span>
-                <span className="text-xs text-muted">{circuits.find((c) => c.id === i.circuitId)?.name ?? "Non affecté"}</span>
+                <span className="text-xs text-muted">{circuits.find((c) => c.id === i.circuitId)?.name ?? "Sans ligne"}</span>
               </div>
               {canEdit && (
                 <details className="border-t border-line">

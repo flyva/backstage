@@ -7,7 +7,7 @@ import {
 import { toCsv } from "@/lib/csv";
 import { ROLE_LABEL } from "@/lib/projects";
 import { findConflicts, patchLabel } from "@/lib/tech";
-import { circuitLoads, fmtAmps, fmtWatts } from "@/lib/power";
+import { fmtAmps, fmtWatts, lineResult } from "@/lib/power";
 import { CATEGORY_LABEL, formatDuration } from "@/lib/time";
 
 type Project = { id: number; name: string; description: string | null; eventDate: string | null };
@@ -36,7 +36,7 @@ export async function loadDossier(project: Project, role: ProjectRole) {
     ? await db.select({ slotId: buildSlotAssignees.slotId, name: users.name }).from(buildSlotAssignees).innerJoin(users, eq(users.id, buildSlotAssignees.userId)).where(inArray(buildSlotAssignees.slotId, slotRows.map((x) => x.id))).orderBy(asc(users.name))
     : [];
   const slotNames = Map.groupBy(slotLinks, (l) => l.slotId);
-  const loads = circuitLoads(circuitRows, powerRows);
+  const loads = circuitRows.map((c) => lineResult(c, powerRows));
   const items = lists.length
     ? await db.select().from(checklistItems).where(inArray(checklistItems.checklistId, lists.map((l) => l.id))).orderBy(asc(checklistItems.position), asc(checklistItems.id))
     : [];
@@ -69,7 +69,7 @@ export async function loadDossier(project: Project, role: ProjectRole) {
     conflicts: findConflicts(lights),
     slots: slotRows.map((x) => ({ day: x.day, start: x.startTime, end: x.endTime, title: x.title, who: (slotNames.get(x.id) ?? []).map((n) => n.name).join(", "), notes: x.notes })),
     power: {
-      circuits: loads.map((l) => ({ name: l.circuit.name, breaker: l.circuit.breakerAmps, phase: l.circuit.phase, watts: l.watts, amps: l.amps, pct: Math.round(l.pct), level: l.level })),
+      circuits: loads.map((l) => ({ name: l.circuit.name, breaker: l.circuit.breakerAmps, kind: l.mode === "tetra" ? "Tétra" : "Mono", watts: l.watts, amps: Math.max(...l.phases.map((p) => p.amps)), pct: Math.round(l.worstPct), level: l.level })),
       items: powerRows.map((i) => ({ name: i.name, qty: i.qty, watts: i.watts, circuit: circuitRows.find((c) => c.id === i.circuitId)?.name ?? "" })),
       total: powerRows.reduce((sum, i) => sum + i.watts * i.qty, 0),
     },
@@ -94,7 +94,7 @@ export const planningCsv = (d: Dossier) =>
 export const chargeCsv = (d: Dossier) =>
   toCsv(
     ["Circuit", "Calibre (A)", "Phase", "Puissance (W)", "Intensité (A)", "Charge (%)"],
-    d.power.circuits.map((c) => [c.name, c.breaker, `L${c.phase}`, c.watts, fmtAmps(c.amps), c.pct]),
+    d.power.circuits.map((c) => [c.name, c.breaker, c.kind, c.watts, fmtAmps(c.amps), c.pct]),
   );
 
 export const checklistsCsv = (d: Dossier) =>
@@ -181,8 +181,8 @@ ${table(["Jour", "Début", "Fin", "Tâche", "Qui", "Notes"], d.slots.map((x) => 
 
 <h2 id="charge">Charge électrique</h2>
 <p class="muted">Total : ${esc(fmtWatts(d.power.total))} (estimation monophasée 230 V)</p>
-${table(["Circuit", "Calibre", "Phase", "Puissance", "Intensité", "Charge"], d.power.circuits.map((c) => [c.name, `${c.breaker} A`, `L${c.phase}`, fmtWatts(c.watts), `${fmtAmps(c.amps)} A`, `${c.pct} %${c.level === "over" ? " ⚠ surcharge" : c.level === "warn" ? " ⚠" : ""}`]), "Aucun circuit.")}
-${table(["Appareil", "Qté", "Watts", "Circuit"], d.power.items.map((i) => [i.name, i.qty, i.watts, i.circuit]), "Aucun appareil.")}
+${table(["Ligne", "Calibre", "Type", "Puissance", "Intensité max", "Charge"], d.power.circuits.map((c) => [c.name, `${c.breaker} A`, c.kind, fmtWatts(c.watts), `${fmtAmps(c.amps)} A`, `${c.pct} %${c.level === "over" ? " ⚠ surcharge" : c.level === "warn" ? " ⚠" : ""}`]), "Aucun circuit.")}
+${table(["Appareil", "Qté", "Watts", "Ligne"], d.power.items.map((i) => [i.name, i.qty, i.watts, i.circuit]), "Aucun appareil.")}
 
 <h2 id="lumiere">Patch lumière</h2>
 ${conflictCount ? `<p class="warn">⚠ ${conflictCount} projecteur${conflictCount > 1 ? "s" : ""} avec un conflit d'adresse.</p>` : ""}

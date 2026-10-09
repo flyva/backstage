@@ -2,7 +2,8 @@
 
 import { useActionState } from "react";
 import type { FormState } from "@/lib/actions";
-import { savePowerSupply, saveCircuit, saveItem, saveSlot } from "@/lib/build-actions";
+import { LINE_AMPS } from "@/lib/power";
+import { saveCircuit, saveItem, saveSlot } from "@/lib/build-actions";
 import { TagPicker } from "@/components/TagPicker";
 
 function Feedback({ state }: { state: FormState }) {
@@ -41,18 +42,22 @@ export function SlotForm({
   );
 }
 
-export function CircuitForm({ projectId, id, name = "", breakerAmps = 16, phase = 1 }: { projectId: number; id?: number; name?: string; breakerAmps?: number; phase?: number }) {
+export function LineForm({ projectId, id, name = "", breakerAmps = 32, mode = "tetra" }: { projectId: number; id?: number; name?: string; breakerAmps?: number; mode?: "mono" | "tetra" }) {
   const [state, action, pending] = useActionState(saveCircuit, undefined);
   const k = id ?? "new";
+  const amps = [...new Set<number>([...LINE_AMPS, breakerAmps])].sort((x, y) => x - y);
   return (
     <form action={action} className="flex flex-wrap items-end gap-3" key={id ? `e${id}` : state?.ok ? "done" : "new"}>
       <input type="hidden" name="projectId" value={projectId} />
       {id && <input type="hidden" name="id" value={id} />}
-      <div className="min-w-40 flex-1"><label className="label" htmlFor={`cn${k}`}>Circuit</label><input id={`cn${k}`} name="name" defaultValue={name} required maxLength={60} placeholder="Gradateur 1, Prise plateau…" className="input" /></div>
-      <div className="w-28"><label className="label" htmlFor={`ca${k}`}>Calibre (A)</label><input id={`ca${k}`} name="breakerAmps" type="number" min={2} max={125} defaultValue={breakerAmps} className="input" /></div>
+      <div className="min-w-40 flex-1"><label className="label" htmlFor={`cn${k}`}>Ligne</label><input id={`cn${k}`} name="name" defaultValue={name} required maxLength={60} placeholder="Ligne scène, Régie, Gradateurs…" className="input" /></div>
       <div className="w-32">
-        <label className="label" htmlFor={`cp${k}`}>Phase</label>
-        <select id={`cp${k}`} name="phase" defaultValue={phase} className="input"><option value={1}>L1</option><option value={2}>L2</option><option value={3}>L3</option></select>
+        <label className="label" htmlFor={`ca${k}`}>Ampérage</label>
+        <select id={`ca${k}`} name="breakerAmps" defaultValue={breakerAmps} className="input">{amps.map((a) => <option key={a} value={a}>{a} A</option>)}</select>
+      </div>
+      <div className="w-44">
+        <label className="label" htmlFor={`cm${k}`}>Type</label>
+        <select id={`cm${k}`} name="mode" defaultValue={mode} className="input"><option value="tetra">Tétraphasé (3P+N)</option><option value="mono">Monophasé</option></select>
       </div>
       <button className="btn" disabled={pending}>{pending ? "…" : id ? "Enregistrer" : "Ajouter"}</button>
       <div className="basis-full"><Feedback state={state} /></div>
@@ -71,7 +76,7 @@ export function ItemForm({ projectId, circuits, id, name = "", watts = "", qty =
       <div className="w-28"><label className="label" htmlFor={`iw${k}`}>Watts</label><input id={`iw${k}`} name="watts" type="number" min={0} max={100000} required defaultValue={watts} className="input" /></div>
       <div className="w-24"><label className="label" htmlFor={`iq${k}`}>Quantité</label><input id={`iq${k}`} name="qty" type="number" min={1} max={999} defaultValue={qty} className="input" /></div>
       <div className="min-w-40">
-        <label className="label" htmlFor={`ic${k}`}>Circuit</label>
+        <label className="label" htmlFor={`ic${k}`}>Ligne</label>
         <select id={`ic${k}`} name="circuitId" defaultValue={circuitId ?? ""} className="input"><option value="">Non affecté</option>{circuits.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
       </div>
       <button className="btn" disabled={pending}>{pending ? "…" : id ? "Enregistrer" : "Ajouter"}</button>
@@ -80,24 +85,3 @@ export function ItemForm({ projectId, circuits, id, name = "", watts = "", qty =
   );
 }
 
-export function PowerSupplyForm({ projectId, mode, supplyAmps }: { projectId: number; mode: "mono" | "tetra"; supplyAmps: number }) {
-  const [state, action, pending] = useActionState(savePowerSupply, undefined);
-  return (
-    <form action={action} className="flex flex-wrap items-end gap-3">
-      <input type="hidden" name="projectId" value={projectId} />
-      <div className="min-w-56">
-        <label className="label" htmlFor="ps-mode">Alimentation</label>
-        <select id="ps-mode" name="mode" defaultValue={mode} className="input">
-          <option value="tetra">Tétraphasé : 3 phases + neutre (400 V)</option>
-          <option value="mono">Monophasé (230 V)</option>
-        </select>
-      </div>
-      <div className="w-40">
-        <label className="label" htmlFor="ps-amps">Calibre par phase (A)</label>
-        <input id="ps-amps" name="supplyAmps" type="number" min={6} max={1000} defaultValue={supplyAmps} className="input" />
-      </div>
-      <button className="btn" disabled={pending}>{pending ? "…" : "Enregistrer"}</button>
-      <div className="basis-full"><Feedback state={state} /></div>
-    </form>
-  );
-}

@@ -3,7 +3,8 @@ export const VOLTS = 230;
 export const amps = (watts: number) => watts / VOLTS;
 
 export type PowerItem = { id: number; circuitId: number | null; name: string; watts: number; qty: number };
-export type PowerCircuit = { id: number; name: string; breakerAmps: number; phase: number };
+export type SupplyMode = "mono" | "tetra";
+export type PowerCircuit = { id: number; name: string; breakerAmps: number; phase: number; mode?: SupplyMode };
 
 export type CircuitLoad = { circuit: PowerCircuit; watts: number; amps: number; pct: number; level: "ok" | "warn" | "over" };
 
@@ -32,28 +33,63 @@ export function phaseLoads(loads: CircuitLoad[]) {
 export const neutralAmps = (i1: number, i2: number, i3: number) =>
   Math.sqrt(Math.max(0, i1 * i1 + i2 * i2 + i3 * i3 - i1 * i2 - i2 * i3 - i3 * i1));
 
-export type SupplyMode = "mono" | "tetra";
-
-/** Nombre de phases utilisées par le mode d'alimentation. */
-export const phaseCount = (mode: SupplyMode) => (mode === "mono" ? 1 : 3);
-
-/**
- * Répartition automatique des circuits sur les phases : on prend les circuits du plus gourmand au moins gourmand et on met
- * chacun sur la phase la moins chargée à cet instant (L1, L2 ou L3). Renvoie la phase choisie pour chaque circuit.
- */
-export function balancePhases(loads: { circuit: { id: number }; watts: number }[], phases = 3): Map<number, number> {
-  const sums = Array.from({ length: phases }, () => 0);
-  const out = new Map<number, number>();
-  for (const l of [...loads].sort((a, b) => b.watts - a.watts || a.circuit.id - b.circuit.id)) {
-    const p = sums.indexOf(Math.min(...sums));
-    sums[p] += l.watts;
-    out.set(l.circuit.id, p + 1);
-  }
-  return out;
-}
 
 export const fmtAmps = (a: number) => (a < 10 ? a.toFixed(1) : String(Math.round(a))).replace(".", ",");
 export const fmtWatts = (w: number) => (w >= 1000 ? `${(w / 1000).toFixed(2).replace(".", ",")} kW` : `${w} W`);
 
 /** Nombre à la française (espaces entre les milliers, virgule décimale) pour afficher les calculs. */
 export const fmtNum = (n: number, digits = 0) => n.toLocaleString("fr-FR", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+
+/** Calibres proposés pour une ligne d'alimentation. */
+export const LINE_AMPS = [16, 32, 63, 125] as const;
+
+export type PhaseGroup = { itemId: number; name: string; watts: number; qty: number };
+export type PhaseResult = { phase: number; groups: PhaseGroup[]; watts: number; amps: number; pct: number };
+export type LineResult = {
+  circuit: PowerCircuit;
+  mode: SupplyMode;
+  watts: number;
+  phases: PhaseResult[];
+  neutral: number; // courant dans le neutre (tétra), 0 en mono
+  worstPct: number; // charge de la phase la plus chargée, en % du calibre
+  level: "ok" | "warn" | "over";
+  capacityAmps: number;
+  capacityWatts: number;
+};
+
+/**
+ * Calcul d'une ligne : les appareils sont répartis tout seuls sur les phases (un par un, du plus gros au plus petit, sur la
+ * phase la moins chargée), puis chaque phase est comparée au calibre. En monophasé, tout est sur une seule phase.
+ */
+export function lineResult(circuit: PowerCircuit, items: PowerItem[]): LineResult {
+  const mode: SupplyMode = circuit.mode ?? "tetra";
+  const n = mode === "tetra" ? 3 : 1;
+  const sums = Array.from({ length: n }, () => 0);
+  const groups: Map<number, PhaseGroup>[] = Array.from({ length: n }, () => new Map());
+  const mine = items.filter((i) => i.circuitId === circuit.id).sort((a, b) => b.watts - a.watts || a.id - b.id);
+  for (const it of mine) {
+    for (let k = 0; k < it.qty; k++) {
+      const p = sums.indexOf(Math.min(...sums));
+      sums[p] += it.watts;
+      const g = groups[p].get(it.id);
+      if (g) g.qty += 1;
+      else groups[p].set(it.id, { itemId: it.id, name: it.name, watts: it.watts, qty: 1 });
+    }
+  }
+  const phases = sums.map((watts, p) => {
+    const a = amps(watts);
+    return { phase: p + 1, groups: [...groups[p].values()], watts, amps: a, pct: (a / circuit.breakerAmps) * 100 };
+  });
+  const worstPct = Math.max(...phases.map((p) => p.pct));
+  return {
+    circuit,
+    mode,
+    watts: sums.reduce((a, b) => a + b, 0),
+    phases,
+    neutral: mode === "tetra" ? neutralAmps(phases[0].amps, phases[1].amps, phases[2].amps) : 0,
+    worstPct,
+    level: worstPct > 100 ? "over" : worstPct > 80 ? "warn" : "ok",
+    capacityAmps: circuit.breakerAmps * n,
+    capacityWatts: circuit.breakerAmps * n * VOLTS,
+  };
+}
