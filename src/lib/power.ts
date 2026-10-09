@@ -4,7 +4,7 @@ export const amps = (watts: number) => watts / VOLTS;
 
 export type PowerItem = { id: number; circuitId: number | null; name: string; watts: number; qty: number };
 export type SupplyMode = "mono" | "tetra";
-export type PowerCircuit = { id: number; name: string; breakerAmps: number; phase: number; mode?: SupplyMode };
+export type PowerCircuit = { id: number; name: string; breakerAmps: number; phase: number; mode?: SupplyMode; outletAmps?: number };
 
 export type CircuitLoad = { circuit: PowerCircuit; watts: number; amps: number; pct: number; level: "ok" | "warn" | "over" };
 
@@ -42,9 +42,14 @@ export const fmtNum = (n: number, digits = 0) => n.toLocaleString("fr-FR", { min
 
 /** Calibres proposés pour une ligne d'alimentation. */
 export const LINE_AMPS = [16, 32, 63, 125] as const;
+/** Calibres de prises de courant proposés (16 A domestique/CEE, 32 A, 63 A). */
+export const OUTLET_AMPS = [16, 32, 63] as const;
+/** On remplit une prise jusqu'à 80 % de son calibre (marge de sécurité). */
+export const OUTLET_FILL = 0.8;
 
 export type PhaseGroup = { itemId: number; name: string; watts: number; qty: number };
-export type PhaseResult = { phase: number; groups: PhaseGroup[]; watts: number; amps: number; pct: number };
+export type OutletResult = { index: number; groups: PhaseGroup[]; watts: number; amps: number; pct: number };
+export type PhaseResult = { phase: number; groups: PhaseGroup[]; watts: number; amps: number; pct: number; outlets: OutletResult[]; outletsMin: number };
 export type LineResult = {
   circuit: PowerCircuit;
   mode: SupplyMode;
@@ -56,6 +61,28 @@ export type LineResult = {
   capacityAmps: number;
   capacityWatts: number;
 };
+
+/**
+ * Répartition des appareils d'une phase sur des prises de courant : du plus gros au plus petit, chacun dans la première prise
+ * où il tient sans dépasser 80 % de son calibre, sinon dans une nouvelle prise.
+ */
+export function packOutlets(groups: PhaseGroup[], outletAmps: number): OutletResult[] {
+  const cap = outletAmps * VOLTS * OUTLET_FILL;
+  const units = groups.flatMap((g) => Array.from({ length: g.qty }, () => g)).sort((a, b) => b.watts - a.watts);
+  const bins: { watts: number; groups: Map<number, PhaseGroup> }[] = [];
+  for (const u of units) {
+    let bin = bins.find((b) => b.watts + u.watts <= cap);
+    if (!bin) {
+      bin = { watts: 0, groups: new Map() };
+      bins.push(bin);
+    }
+    bin.watts += u.watts;
+    const g = bin.groups.get(u.itemId);
+    if (g) g.qty += 1;
+    else bin.groups.set(u.itemId, { ...u, qty: 1 });
+  }
+  return bins.map((b, i) => ({ index: i + 1, groups: [...b.groups.values()], watts: b.watts, amps: amps(b.watts), pct: (amps(b.watts) / outletAmps) * 100 }));
+}
 
 /**
  * Calcul d'une ligne : les appareils sont répartis tout seuls sur les phases (un par un, du plus gros au plus petit, sur la
@@ -78,7 +105,9 @@ export function lineResult(circuit: PowerCircuit, items: PowerItem[]): LineResul
   }
   const phases = sums.map((watts, p) => {
     const a = amps(watts);
-    return { phase: p + 1, groups: [...groups[p].values()], watts, amps: a, pct: (a / circuit.breakerAmps) * 100 };
+    const list = [...groups[p].values()];
+    const outletAmps = circuit.outletAmps ?? 16;
+    return { phase: p + 1, groups: list, watts, amps: a, pct: (a / circuit.breakerAmps) * 100, outlets: packOutlets(list, outletAmps), outletsMin: Math.ceil(a / (outletAmps * OUTLET_FILL) - 1e-9) };
   });
   const worstPct = Math.max(...phases.map((p) => p.pct));
   return {

@@ -659,6 +659,7 @@ export const powerCircuits = mysqlTable(
     name: varchar("name", { length: 60 }).notNull(),
     breakerAmps: int("breaker_amps").notNull().default(16),
     phase: int("phase").notNull().default(1), // ancien choix de phase (plus utilisé : les phases sont réparties automatiquement)
+    outletAmps: int("outlet_amps").notNull().default(16), // calibre des prises de courant de la ligne (16, 32 ou 63 A)
     mode: mysqlEnum("mode", ["mono", "tetra"]).notNull().default("tetra"), // ligne monophasée ou tétraphasée (3 phases + neutre)
     position: int("position").notNull().default(0),
   },

@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { powerCircuits, powerItems } from "@/db/schema";
 import { can, requireProject } from "@/lib/projects";
 import { deleteCircuit, deleteItem, importLightsToPower } from "@/lib/build-actions";
-import { VOLTS, fmtNum, fmtWatts, lineResult, type LineResult } from "@/lib/power";
+import { OUTLET_FILL, VOLTS, fmtNum, fmtWatts, lineResult, type LineResult } from "@/lib/power";
 import { ItemForm, LineForm } from "@/components/build-forms";
 
 export const metadata = { title: "Charge électrique" };
@@ -12,7 +12,8 @@ export const metadata = { title: "Charge électrique" };
 const LEVEL_CLASS = { ok: "bg-emerald-500", warn: "bg-amber-500", over: "bg-danger" } as const;
 const LEVEL_TEXT = { ok: "OK", warn: "Charge élevée (> 80 %)", over: "Surcharge" } as const;
 const levelOf = (pct: number) => (pct > 100 ? "over" : pct > 80 ? "warn" : "ok") as keyof typeof LEVEL_CLASS;
-const groupsText = (r: LineResult["phases"][number]) => r.groups.map((g) => `${g.qty} × ${g.name}`).join(" + ");
+const outletAmps = (r: LineResult) => r.circuit.outletAmps ?? 16;
+const groupsText = (r: { groups: { qty: number; name: string }[] }) => r.groups.map((g) => `${g.qty} × ${g.name}`).join(" + ");
 
 function Bar({ pct, label }: { pct: number; label: string }) {
   return (
@@ -77,6 +78,22 @@ function Detail({ r }: { r: LineResult }) {
             {r.phases.map((p) => <li key={p.phase}>{tetra ? `L${p.phase} : ` : ""}{fmtNum(p.amps, 2)} ÷ {cal} = <strong className="text-fg">{fmtNum(p.pct)} %</strong> : {LEVEL_TEXT[levelOf(p.pct)]}</li>)}
           </ul>
           Alerte à 80 % = {fmtNum(cal * 0.8, 1)} A ({fmtNum(cal * 0.8 * VOLTS)} W{tetra ? " par phase" : ""}), maximum à 100 % = {cal} A ({fmtNum(cal * VOLTS)} W{tetra ? " par phase" : ""}).
+        </li>
+        <li>
+          <strong className="text-fg">Prises de courant {outletAmps(r)} A{tetra ? " (par phase)" : ""}</strong> : une prise est remplie jusqu&apos;à 80 % de son calibre, soit {outletAmps(r)} × {fmtNum(OUTLET_FILL, 1)} = {fmtNum(outletAmps(r) * OUTLET_FILL, 1)} A ({fmtNum(outletAmps(r) * OUTLET_FILL * VOLTS)} W).
+          Nombre minimum de prises = I ÷ {fmtNum(outletAmps(r) * OUTLET_FILL, 1)}, arrondi au-dessus. Les appareils sont placés du plus gros au plus petit dans la première prise où ils tiennent.
+          <ul className="mt-1 space-y-1.5">
+            {r.phases.map((p) => (
+              <li key={p.phase}>
+                {tetra ? `L${p.phase} : ` : ""}{fmtNum(p.amps, 2)} ÷ {fmtNum(outletAmps(r) * OUTLET_FILL, 1)} = {fmtNum(p.amps / (outletAmps(r) * OUTLET_FILL), 2)} → <strong className="text-fg">{p.outletsMin} prise{p.outletsMin > 1 ? "s" : ""} minimum</strong>{p.outlets.length > p.outletsMin ? ` (${p.outlets.length} avec le rangement réel des appareils)` : ""}
+                <ul className="ml-3 mt-0.5 list-disc space-y-0.5">
+                  {p.outlets.map((o) => (
+                    <li key={o.index}>Prise {o.index} : {o.groups.map((g) => `${g.qty} × ${fmtNum(g.watts)} W`).join(" + ")} = {fmtNum(o.watts)} W ; {fmtNum(o.watts)} ÷ {VOLTS} = {fmtNum(o.amps, 2)} A ; {fmtNum(o.amps, 2)} ÷ {outletAmps(r)} = <strong className="text-fg">{fmtNum(o.pct)} %</strong>{o.pct > 100 ? " : dépasse la prise, utilise une prise plus forte" : ""}</li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ul>
         </li>
         {tetra && (
           <>
@@ -151,6 +168,22 @@ export default async function PowerPage({ params }: PageProps<"/projets/[id]/cha
                       </div>
                       <Bar pct={p.pct} label={`Charge de ${r.circuit.name}${tetra ? ` L${p.phase}` : ""}`} />
                       {p.groups.length > 0 && <p className="text-xs text-muted">{groupsText(p)}</p>}
+                      {p.outlets.length > 0 && (
+                        <div className="space-y-1 pt-0.5">
+                          <p className="text-xs font-medium text-fg">{p.outlets.length} prise{p.outlets.length > 1 ? "s" : ""} de {outletAmps(r)} A{tetra ? ` sur L${p.phase}` : ""}</p>
+                          <ul className="grid gap-1 sm:grid-cols-2">
+                            {p.outlets.map((o) => (
+                              <li key={o.index} className="rounded-lg border border-line bg-bg px-2 py-1.5 text-xs">
+                                <div className="flex flex-wrap justify-between gap-x-2 tabular-nums">
+                                  <span className="font-medium">Prise {o.index}</span>
+                                  <span className="text-muted">{fmtNum(o.watts)} W · {fmtNum(o.amps, 2)} A ÷ {outletAmps(r)} A = <strong className={o.pct > 100 ? "text-danger" : o.pct > 80 ? "text-amber-600 dark:text-amber-400" : "text-fg"}>{fmtNum(o.pct)} %</strong></span>
+                                </div>
+                                <div className="text-muted">{groupsText(o)}</div>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -165,7 +198,7 @@ export default async function PowerPage({ params }: PageProps<"/projets/[id]/cha
                 <details className="border-t border-line">
                   <summary className="cursor-pointer list-none px-4 py-2 text-xs text-muted hover:text-fg marker:hidden">Modifier la ligne</summary>
                   <div className="space-y-3 p-4 pt-1">
-                    <LineForm projectId={project.id} id={r.circuit.id} name={r.circuit.name} breakerAmps={r.circuit.breakerAmps} mode={r.mode} />
+                    <LineForm projectId={project.id} id={r.circuit.id} name={r.circuit.name} breakerAmps={r.circuit.breakerAmps} mode={r.mode} outletAmps={outletAmps(r)} />
                     <form action={deleteCircuit} className="border-t border-line pt-3">
                       <input type="hidden" name="projectId" value={project.id} />
                       <input type="hidden" name="id" value={r.circuit.id} />

@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import type { FormState } from "@/lib/actions";
-import { LINE_AMPS } from "@/lib/power";
+import { LINE_AMPS, OUTLET_AMPS } from "@/lib/power";
 import { saveCircuit, saveItem, saveSlot } from "@/lib/build-actions";
 import { TagPicker } from "@/components/TagPicker";
 
@@ -42,7 +42,7 @@ export function SlotForm({
   );
 }
 
-export function LineForm({ projectId, id, name = "", breakerAmps = 32, mode = "tetra" }: { projectId: number; id?: number; name?: string; breakerAmps?: number; mode?: "mono" | "tetra" }) {
+export function LineForm({ projectId, id, name = "", breakerAmps = 32, mode = "tetra", outletAmps = 16 }: { projectId: number; id?: number; name?: string; breakerAmps?: number; mode?: "mono" | "tetra"; outletAmps?: number }) {
   const [state, action, pending] = useActionState(saveCircuit, undefined);
   const k = id ?? "new";
   const amps = [...new Set<number>([...LINE_AMPS, breakerAmps])].sort((x, y) => x - y);
@@ -58,6 +58,10 @@ export function LineForm({ projectId, id, name = "", breakerAmps = 32, mode = "t
       <div className="w-44">
         <label className="label" htmlFor={`cm${k}`}>Type</label>
         <select id={`cm${k}`} name="mode" defaultValue={mode} className="input"><option value="tetra">Tétraphasé (3P+N)</option><option value="mono">Monophasé</option></select>
+      </div>
+      <div className="w-32">
+        <label className="label" htmlFor={`co${k}`}>Prises</label>
+        <select id={`co${k}`} name="outletAmps" defaultValue={outletAmps} className="input">{OUTLET_AMPS.map((a) => <option key={a} value={a}>{a} A</option>)}</select>
       </div>
       <button className="btn" disabled={pending}>{pending ? "…" : id ? "Enregistrer" : "Ajouter"}</button>
       <div className="basis-full"><Feedback state={state} /></div>
