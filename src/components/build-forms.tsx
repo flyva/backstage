@@ -42,7 +42,7 @@ export function SlotForm({
   );
 }
 
-export function LineForm({ projectId, id, name = "", breakerAmps = 32, mode = "tetra", outletAmps = 16 }: { projectId: number; id?: number; name?: string; breakerAmps?: number; mode?: "mono" | "tetra"; outletAmps?: number }) {
+export function LineForm({ projectId, id, name = "", breakerAmps = 32, mode = "tetra", outletAmps = 16, feederAmps = null }: { projectId: number; id?: number; name?: string; breakerAmps?: number; mode?: "mono" | "tetra"; outletAmps?: number; feederAmps?: number | null }) {
   const [state, action, pending] = useActionState(saveCircuit, undefined);
   const k = id ?? "new";
   const amps = [...new Set<number>([...LINE_AMPS, breakerAmps])].sort((x, y) => x - y);
@@ -58,6 +58,10 @@ export function LineForm({ projectId, id, name = "", breakerAmps = 32, mode = "t
       <div className="w-44">
         <label className="label" htmlFor={`cm${k}`}>Type</label>
         <select id={`cm${k}`} name="mode" defaultValue={mode} className="input"><option value="tetra">Tétraphasé (3P+N)</option><option value="mono">Monophasé</option></select>
+      </div>
+      <div className="w-40">
+        <label className="label" htmlFor={`cf${k}`}>Diviser en départs</label>
+        <select id={`cf${k}`} name="feederAmps" defaultValue={feederAmps ?? ""} className="input"><option value="">Pas de division</option><option value="16">Départs de 16 A</option><option value="32">Départs de 32 A</option><option value="63">Départs de 63 A</option></select>
       </div>
       <div className="w-32">
         <label className="label" htmlFor={`co${k}`}>Prises</label>

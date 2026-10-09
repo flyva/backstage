@@ -1,0 +1,1 @@
+ALTER TABLE `power_circuits` ADD `feeder_amps` int;

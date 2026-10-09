@@ -30,6 +30,10 @@ function Detail({ r }: { r: LineResult }) {
   const cal = r.circuit.breakerAmps;
   const used = r.phases.filter((p) => p.watts > 0);
   const avgAmps = r.watts / VOLTS / r.phases.length;
+  // Lignes du calcul des prises : par départ et par phase si la ligne est divisée, sinon par phase.
+  const outletRows = r.feeders.length > 0
+    ? r.feeders.flatMap((fd) => fd.phases.filter((ph) => ph.groups.length > 0).map((ph) => ({ key: `${fd.index}-${ph.phase}`, label: `Départ ${fd.index}${tetra ? ` · L${ph.phase}` : ""}`, amps: ph.amps, outlets: ph.outlets, min: Math.ceil(ph.amps / (outletAmps(r) * OUTLET_FILL) - 1e-9) })))
+    : r.phases.map((p) => ({ key: String(p.phase), label: tetra ? `L${p.phase}` : "", amps: p.amps, outlets: p.outlets, min: p.outletsMin }));
   return (
     <details open className="rounded-xl border border-line bg-bg p-3 text-xs">
       <summary className="cursor-pointer font-medium text-muted">Voir le détail du calcul</summary>
@@ -80,13 +84,26 @@ function Detail({ r }: { r: LineResult }) {
           </ul>
           Alerte à 80 % = {fmtNum(cal * 0.8, 1)} A ({fmtNum(cal * 0.8 * VOLTS)} W{tetra ? " par phase" : ""}), maximum à 100 % = {cal} A ({fmtNum(cal * VOLTS)} W{tetra ? " par phase" : ""}).
         </li>
+        {r.feederAmps && (
+          <li>
+            <strong className="text-fg">Division en départs de {r.feederAmps} A</strong> : un départ est rempli jusqu&apos;à 80 % de son calibre, soit {r.feederAmps} × 0,8 = {fmtNum(r.feederAmps * 0.8, 1)} A par phase.
+            Nombre de départs = intensité de la phase la plus chargée ÷ {fmtNum(r.feederAmps * 0.8, 1)}, arrondi au-dessus : {fmtNum(Math.max(...r.phases.map((p) => p.amps)), 2)} ÷ {fmtNum(r.feederAmps * 0.8, 1)} = {fmtNum(Math.max(...r.phases.map((p) => p.amps)) / (r.feederAmps * 0.8), 2)} → <strong className="text-fg">{r.feedersMin} départ{r.feedersMin > 1 ? "s" : ""}</strong>.
+            Sur chaque phase, les appareils sont répartis entre les départs, toujours sur le moins chargé.
+            <ul className="mt-1 space-y-0.5">
+              {r.feeders.map((fd) => (
+                <li key={fd.index}>Départ {fd.index} : {fd.phases.map((ph) => `${tetra ? `L${ph.phase} ` : ""}${fmtNum(ph.amps, 2)} A`).join(" ; ")} (sur {r.feederAmps} A)</li>
+              ))}
+            </ul>
+            Contrôle : sur chaque phase, la somme des départs ({fmtNum(Math.max(...r.phases.map((p) => p.amps)), 2)} A au plus) doit rester sous le calibre de la ligne ({r.circuit.breakerAmps} A) : {Math.max(...r.phases.map((p) => p.amps)) <= r.circuit.breakerAmps ? "✓" : "dépassé"}.
+          </li>
+        )}
         <li>
-          <strong className="text-fg">Prises de courant {outletAmps(r)} A{tetra ? " (par phase)" : ""}</strong> : une prise est remplie jusqu&apos;à 80 % de son calibre, soit {outletAmps(r)} × {fmtNum(OUTLET_FILL, 1)} = {fmtNum(outletAmps(r) * OUTLET_FILL, 1)} A ({fmtNum(outletAmps(r) * OUTLET_FILL * VOLTS)} W).
+          <strong className="text-fg">Prises de courant {outletAmps(r)} A{r.feeders.length > 0 ? " (par départ et par phase)" : tetra ? " (par phase)" : ""}</strong> : une prise est remplie jusqu&apos;à 80 % de son calibre, soit {outletAmps(r)} × {fmtNum(OUTLET_FILL, 1)} = {fmtNum(outletAmps(r) * OUTLET_FILL, 1)} A ({fmtNum(outletAmps(r) * OUTLET_FILL * VOLTS)} W).
           Nombre minimum de prises = I ÷ {fmtNum(outletAmps(r) * OUTLET_FILL, 1)}, arrondi au-dessus. Les appareils sont placés du plus gros au plus petit dans la première prise où ils tiennent.
           <ul className="mt-1 space-y-1.5">
-            {r.phases.map((p) => (
-              <li key={p.phase}>
-                {tetra ? `L${p.phase} : ` : ""}{fmtNum(p.amps, 2)} ÷ {fmtNum(outletAmps(r) * OUTLET_FILL, 1)} = {fmtNum(p.amps / (outletAmps(r) * OUTLET_FILL), 2)} → <strong className="text-fg">{p.outletsMin} prise{p.outletsMin > 1 ? "s" : ""} minimum</strong>{p.outlets.length > p.outletsMin ? ` (${p.outlets.length} avec le rangement réel des appareils)` : ""}
+            {outletRows.map((p) => (
+              <li key={p.key}>
+                {p.label ? `${p.label} : ` : ""}{fmtNum(p.amps, 2)} ÷ {fmtNum(outletAmps(r) * OUTLET_FILL, 1)} = {fmtNum(p.amps / (outletAmps(r) * OUTLET_FILL), 2)} → <strong className="text-fg">{p.min} prise{p.min > 1 ? "s" : ""} minimum</strong>{p.outlets.length > p.min ? ` (${p.outlets.length} avec le rangement réel des appareils)` : ""}
                 <ul className="ml-3 mt-0.5 list-disc space-y-0.5">
                   {p.outlets.map((o) => (
                     <li key={o.index}>Prise {o.index} : {o.groups.map((g) => `${g.qty} × ${fmtNum(g.watts)} W`).join(" + ")} = {fmtNum(o.watts)} W ; {fmtNum(o.watts)} ÷ {VOLTS} = {fmtNum(o.amps, 2)} A ; {fmtNum(o.amps, 2)} ÷ {outletAmps(r)} = <strong className="text-fg">{fmtNum(o.pct)} %</strong>{o.pct > 100 ? " : dépasse la prise, utilise une prise plus forte" : ""}</li>
@@ -177,7 +194,7 @@ export default async function PowerPage({ params }: PageProps<"/projets/[id]/cha
                       </div>
                       <Bar pct={p.pct} label={`Charge de ${r.circuit.name}${tetra ? ` L${p.phase}` : ""}`} />
                       {p.groups.length > 0 && <p className="text-xs text-muted">{groupsText(p)}</p>}
-                      {p.outlets.length > 0 && (
+                      {p.outlets.length > 0 && r.feeders.length === 0 && (
                         <div className="space-y-1 pt-0.5">
                           <p className="text-xs font-medium text-fg">{p.outlets.length} prise{p.outlets.length > 1 ? "s" : ""} de {outletAmps(r)} A{tetra ? ` sur L${p.phase}` : ""}</p>
                           <ul className="grid gap-1 sm:grid-cols-2">
@@ -197,6 +214,36 @@ export default async function PowerPage({ params }: PageProps<"/projets/[id]/cha
                   ))}
                 </ul>
 
+                {r.feederAmps && (
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-semibold">Répartition : {r.circuit.breakerAmps} A divisé en {r.feeders.length} départ{r.feeders.length > 1 ? "s" : ""} de {r.feederAmps} A</h4>
+                    {r.feeders.length === 0 && <p className="text-xs text-muted">Aucun appareil à répartir.</p>}
+                    {r.feeders.map((fd) => (
+                      <div key={fd.index} className="space-y-2 rounded-xl border border-line bg-bg p-3">
+                        <div className="flex flex-wrap items-baseline justify-between gap-x-3 text-sm">
+                          <span className="font-medium">Départ {fd.index} · {r.feederAmps} A {tetra ? "tétra" : "mono"}</span>
+                          <span className="tabular-nums text-muted">{fmtWatts(fd.watts)} · phase la plus chargée à <strong className={fd.maxPct > 100 ? "text-danger" : fd.maxPct > 80 ? "text-amber-600 dark:text-amber-400" : "text-fg"}>{fmtNum(fd.maxPct)} %</strong></span>
+                        </div>
+                        <ul className="space-y-2">
+                          {fd.phases.filter((ph) => ph.groups.length > 0).map((ph) => (
+                            <li key={ph.phase} className="space-y-1 text-xs">
+                              <div className="tabular-nums text-muted"><span className="font-medium text-fg">{tetra ? `Phase L${ph.phase}` : "Départ"}</span> : {fmtNum(ph.watts)} W · {fmtNum(ph.amps, 2)} A ÷ {r.feederAmps} A = {fmtNum(ph.pct)} %</div>
+                              <ul className="grid gap-1 sm:grid-cols-2">
+                                {ph.outlets.map((o) => (
+                                  <li key={o.index} className="rounded-lg border border-line px-2 py-1.5">
+                                    <div className="flex flex-wrap justify-between gap-x-2 tabular-nums"><span className="font-medium">Prise {o.index}{tetra ? ` (L${ph.phase})` : ""}</span><span className="text-muted">{fmtNum(o.watts)} W · {fmtNum(o.amps, 2)} A · <strong className={o.pct > 100 ? "text-danger" : o.pct > 80 ? "text-amber-600 dark:text-amber-400" : "text-fg"}>{fmtNum(o.pct)} %</strong> de {outletAmps(r)} A</span></div>
+                                    <div className="text-muted">{groupsText(o)}</div>
+                                  </li>
+                                ))}
+                              </ul>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {tetra && <p className="text-xs text-muted tabular-nums">Courant dans le neutre : {fmtNum(r.neutral, 2)} A</p>}
                 {r.level !== "ok" && <p className={`flex items-center gap-1 text-sm font-medium ${r.level === "over" ? "text-danger" : "text-amber-600 dark:text-amber-400"}`}><AlertTriangle size={14} /> {LEVEL_TEXT[r.level]}</p>}
                 {r.watts === 0 && <p className="text-xs text-muted">Aucun appareil sur cette ligne : choisis cette ligne dans la fiche d&apos;un appareil ci-dessous.</p>}
@@ -207,7 +254,7 @@ export default async function PowerPage({ params }: PageProps<"/projets/[id]/cha
                 <details className="border-t border-line">
                   <summary className="cursor-pointer list-none px-4 py-2 text-xs text-muted hover:text-fg marker:hidden">Modifier la ligne</summary>
                   <div className="space-y-3 p-4 pt-1">
-                    <LineForm projectId={project.id} id={r.circuit.id} name={r.circuit.name} breakerAmps={r.circuit.breakerAmps} mode={r.mode} outletAmps={outletAmps(r)} />
+                    <LineForm projectId={project.id} id={r.circuit.id} name={r.circuit.name} breakerAmps={r.circuit.breakerAmps} mode={r.mode} outletAmps={outletAmps(r)} feederAmps={r.feederAmps} />
                     <form action={deleteCircuit} className="border-t border-line pt-3">
                       <input type="hidden" name="projectId" value={project.id} />
                       <input type="hidden" name="id" value={r.circuit.id} />

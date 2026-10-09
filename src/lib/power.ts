@@ -4,7 +4,7 @@ export const amps = (watts: number) => watts / VOLTS;
 
 export type PowerItem = { id: number; circuitId: number | null; name: string; watts: number; qty: number };
 export type SupplyMode = "mono" | "tetra";
-export type PowerCircuit = { id: number; name: string; breakerAmps: number; phase: number; mode?: SupplyMode; outletAmps?: number };
+export type PowerCircuit = { id: number; name: string; breakerAmps: number; phase: number; mode?: SupplyMode; outletAmps?: number; feederAmps?: number | null };
 
 export type CircuitLoad = { circuit: PowerCircuit; watts: number; amps: number; pct: number; level: "ok" | "warn" | "over" };
 
@@ -49,6 +49,8 @@ export const OUTLET_FILL = 0.8;
 
 export type PhaseGroup = { itemId: number; name: string; watts: number; qty: number };
 export type OutletResult = { index: number; groups: PhaseGroup[]; watts: number; amps: number; pct: number };
+export type FeederPhase = { phase: number; groups: PhaseGroup[]; watts: number; amps: number; pct: number; outlets: OutletResult[] };
+export type FeederResult = { index: number; phases: FeederPhase[]; watts: number; maxPct: number };
 export type PhaseResult = { phase: number; groups: PhaseGroup[]; watts: number; amps: number; pct: number; outlets: OutletResult[]; outletsMin: number };
 export type LineResult = {
   circuit: PowerCircuit;
@@ -60,6 +62,9 @@ export type LineResult = {
   level: "ok" | "warn" | "over";
   capacityAmps: number;
   capacityWatts: number;
+  feederAmps: number | null; // calibre des départs si la ligne est divisée
+  feedersMin: number; // nombre minimum de départs
+  feeders: FeederResult[];
 };
 
 /**
@@ -82,6 +87,40 @@ export function packOutlets(groups: PhaseGroup[], outletAmps: number): OutletRes
     else bin.groups.set(u.itemId, { ...u, qty: 1 });
   }
   return bins.map((b, i) => ({ index: i + 1, groups: [...b.groups.values()], watts: b.watts, amps: amps(b.watts), pct: (amps(b.watts) / outletAmps) * 100 }));
+}
+
+/**
+ * Division d'une ligne en départs (ex. un 63 A tétra divisé en départs de 32 A) : le nombre de départs est celui qu'exige la
+ * phase la plus chargée (80 % du calibre du départ). Sur chaque phase, les appareils sont répartis entre les départs (toujours
+ * sur le moins chargé), puis rangés sur des prises dans chaque départ.
+ */
+function splitFeeders(phases: PhaseResult[], feederAmps: number, outletAmps: number): { feeders: FeederResult[]; min: number } {
+  const usable = feederAmps * OUTLET_FILL;
+  const min = Math.max(...phases.map((p) => Math.ceil(p.amps / usable - 1e-9)), 0);
+  if (min === 0) return { feeders: [], min: 0 };
+  const feeders: FeederResult[] = Array.from({ length: min }, (_, i) => ({ index: i + 1, phases: [], watts: 0, maxPct: 0 }));
+  for (const p of phases) {
+    const sums = Array.from({ length: min }, () => 0);
+    const groups: Map<number, PhaseGroup>[] = Array.from({ length: min }, () => new Map());
+    const units = p.groups.flatMap((g) => Array.from({ length: g.qty }, () => g)).sort((a, b) => b.watts - a.watts);
+    for (const u of units) {
+      const f = sums.indexOf(Math.min(...sums));
+      sums[f] += u.watts;
+      const g = groups[f].get(u.itemId);
+      if (g) g.qty += 1;
+      else groups[f].set(u.itemId, { ...u, qty: 1 });
+    }
+    feeders.forEach((fd, f) => {
+      const list = [...groups[f].values()];
+      const a = amps(sums[f]);
+      fd.phases.push({ phase: p.phase, groups: list, watts: sums[f], amps: a, pct: (a / feederAmps) * 100, outlets: packOutlets(list, outletAmps) });
+    });
+  }
+  for (const fd of feeders) {
+    fd.watts = fd.phases.reduce((n, p) => n + p.watts, 0);
+    fd.maxPct = Math.max(...fd.phases.map((p) => p.pct));
+  }
+  return { feeders, min };
 }
 
 /**
@@ -110,6 +149,8 @@ export function lineResult(circuit: PowerCircuit, items: PowerItem[]): LineResul
     return { phase: p + 1, groups: list, watts, amps: a, pct: (a / circuit.breakerAmps) * 100, outlets: packOutlets(list, outletAmps), outletsMin: Math.ceil(a / (outletAmps * OUTLET_FILL) - 1e-9) };
   });
   const worstPct = Math.max(...phases.map((p) => p.pct));
+  const feederAmps = circuit.feederAmps ?? null;
+  const split = feederAmps ? splitFeeders(phases, feederAmps, circuit.outletAmps ?? 16) : { feeders: [], min: 0 };
   return {
     circuit,
     mode,
@@ -120,5 +161,8 @@ export function lineResult(circuit: PowerCircuit, items: PowerItem[]): LineResul
     level: worstPct > 100 ? "over" : worstPct > 80 ? "warn" : "ok",
     capacityAmps: circuit.breakerAmps * n,
     capacityWatts: circuit.breakerAmps * n * VOLTS,
+    feederAmps,
+    feedersMin: split.min,
+    feeders: split.feeders,
   };
 }
