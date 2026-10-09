@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import type { FormState } from "@/lib/actions";
-import { saveCircuit, saveItem, saveSlot } from "@/lib/build-actions";
+import { savePowerSupply, saveCircuit, saveItem, saveSlot } from "@/lib/build-actions";
 import { TagPicker } from "@/components/TagPicker";
 
 function Feedback({ state }: { state: FormState }) {
@@ -75,6 +75,28 @@ export function ItemForm({ projectId, circuits, id, name = "", watts = "", qty =
         <select id={`ic${k}`} name="circuitId" defaultValue={circuitId ?? ""} className="input"><option value="">Non affecté</option>{circuits.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
       </div>
       <button className="btn" disabled={pending}>{pending ? "…" : id ? "Enregistrer" : "Ajouter"}</button>
+      <div className="basis-full"><Feedback state={state} /></div>
+    </form>
+  );
+}
+
+export function PowerSupplyForm({ projectId, mode, supplyAmps }: { projectId: number; mode: "mono" | "tetra"; supplyAmps: number }) {
+  const [state, action, pending] = useActionState(savePowerSupply, undefined);
+  return (
+    <form action={action} className="flex flex-wrap items-end gap-3">
+      <input type="hidden" name="projectId" value={projectId} />
+      <div className="min-w-56">
+        <label className="label" htmlFor="ps-mode">Alimentation</label>
+        <select id="ps-mode" name="mode" defaultValue={mode} className="input">
+          <option value="tetra">Tétraphasé : 3 phases + neutre (400 V)</option>
+          <option value="mono">Monophasé (230 V)</option>
+        </select>
+      </div>
+      <div className="w-40">
+        <label className="label" htmlFor="ps-amps">Calibre par phase (A)</label>
+        <input id="ps-amps" name="supplyAmps" type="number" min={6} max={1000} defaultValue={supplyAmps} className="input" />
+      </div>
+      <button className="btn" disabled={pending}>{pending ? "…" : "Enregistrer"}</button>
       <div className="basis-full"><Feedback state={state} /></div>
     </form>
   );

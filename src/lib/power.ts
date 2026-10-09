@@ -32,6 +32,26 @@ export function phaseLoads(loads: CircuitLoad[]) {
 export const neutralAmps = (i1: number, i2: number, i3: number) =>
   Math.sqrt(Math.max(0, i1 * i1 + i2 * i2 + i3 * i3 - i1 * i2 - i2 * i3 - i3 * i1));
 
+export type SupplyMode = "mono" | "tetra";
+
+/** Nombre de phases utilisées par le mode d'alimentation. */
+export const phaseCount = (mode: SupplyMode) => (mode === "mono" ? 1 : 3);
+
+/**
+ * Répartition automatique des circuits sur les phases : on prend les circuits du plus gourmand au moins gourmand et on met
+ * chacun sur la phase la moins chargée à cet instant (L1, L2 ou L3). Renvoie la phase choisie pour chaque circuit.
+ */
+export function balancePhases(loads: { circuit: { id: number }; watts: number }[], phases = 3): Map<number, number> {
+  const sums = Array.from({ length: phases }, () => 0);
+  const out = new Map<number, number>();
+  for (const l of [...loads].sort((a, b) => b.watts - a.watts || a.circuit.id - b.circuit.id)) {
+    const p = sums.indexOf(Math.min(...sums));
+    sums[p] += l.watts;
+    out.set(l.circuit.id, p + 1);
+  }
+  return out;
+}
+
 export const fmtAmps = (a: number) => (a < 10 ? a.toFixed(1) : String(Math.round(a))).replace(".", ",");
 export const fmtWatts = (w: number) => (w >= 1000 ? `${(w / 1000).toFixed(2).replace(".", ",")} kW` : `${w} W`);
 

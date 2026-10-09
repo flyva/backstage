@@ -677,6 +677,14 @@ export const powerItems = mysqlTable(
   (t) => [index("pi_project_idx").on(t.projectId)],
 );
 
+// Alimentation du projet : monophasé (une seule phase) ou tétraphasé (3 phases + neutre), et calibre par phase du tableau
+// d'arrivée (ex. 32 A par phase = 96 A au total en tétraphasé).
+export const powerSettings = mysqlTable("power_settings", {
+  projectId: int("project_id").primaryKey().references(() => projects.id, { onDelete: "cascade" }),
+  mode: mysqlEnum("mode", ["mono", "tetra"]).notNull().default("tetra"),
+  supplyAmps: int("supply_amps").notNull().default(32),
+});
+
 // ---------- Covoiturage ----------
 
 export const rides = mysqlTable(

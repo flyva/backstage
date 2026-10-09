@@ -1,11 +1,11 @@
 import { asc, eq } from "drizzle-orm";
 import { AlertTriangle, Trash2, Zap } from "lucide-react";
 import { db } from "@/db";
-import { powerCircuits, powerItems } from "@/db/schema";
+import { powerCircuits, powerItems, powerSettings } from "@/db/schema";
 import { can, requireProject } from "@/lib/projects";
-import { deleteCircuit, deleteItem, importLightsToPower } from "@/lib/build-actions";
+import { balanceCircuitPhases, deleteCircuit, deleteItem, importLightsToPower } from "@/lib/build-actions";
 import { VOLTS, circuitLoads, fmtAmps, fmtNum, fmtWatts, neutralAmps, phaseLoads } from "@/lib/power";
-import { CircuitForm, ItemForm } from "@/components/build-forms";
+import { CircuitForm, ItemForm, PowerSupplyForm } from "@/components/build-forms";
 
 export const metadata = { title: "Charge électrique" };
 
@@ -17,11 +17,16 @@ export default async function PowerPage({ params }: PageProps<"/projets/[id]/cha
   const { project, role } = await requireProject(Number(id));
   const canEdit = can(role, "editor");
 
-  const [circuits, items] = await Promise.all([
+  const [circuits, items, [cfg]] = await Promise.all([
     db.select().from(powerCircuits).where(eq(powerCircuits.projectId, project.id)).orderBy(asc(powerCircuits.position), asc(powerCircuits.id)),
     db.select().from(powerItems).where(eq(powerItems.projectId, project.id)).orderBy(asc(powerItems.name), asc(powerItems.id)),
+    db.select().from(powerSettings).where(eq(powerSettings.projectId, project.id)).limit(1),
   ]);
-  const loads = circuitLoads(circuits, items);
+  // Alimentation : tétraphasé (3 phases + neutre) par défaut, 32 A par phase. En monophasé, tous les circuits sont sur la même phase.
+  const mode = cfg?.mode ?? "tetra";
+  const supplyAmps = cfg?.supplyAmps ?? 32;
+  const tetra = mode === "tetra";
+  const loads = circuitLoads(circuits.map((c) => ({ ...c, phase: tetra ? c.phase : 1 })), items);
   const phases = phaseLoads(loads);
   const totalW = items.reduce((s, i) => s + i.watts * i.qty, 0);
   const unassigned = items.filter((i) => i.circuitId === null);
@@ -29,12 +34,60 @@ export default async function PowerPage({ params }: PageProps<"/projets/[id]/cha
   const minPhase = Math.min(...phases.map((p) => p.watts));
   const imbalance = phases.filter((p) => p.watts > 0).length > 1 && maxPhase > 0 ? Math.round(((maxPhase - minPhase) / maxPhase) * 100) : 0;
   const problems = loads.filter((l) => l.level !== "ok").length;
+  const assignedW = loads.reduce((n, l) => n + l.watts, 0);
+  const capAmps = tetra ? 3 * supplyAmps : supplyAmps;
+  const usedAmps = tetra ? phases.reduce((n, p) => n + p.amps, 0) : assignedW / VOLTS;
+  const levelOf = (pct: number) => (pct > 100 ? "over" : pct > 80 ? "warn" : "ok") as keyof typeof LEVEL_CLASS;
+  const supplyRows = tetra ? phases.map((p) => ({ label: `L${p.phase}`, amps: p.amps })) : [{ label: "Monophasé", amps: usedAmps }];
 
   return (
     <div className="space-y-6">
       <p className="text-sm text-muted">
-        Départ triphasé + neutre (3P+N) : chaque circuit est branché entre une phase (L1, L2 ou L3) et le neutre, donc en {VOLTS} V (400 V entre deux phases). Estimation avec un facteur de puissance de 1 : intensité = puissance ÷ {VOLTS}. Garde une marge : au-delà de 80 % du calibre, le circuit est signalé.
+        {tetra
+          ? `Alimentation tétraphasée (3 phases + neutre) : chaque circuit est branché entre une phase (L1, L2 ou L3) et le neutre, donc en ${VOLTS} V (400 V entre deux phases).`
+          : `Alimentation monophasée : tous les circuits sont sur la même phase, en ${VOLTS} V.`}{" "}
+        Estimation avec un facteur de puissance de 1 : intensité = puissance ÷ {VOLTS}. Garde une marge : au-delà de 80 % du calibre, le circuit est signalé.
       </p>
+
+      <section className="card space-y-4" aria-label="Alimentation">
+        <h2 className="flex items-center gap-2 font-semibold"><Zap size={16} className="text-accent" /> Alimentation du projet</h2>
+        {canEdit && <PowerSupplyForm projectId={project.id} mode={mode} supplyAmps={supplyAmps} />}
+        <div className="rounded-xl border border-line bg-bg p-3 text-xs leading-relaxed text-muted tabular-nums">
+          <p>
+            <strong className="text-fg">Capacité du tableau</strong> :{" "}
+            {tetra ? `3 phases × ${supplyAmps} A = ${capAmps} A` : `${supplyAmps} A`}. En puissance : {capAmps} A × {VOLTS} V = <strong className="text-fg">{fmtNum(capAmps * VOLTS)} W</strong> ({fmtNum((capAmps * VOLTS) / 1000, 2)} kW).
+          </p>
+          <p className="mt-1">
+            <strong className="text-fg">Consommation des circuits</strong> : {fmtNum(assignedW)} W ÷ {VOLTS} V = {fmtNum(usedAmps, 2)} A, soit {fmtNum(usedAmps, 2)} ÷ {capAmps} = <strong className="text-fg">{fmtNum((usedAmps / capAmps) * 100)} % de la capacité</strong>.
+            {unassigned.length > 0 && ` (Les ${unassigned.length} appareil(s) non affecté(s) à un circuit ne sont pas comptés.)`}
+          </p>
+        </div>
+        <ul className="space-y-2">
+          {supplyRows.map((r) => {
+            const limit = tetra ? supplyAmps : capAmps;
+            const pct = (r.amps / limit) * 100;
+            const lvl = levelOf(pct);
+            return (
+              <li key={r.label} className="space-y-1">
+                <div className="flex flex-wrap items-baseline justify-between gap-2 text-sm">
+                  <span className="font-medium">{r.label}</span>
+                  <span className="tabular-nums text-muted">{fmtNum(r.amps, 2)} A ÷ {limit} A = <strong className="text-fg">{fmtNum(pct)} %</strong>{lvl !== "ok" && <span className={lvl === "over" ? " font-medium text-danger" : " font-medium text-amber-600 dark:text-amber-400"}> · {LEVEL_TEXT[lvl]}</span>}</span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-line" role="progressbar" aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100} aria-label={`Charge de ${r.label}`}>
+                  <div className={`h-full ${LEVEL_CLASS[lvl]}`} style={{ width: `${Math.min(100, pct)}%` }} />
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+        {canEdit && tetra && circuits.length > 1 && (
+          <form action={balanceCircuitPhases} className="flex flex-wrap items-center gap-3">
+            <input type="hidden" name="projectId" value={project.id} />
+            <button className="btn-ghost text-sm">Répartir automatiquement les circuits sur L1, L2 et L3</button>
+            <span className="text-xs text-muted">Les circuits les plus gourmands sont placés d&apos;abord, chacun sur la phase la moins chargée.</span>
+          </form>
+        )}
+      </section>
 
       <section className="grid gap-3 sm:grid-cols-3">
         <div className="card"><div className="text-sm text-muted">Puissance totale</div><div className="text-3xl font-bold tabular-nums">{fmtWatts(totalW)}</div><div className="text-sm text-muted">{fmtAmps(totalW / VOLTS)} A en monophasé</div><div className="mt-1 text-[11px] text-muted tabular-nums">Somme de (quantité × puissance) de tous les appareils : {fmtNum(totalW)} W ÷ {VOLTS} V = {fmtNum(totalW / VOLTS, 2)} A</div></div>
@@ -42,7 +95,7 @@ export default async function PowerPage({ params }: PageProps<"/projets/[id]/cha
         <div className="card"><div className="text-sm text-muted">Non affecté</div><div className="text-3xl font-bold tabular-nums">{fmtWatts(unassigned.reduce((s, i) => s + i.watts * i.qty, 0))}</div><div className="text-sm text-muted">{unassigned.length} appareil(s)</div></div>
       </section>
 
-      {circuits.length > 0 && (
+      {tetra && circuits.length > 0 && (
         <section className="card space-y-3" aria-label="Équilibrage des phases">
           <h2 className="flex items-center gap-2 font-semibold"><Zap size={16} className="text-accent" /> Phases (triphasé)</h2>
           <ul className="grid gap-3 sm:grid-cols-3">
@@ -50,7 +103,7 @@ export default async function PowerPage({ params }: PageProps<"/projets/[id]/cha
               <li key={p.phase} className="rounded-xl border border-line bg-bg p-3 text-sm">
                 <div className="text-muted">L{p.phase}</div>
                 <div className="text-xl font-bold tabular-nums">{fmtWatts(p.watts)}</div>
-                <div className="text-xs text-muted">{fmtAmps(p.amps)} A</div>
+                <div className="text-xs text-muted">{fmtAmps(p.amps)} A sur {supplyAmps} A ({fmtNum((p.amps / supplyAmps) * 100)} %)</div>
                 <p className="mt-2 text-[11px] leading-relaxed text-muted tabular-nums">
                   {loads.filter((l) => l.circuit.phase === p.phase).length === 0
                     ? "Aucun circuit sur cette phase."
@@ -86,7 +139,7 @@ export default async function PowerPage({ params }: PageProps<"/projets/[id]/cha
               <div className="space-y-2 p-3">
                 <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                   <h3 className="font-semibold">{l.circuit.name}</h3>
-                  <span className="text-xs text-muted">{l.circuit.breakerAmps} A · L{l.circuit.phase}</span>
+                  <span className="text-xs text-muted">{l.circuit.breakerAmps} A{tetra ? ` · L${l.circuit.phase}` : ""}</span>
                   <span className="ml-auto text-sm tabular-nums">{fmtWatts(l.watts)} · {fmtAmps(l.amps)} A · {Math.round(l.pct)} %</span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-line" role="progressbar" aria-valuenow={Math.round(l.pct)} aria-valuemin={0} aria-valuemax={100} aria-label={`Charge de ${l.circuit.name}`}>
@@ -99,7 +152,7 @@ export default async function PowerPage({ params }: PageProps<"/projets/[id]/cha
                   <ol className="mt-2 list-decimal space-y-1.5 pl-4 text-muted">
                     <li>
                       <strong className="text-fg">Puissance du circuit</strong> (quantité × puissance de chaque appareil, additionnées) :{" "}
-                      {its.length === 0 ? "aucun appareil, 0 W" : <span className="tabular-nums text-fg">{its.map((i) => `${i.qty} × ${fmtNum(i.watts)} W`).join(" + ")}{its.length > 1 || its[0].qty > 1 ? ` = ${its.map((i) => `${fmtNum(i.qty * i.watts)} W`).join(" + ")}` : ""} = <strong>{fmtNum(l.watts)} W</strong></span>}
+                      {its.length === 0 ? "aucun appareil, 0 W" : <span className="tabular-nums text-fg">{its.map((i) => `${i.qty} × ${fmtNum(i.watts)} W`).join(" + ")}{its.length > 1 ? ` = ${its.map((i) => `${fmtNum(i.qty * i.watts)} W`).join(" + ")}` : ""} = <strong>{fmtNum(l.watts)} W</strong></span>}
                     </li>
                     <li>
                       <strong className="text-fg">Intensité</strong> (I = P ÷ U, avec U = {VOLTS} V) : <span className="tabular-nums text-fg">{fmtNum(l.watts)} ÷ {VOLTS} = <strong>{fmtNum(l.amps, 2)} A</strong></span>

@@ -4,9 +4,10 @@ import { revalidatePath } from "next/cache";
 import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { buildSlotAssignees, buildSlots, powerCircuits, powerItems, projectMembers, techLights, fixtureModels } from "@/db/schema";
+import { buildSlotAssignees, buildSlots, powerCircuits, powerItems, powerSettings, projectMembers, techLights, fixtureModels } from "@/db/schema";
 import { requireProject } from "@/lib/projects";
 import { isDay } from "@/lib/alternance";
+import { balancePhases, circuitLoads } from "@/lib/power";
 import type { FormState } from "@/lib/actions";
 
 const id = z.coerce.number().int().positive();
@@ -142,5 +143,33 @@ export async function importLightsToPower(fd: FormData) {
     .filter(([name]) => !existing.has(name.toLowerCase()))
     .map(([name, qty]) => ({ projectId: pid, name, qty, watts: byName.get(name.toLowerCase()) ?? 0 }));
   if (rows.length) await db.insert(powerItems).values(rows);
+  touchPower(pid);
+}
+
+// ---------- Alimentation (mono / tétraphasé) et répartition des phases ----------
+
+const supplySchema = z.object({ mode: z.enum(["mono", "tetra"]), supplyAmps: z.coerce.number().int().min(6, "Calibre trop faible").max(1000, "Calibre trop élevé") });
+
+/** Enregistre le type d'alimentation du projet et le calibre par phase du tableau d'arrivée. */
+export async function savePowerSupply(_: FormState, fd: FormData): Promise<FormState> {
+  const pid = id.parse(fd.get("projectId"));
+  await requireProject(pid, "editor");
+  const p = supplySchema.safeParse({ mode: fd.get("mode"), supplyAmps: fd.get("supplyAmps") });
+  if (!p.success) return { error: p.error.issues[0].message };
+  await db.insert(powerSettings).values({ projectId: pid, ...p.data }).onDuplicateKeyUpdate({ set: p.data });
+  touchPower(pid);
+  return { ok: "Alimentation enregistrée" };
+}
+
+/** Répartit les circuits sur L1, L2 et L3 pour équilibrer les phases (sans effet en monophasé). */
+export async function balanceCircuitPhases(fd: FormData) {
+  const pid = id.parse(fd.get("projectId"));
+  await requireProject(pid, "editor");
+  const [circuits, items] = await Promise.all([
+    db.select().from(powerCircuits).where(eq(powerCircuits.projectId, pid)),
+    db.select().from(powerItems).where(eq(powerItems.projectId, pid)),
+  ]);
+  const plan = balancePhases(circuitLoads(circuits, items));
+  for (const [circuitId, phase] of plan) await db.update(powerCircuits).set({ phase }).where(and(eq(powerCircuits.id, circuitId), eq(powerCircuits.projectId, pid)));
   touchPower(pid);
 }
