@@ -84,3 +84,36 @@ export const soundSpeed = (tempC: number) => 331.3 + 0.606 * tempC;
 export const delayMs = (distanceM: number, tempC: number) => (distanceM / soundSpeed(tempC)) * 1000;
 export const dbToVoltageRatio = (db: number) => 10 ** (db / 20);
 export const dbToPowerRatio = (db: number) => 10 ** (db / 10);
+
+// ---------- Loi d'Ohm et puissance : P = U × I, R = U ÷ I ----------
+
+export type OhmPair = "ui" | "up" | "ur" | "ip" | "ir" | "pr";
+export type OhmResult = { u: number; i: number; p: number; r: number; pair: OhmPair; given: ("u" | "i" | "p" | "r")[] };
+
+/** À partir de deux grandeurs connues parmi U (V), I (A), P (W) et R (Ω), calcule les deux autres. Au-delà de deux, seules les deux premières (dans l'ordre U, I, P, R) servent. */
+export function solveOhm(v: { u?: number; i?: number; p?: number; r?: number }): OhmResult | null {
+  const has = (x?: number): x is number => typeof x === "number" && Number.isFinite(x) && x > 0;
+  const given = (["u", "i", "p", "r"] as const).filter((k) => has(v[k]));
+  if (given.length < 2) return null;
+  const pair = (given[0] + given[1]) as OhmPair;
+  let { u, i, p, r } = v as { u: number; i: number; p: number; r: number };
+  switch (pair) {
+    case "ui": p = u * i; r = u / i; break;
+    case "up": i = p / u; r = (u * u) / p; break;
+    case "ur": i = u / r; p = (u * u) / r; break;
+    case "ip": u = p / i; r = p / (i * i); break;
+    case "ir": u = i * r; p = i * i * r; break;
+    case "pr": u = Math.sqrt(p * r); i = Math.sqrt(p / r); break;
+  }
+  return { u, i, p, r, pair, given: [given[0], given[1]] };
+}
+
+/** Prises de courant nécessaires pour une puissance répartie sur les phases (remplissage à 80 % du calibre de la prise). */
+export function outletsFor(watts: number, phases: 1 | 3, outletAmps: number) {
+  const perPhaseW = watts / phases;
+  const amps = perPhaseW / 230;
+  const usable = outletAmps * 0.8;
+  const perPhase = Math.max(amps > 0 ? 1 : 0, Math.ceil(amps / usable - 1e-9));
+  const ampsPerOutlet = perPhase > 0 ? amps / perPhase : 0;
+  return { perPhaseW, amps, usable, perPhase, total: perPhase * phases, ampsPerOutlet, pctPerOutlet: (ampsPerOutlet / outletAmps) * 100 };
+}

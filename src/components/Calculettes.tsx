@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Plus, Sigma, Trash2 } from "lucide-react";
 import {
-  RHO_CU, SECTIONS, currentOf, dbToPowerRatio, dbToVoltageRatio, delayMs, maxLength, minSection, patchDmx, soundSpeed, splAtDistance, sumDb, voltageDropPct,
+  RHO_CU, SECTIONS, currentOf, outletsFor, solveOhm, dbToPowerRatio, dbToVoltageRatio, delayMs, maxLength, minSection, patchDmx, soundSpeed, splAtDistance, sumDb, voltageDropPct,
   type DmxLine, type Supply,
 } from "@/lib/calc";
 
@@ -12,6 +12,8 @@ const ok = (n: number) => Number.isFinite(n);
 const f = (n: number, d = 1) => (ok(n) ? n.toFixed(d).replace(".", ",") : "–");
 
 const TABS = [
+  { id: "ohm", label: "Loi d'Ohm (P, U, I, R)" },
+  { id: "prises", label: "Prises par phase" },
   { id: "cable", label: "Câble" },
   { id: "dmx", label: "Patch DMX" },
   { id: "distance", label: "Niveau et distance" },
@@ -260,7 +262,123 @@ function DbCalc() {
   );
 }
 
+// ---------- Loi d'Ohm : P, U, I, R ----------
+
+const OHM_FORMULAS: Record<"u" | "i" | "p" | "r", Partial<Record<string, { f: string; sub: (v: Record<"u" | "i" | "p" | "r", string>) => string }>>> = {
+  p: {
+    ui: { f: "P = U × I", sub: (v) => `${v.u} × ${v.i}` },
+    ur: { f: "P = U² ÷ R", sub: (v) => `${v.u}² ÷ ${v.r}` },
+    ir: { f: "P = R × I²", sub: (v) => `${v.r} × ${v.i}²` },
+  },
+  i: {
+    up: { f: "I = P ÷ U", sub: (v) => `${v.p} ÷ ${v.u}` },
+    ur: { f: "I = U ÷ R", sub: (v) => `${v.u} ÷ ${v.r}` },
+    pr: { f: "I = √(P ÷ R)", sub: (v) => `√(${v.p} ÷ ${v.r})` },
+  },
+  u: {
+    ip: { f: "U = P ÷ I", sub: (v) => `${v.p} ÷ ${v.i}` },
+    ir: { f: "U = R × I", sub: (v) => `${v.r} × ${v.i}` },
+    pr: { f: "U = √(P × R)", sub: (v) => `√(${v.p} × ${v.r})` },
+  },
+  r: {
+    ui: { f: "R = U ÷ I", sub: (v) => `${v.u} ÷ ${v.i}` },
+    up: { f: "R = U² ÷ P", sub: (v) => `${v.u}² ÷ ${v.p}` },
+    ip: { f: "R = P ÷ I²", sub: (v) => `${v.p} ÷ ${v.i}²` },
+  },
+};
+
+export function OhmCalc() {
+  const [u, setU] = useState("230");
+  const [i, setI] = useState("");
+  const [p, setP] = useState("2000");
+  const [r, setR] = useState("");
+  const res = solveOhm({ u: num(u), i: num(i), p: num(p), r: num(r) });
+  const shown = res ? { u: f(res.u, 2), i: f(res.i, 2), p: f(res.p, 0), r: f(res.r, 2) } : null;
+  const NAMES = { u: "Tension U", i: "Intensité I", p: "Puissance P", r: "Résistance R" } as const;
+  const UNITS = { u: "V", i: "A", p: "W", r: "Ω" } as const;
+  const filled = [u, i, p, r].filter((x) => ok(num(x)) && num(x) > 0).length;
+  return (
+    <div className="space-y-5">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Field id="o-u" label="Tension U" value={u} onChange={setU} unit="V" />
+        <Field id="o-i" label="Intensité I" value={i} onChange={setI} unit="A" />
+        <Field id="o-p" label="Puissance P" value={p} onChange={setP} unit="W" />
+        <Field id="o-r" label="Résistance R" value={r} onChange={setR} unit="Ω" />
+      </div>
+      <Note>Remplis deux cases (les autres se calculent). Efface une case pour la recalculer.</Note>
+      {res && shown ? (
+        <>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {(["u", "i", "p", "r"] as const).map((k) => <Big key={k} label={`${NAMES[k]}${res.given.includes(k) ? " (donnée)" : ""}`} value={`${shown[k]} ${UNITS[k]}`} />)}
+          </div>
+          {filled > 2 && <Note>Plus de deux valeurs saisies : seules {res.given.map((k) => k.toUpperCase()).join(" et ")} sont utilisées.</Note>}
+          <Steps lines={[
+            `Données : ${res.given.map((k) => `${k.toUpperCase()} = ${shown[k]} ${UNITS[k]}`).join(" ; ")}`,
+            ...(["u", "i", "p", "r"] as const).filter((k) => !res.given.includes(k)).flatMap((k) => {
+              const fm = OHM_FORMULAS[k][res.pair];
+              return fm ? [`${fm.f}  →  ${fm.sub(shown)} = ${shown[k]} ${UNITS[k]}`] : [];
+            }),
+            "→ P = U × I   ;   R = U ÷ I   ;   P = U² ÷ R   ;   P = R × I²",
+          ]} />
+        </>
+      ) : (
+        <Note>Il faut au moins deux valeurs (par exemple U et P).</Note>
+      )}
+    </div>
+  );
+}
+
+// ---------- Prises de courant par phase ----------
+
+export function OutletsCalc() {
+  const [watts, setWatts] = useState("6500");
+  const [phases, setPhases] = useState<"1" | "3">("3");
+  const [outlet, setOutlet] = useState("16");
+  const w = num(watts);
+  const n = phases === "3" ? 3 : 1;
+  const A = num(outlet);
+  const r = ok(w) && w > 0 ? outletsFor(w, n, A) : null;
+  return (
+    <div className="space-y-5">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Field id="p-w" label="Puissance totale" value={watts} onChange={setWatts} unit="W" />
+        <div>
+          <label className="label" htmlFor="p-ph">Alimentation</label>
+          <select id="p-ph" value={phases} onChange={(e) => setPhases(e.target.value as "1" | "3")} className="input"><option value="3">Tétraphasé (3 phases + neutre)</option><option value="1">Monophasé</option></select>
+        </div>
+        <div>
+          <label className="label" htmlFor="p-pr">Calibre des prises</label>
+          <select id="p-pr" value={outlet} onChange={(e) => setOutlet(e.target.value)} className="input"><option value="16">16 A</option><option value="32">32 A</option><option value="63">63 A</option></select>
+        </div>
+      </div>
+      {r ? (
+        <>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Big label={n === 3 ? "Intensité par phase" : "Intensité"} value={`${f(r.amps, 2)} A`} />
+            <Big label={n === 3 ? "Prises par phase" : "Prises"} value={String(r.perPhase)} />
+            {n === 3 && <Big label="Prises au total" value={String(r.total)} />}
+            <Big label="Charge moyenne d'une prise" value={`${f(r.ampsPerOutlet, 1)} A (${f(r.pctPerOutlet, 0)} %)`} tone={r.pctPerOutlet > 80 ? "warn" : undefined} />
+          </div>
+          <Note>Phases supposées bien équilibrées. Dans une ligne de projet, l&apos;onglet Charge répartit les appareils réels.</Note>
+          <Steps lines={[
+            n === 3 ? `1. Puissance par phase : P ÷ 3 = ${f(w, 0)} ÷ 3 = ${f(r.perPhaseW, 0)} W` : `1. Puissance : P = ${f(w, 0)} W`,
+            `2. Intensité : I = P ÷ U = ${f(r.perPhaseW, 0)} ÷ 230 = ${f(r.amps, 2)} A`,
+            `3. Courant utilisable d'une prise (80 % du calibre) : ${f(A, 0)} × 0,8 = ${f(r.usable, 1)} A`,
+            `4. Prises nécessaires : I ÷ ${f(r.usable, 1)} = ${f(r.amps, 2)} ÷ ${f(r.usable, 1)} = ${f(r.amps / r.usable, 2)} → ${r.perPhase} (arrondi au-dessus)`,
+            ...(n === 3 ? [`   Au total : ${r.perPhase} × 3 phases = ${r.total} prises`] : []),
+            `→ Courant moyen par prise : ${f(r.amps, 2)} ÷ ${r.perPhase} = ${f(r.ampsPerOutlet, 2)} A, soit ${f(r.ampsPerOutlet, 2)} ÷ ${f(A, 0)} = ${f(r.pctPerOutlet, 0)} % du calibre`,
+          ]} />
+        </>
+      ) : (
+        <Note>Indique une puissance en watts.</Note>
+      )}
+    </div>
+  );
+}
+
 const PANELS: Record<TabId, { title: string; hint: string; body: React.ReactNode }> = {
+  ohm: { title: "Loi d'Ohm et puissance", hint: "P = U × I et R = U ÷ I : donne deux valeurs, la calculette trouve les deux autres.", body: <OhmCalc /> },
+  prises: { title: "Prises de courant par phase", hint: "Combien de prises (16, 32 ou 63 A) pour une puissance donnée, et quelle intensité sur chacune.", body: <OutletsCalc /> },
   cable: { title: "Câble : intensité et chute de tension", hint: "Quelle section pour quelle longueur, sans perdre trop de tension.", body: <CableCalc /> },
   dmx: { title: "Patch DMX", hint: "Combien d'univers, et à quelles adresses, pour tes projecteurs.", body: <DmxCalc /> },
   distance: { title: "Niveau sonore selon la distance", hint: "De combien le niveau baisse en s'éloignant de l'enceinte.", body: <DistanceCalc /> },
@@ -270,7 +388,7 @@ const PANELS: Record<TabId, { title: string; hint: string; body: React.ReactNode
 };
 
 export function Calculettes() {
-  const [tab, setTab] = useState<TabId>("cable");
+  const [tab, setTab] = useState<TabId>("ohm");
   const p = PANELS[tab];
   return (
     <div className="space-y-4">

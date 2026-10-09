@@ -6,6 +6,7 @@ import { can, requireProject } from "@/lib/projects";
 import { deleteCircuit, deleteItem, importLightsToPower } from "@/lib/build-actions";
 import { OUTLET_FILL, VOLTS, fmtNum, fmtWatts, lineResult, type LineResult } from "@/lib/power";
 import { ItemForm, LineForm } from "@/components/build-forms";
+import { OhmCalc, OutletsCalc } from "@/components/Calculettes";
 
 export const metadata = { title: "Charge électrique" };
 
@@ -138,6 +139,14 @@ export default async function PowerPage({ params }: PageProps<"/projets/[id]/cha
           <strong className="text-fg"> R = U ÷ I</strong> (résistance en Ω, loi d&apos;Ohm). U = {VOLTS} V entre une phase et le neutre (400 V entre deux phases). Estimation avec un facteur de puissance de 1.
         </p>
       </section>
+
+      <details className="card space-y-4">
+        <summary className="cursor-pointer font-semibold">Calculettes rapides : P = U × I, R = U ÷ I et prises par phase</summary>
+        <div className="space-y-6 pt-3">
+          <div className="space-y-3"><h3 className="text-sm font-semibold text-muted">Loi d&apos;Ohm</h3><OhmCalc /></div>
+          <div className="space-y-3 border-t border-line pt-5"><h3 className="text-sm font-semibold text-muted">Prises de courant par phase</h3><OutletsCalc /></div>
+        </div>
+      </details>
 
       <section className="grid gap-3 sm:grid-cols-3">
         <div className="card"><div className="text-sm text-muted">Puissance totale</div><div className="text-3xl font-bold tabular-nums">{fmtWatts(totalW)}</div><div className="text-[11px] text-muted tabular-nums">Somme de (quantité × watts) de tous les appareils</div></div>
