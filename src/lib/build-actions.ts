@@ -69,13 +69,14 @@ const circuitSchema = z.object({
   breakerAmps: z.coerce.number().int().min(2, "Calibre : 2 A minimum").max(125, "Calibre : 125 A maximum"),
   mode: z.enum(["mono", "tetra"]),
   feederAmps: z.preprocess((v) => (v === "" || v == null ? null : Number(v)), z.number().int().refine((v) => [16, 32, 63].includes(v), "Départs : 16, 32 ou 63 A").nullable()),
+  outletCount: z.preprocess((v) => (v === "" || v == null ? null : Number(v)), z.number().int().min(1, "Au moins 1 prise").max(60, "60 prises maximum").nullable()),
   outletAmps: z.coerce.number().int().refine((v) => [16, 32, 63].includes(v), "Calibre de prise : 16, 32 ou 63 A"),
 });
 
 export async function saveCircuit(_: FormState, fd: FormData): Promise<FormState> {
   const pid = id.parse(fd.get("projectId"));
   await requireProject(pid, "editor");
-  const p = circuitSchema.safeParse({ name: fd.get("name"), breakerAmps: fd.get("breakerAmps"), mode: fd.get("mode"), feederAmps: fd.get("feederAmps"), outletAmps: fd.get("outletAmps") ?? 16 });
+  const p = circuitSchema.safeParse({ name: fd.get("name"), breakerAmps: fd.get("breakerAmps"), mode: fd.get("mode"), feederAmps: fd.get("feederAmps"), outletCount: fd.get("outletCount"), outletAmps: fd.get("outletAmps") ?? 16 });
   if (!p.success) return { error: p.error.issues[0].message };
   const raw = Number(fd.get("id") || 0);
   if (raw) {

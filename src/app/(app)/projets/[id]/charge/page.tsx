@@ -24,6 +24,28 @@ function Bar({ pct, label }: { pct: number; label: string }) {
   );
 }
 
+/** Avertit quand le nombre de prises voulu ne suffit pas (une prise au-delà de 100 %, ou une phase sans prise). */
+function OutletWarnings({ r }: { r: LineResult }) {
+  const rows = r.feeders.length > 0
+    ? r.feeders.flatMap((fd) => fd.phases.filter((ph) => ph.groups.length > 0).map((ph) => ({ label: `Départ ${fd.index}${r.mode === "tetra" ? ` L${ph.phase}` : ""}`, amps: ph.amps, outlets: ph.outlets })))
+    : r.phases.filter((p) => p.groups.length > 0).map((p) => ({ label: r.mode === "tetra" ? `L${p.phase}` : "Ligne", amps: p.amps, outlets: p.outlets }));
+  const usable = outletAmps(r) * OUTLET_FILL;
+  const msgs = rows.flatMap((row) => {
+    const need = Math.ceil(row.amps / usable - 1e-9);
+    const worst = row.outlets.length ? Math.max(...row.outlets.map((o) => o.pct)) : Infinity;
+    if (row.outlets.length === 0) return [`${row.label} : aucune prise, il en faut au moins ${need}.`];
+    if (worst > 100) return [`${row.label} : une prise dépasse son calibre (${fmtNum(worst)} %). Ajoute des prises : ${need} au minimum conseillé.`];
+    if (worst > 80) return [`${row.label} : une prise est à ${fmtNum(worst)} % (au-delà de 80 %). ${need} prise${need > 1 ? "s" : ""} au minimum conseillé${need > 1 ? "es" : "e"}.`];
+    return [];
+  });
+  return (
+    <div className="space-y-1 text-xs">
+      <p className="text-muted">Tu as demandé <strong className="text-fg">{r.outletCount} prise{(r.outletCount ?? 0) > 1 ? "s" : ""}</strong>{r.feederAmps ? " par départ" : ""} de {outletAmps(r)} A : elles sont réparties entre les phases selon leur charge, et les appareils sont posés un par un sur la prise la moins chargée.</p>
+      {msgs.length === 0 ? <p className="text-emerald-600 dark:text-emerald-400">✓ Toutes les prises restent sous 80 % de leur calibre.</p> : msgs.map((m) => <p key={m} className="flex items-center gap-1 font-medium text-amber-600 dark:text-amber-400"><AlertTriangle size={12} /> {m}</p>)}
+    </div>
+  );
+}
+
 /** Le détail du calcul d'une ligne : chaque étape avec sa formule et les chiffres. */
 function Detail({ r }: { r: LineResult }) {
   const tetra = r.mode === "tetra";
@@ -99,7 +121,7 @@ function Detail({ r }: { r: LineResult }) {
         )}
         <li>
           <strong className="text-fg">Prises de courant {outletAmps(r)} A{r.feeders.length > 0 ? " (par départ et par phase)" : tetra ? " (par phase)" : ""}</strong> : une prise est remplie jusqu&apos;à 80 % de son calibre, soit {outletAmps(r)} × {fmtNum(OUTLET_FILL, 1)} = {fmtNum(outletAmps(r) * OUTLET_FILL, 1)} A ({fmtNum(outletAmps(r) * OUTLET_FILL * VOLTS)} W).
-          Nombre minimum de prises = I ÷ {fmtNum(outletAmps(r) * OUTLET_FILL, 1)}, arrondi au-dessus. Les appareils sont placés du plus gros au plus petit dans la première prise où ils tiennent.
+          Nombre minimum de prises = I ÷ {fmtNum(outletAmps(r) * OUTLET_FILL, 1)}, arrondi au-dessus.{" "}{r.outletCount ? `Tu as choisi ${r.outletCount} prise${r.outletCount > 1 ? "s" : ""}${r.feederAmps ? " par départ" : ""} : chaque phase chargée reçoit au moins une prise, les suivantes vont à la phase dont les prises sont les plus chargées, et les appareils sont posés du plus gros au plus petit sur la prise la moins chargée.` : "Les appareils sont placés du plus gros au plus petit dans la première prise où ils tiennent."}
           <ul className="mt-1 space-y-1.5">
             {outletRows.map((p) => (
               <li key={p.key}>
@@ -214,6 +236,8 @@ export default async function PowerPage({ params }: PageProps<"/projets/[id]/cha
                   ))}
                 </ul>
 
+                {r.outletCount && <OutletWarnings r={r} />}
+
                 {r.feederAmps && (
                   <div className="space-y-2">
                     <h4 className="text-sm font-semibold">Répartition : {r.circuit.breakerAmps} A divisé en {r.feeders.length} départ{r.feeders.length > 1 ? "s" : ""} de {r.feederAmps} A</h4>
@@ -254,7 +278,7 @@ export default async function PowerPage({ params }: PageProps<"/projets/[id]/cha
                 <details className="border-t border-line">
                   <summary className="cursor-pointer list-none px-4 py-2 text-xs text-muted hover:text-fg marker:hidden">Modifier la ligne</summary>
                   <div className="space-y-3 p-4 pt-1">
-                    <LineForm projectId={project.id} id={r.circuit.id} name={r.circuit.name} breakerAmps={r.circuit.breakerAmps} mode={r.mode} outletAmps={outletAmps(r)} feederAmps={r.feederAmps} />
+                    <LineForm projectId={project.id} id={r.circuit.id} name={r.circuit.name} breakerAmps={r.circuit.breakerAmps} mode={r.mode} outletAmps={outletAmps(r)} feederAmps={r.feederAmps} outletCount={r.circuit.outletCount ?? null} />
                     <form action={deleteCircuit} className="border-t border-line pt-3">
                       <input type="hidden" name="projectId" value={project.id} />
                       <input type="hidden" name="id" value={r.circuit.id} />

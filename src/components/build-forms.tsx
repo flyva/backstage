@@ -42,7 +42,7 @@ export function SlotForm({
   );
 }
 
-export function LineForm({ projectId, id, name = "", breakerAmps = 32, mode = "tetra", outletAmps = 16, feederAmps = null }: { projectId: number; id?: number; name?: string; breakerAmps?: number; mode?: "mono" | "tetra"; outletAmps?: number; feederAmps?: number | null }) {
+export function LineForm({ projectId, id, name = "", breakerAmps = 32, mode = "tetra", outletAmps = 16, feederAmps = null, outletCount = null }: { projectId: number; id?: number; name?: string; breakerAmps?: number; mode?: "mono" | "tetra"; outletAmps?: number; feederAmps?: number | null; outletCount?: number | null }) {
   const [state, action, pending] = useActionState(saveCircuit, undefined);
   const k = id ?? "new";
   const amps = [...new Set<number>([...LINE_AMPS, breakerAmps])].sort((x, y) => x - y);
@@ -66,6 +66,10 @@ export function LineForm({ projectId, id, name = "", breakerAmps = 32, mode = "t
       <div className="w-32">
         <label className="label" htmlFor={`co${k}`}>Prises</label>
         <select id={`co${k}`} name="outletAmps" defaultValue={outletAmps} className="input">{OUTLET_AMPS.map((a) => <option key={a} value={a}>{a} A</option>)}</select>
+      </div>
+      <div className="w-44">
+        <label className="label" htmlFor={`cc${k}`}>Nombre de prises</label>
+        <input id={`cc${k}`} name="outletCount" type="number" min={1} max={60} defaultValue={outletCount ?? ""} placeholder="Auto (le minimum)" className="input" />
       </div>
       <button className="btn" disabled={pending}>{pending ? "…" : id ? "Enregistrer" : "Ajouter"}</button>
       <div className="basis-full"><Feedback state={state} /></div>
