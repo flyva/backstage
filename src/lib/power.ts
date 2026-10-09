@@ -27,3 +27,6 @@ export function phaseLoads(loads: CircuitLoad[]) {
 
 export const fmtAmps = (a: number) => (a < 10 ? a.toFixed(1) : String(Math.round(a))).replace(".", ",");
 export const fmtWatts = (w: number) => (w >= 1000 ? `${(w / 1000).toFixed(2).replace(".", ",")} kW` : `${w} W`);
+
+/** Nombre à la française (espaces entre les milliers, virgule décimale) pour afficher les calculs. */
+export const fmtNum = (n: number, digits = 0) => n.toLocaleString("fr-FR", { minimumFractionDigits: digits, maximumFractionDigits: digits });
