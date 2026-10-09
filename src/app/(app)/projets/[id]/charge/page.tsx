@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { powerCircuits, powerItems } from "@/db/schema";
 import { can, requireProject } from "@/lib/projects";
 import { deleteCircuit, deleteItem, importLightsToPower } from "@/lib/build-actions";
-import { VOLTS, circuitLoads, fmtAmps, fmtNum, fmtWatts, phaseLoads } from "@/lib/power";
+import { VOLTS, circuitLoads, fmtAmps, fmtNum, fmtWatts, neutralAmps, phaseLoads } from "@/lib/power";
 import { CircuitForm, ItemForm } from "@/components/build-forms";
 
 export const metadata = { title: "Charge électrique" };
@@ -33,7 +33,7 @@ export default async function PowerPage({ params }: PageProps<"/projets/[id]/cha
   return (
     <div className="space-y-6">
       <p className="text-sm text-muted">
-        Estimation en monophasé {VOLTS} V (facteur de puissance 1) : intensité = puissance ÷ {VOLTS}. Garde une marge : au-delà de 80 % du calibre, le circuit est signalé.
+        Départ triphasé + neutre (3P+N) : chaque circuit est branché entre une phase (L1, L2 ou L3) et le neutre, donc en {VOLTS} V (400 V entre deux phases). Estimation avec un facteur de puissance de 1 : intensité = puissance ÷ {VOLTS}. Garde une marge : au-delà de 80 % du calibre, le circuit est signalé.
       </p>
 
       <section className="grid gap-3 sm:grid-cols-3">
@@ -59,6 +59,14 @@ export default async function PowerPage({ params }: PageProps<"/projets/[id]/cha
               </li>
             ))}
           </ul>
+          <div className="rounded-xl border border-line bg-bg p-3 text-xs">
+            <div className="font-medium text-fg">Courant dans le neutre</div>
+            <p className="mt-1 leading-relaxed text-muted tabular-nums">
+              Si les 3 phases sont également chargées, les courants se compensent et le neutre ne porte presque rien. Plus elles sont déséquilibrées, plus le neutre travaille.
+              Formule : In = √(I1² + I2² + I3² − I1·I2 − I2·I3 − I3·I1) = √({phases.map((p) => `${fmtNum(p.amps, 2)}²`).join(" + ")} − {fmtNum(phases[0].amps, 2)}×{fmtNum(phases[1].amps, 2)} − {fmtNum(phases[1].amps, 2)}×{fmtNum(phases[2].amps, 2)} − {fmtNum(phases[2].amps, 2)}×{fmtNum(phases[0].amps, 2)}) = <strong className="text-fg">{fmtNum(neutralAmps(phases[0].amps, phases[1].amps, phases[2].amps), 2)} A</strong>.
+            </p>
+            <p className="mt-1 text-muted">Avec des gradateurs et des LED, le neutre peut être plus chargé que ce calcul : vérifie que son câble est au moins aussi gros que ceux des phases.</p>
+          </div>
           {imbalance > 0 && (
             <p className="text-xs text-muted tabular-nums">
               Écart entre phases = (phase la plus chargée − la moins chargée) ÷ la plus chargée = ({fmtNum(maxPhase)} − {fmtNum(minPhase)}) ÷ {fmtNum(maxPhase)} = <strong className="text-fg">{imbalance} %</strong> (au-delà de 25 %, on conseille de rééquilibrer).

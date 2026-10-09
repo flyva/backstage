@@ -25,6 +25,13 @@ export function phaseLoads(loads: CircuitLoad[]) {
   });
 }
 
+/**
+ * Courant dans le neutre d'un départ 3 phases + neutre (charges résistives, phases décalées de 120°) :
+ * In = √(I1² + I2² + I3² − I1·I2 − I2·I3 − I3·I1). Nul si les trois phases sont égales, égal au courant d'une phase si une seule est utilisée.
+ */
+export const neutralAmps = (i1: number, i2: number, i3: number) =>
+  Math.sqrt(Math.max(0, i1 * i1 + i2 * i2 + i3 * i3 - i1 * i2 - i2 * i3 - i3 * i1));
+
 export const fmtAmps = (a: number) => (a < 10 ? a.toFixed(1) : String(Math.round(a))).replace(".", ",");
 export const fmtWatts = (w: number) => (w >= 1000 ? `${(w / 1000).toFixed(2).replace(".", ",")} kW` : `${w} W`);
 
