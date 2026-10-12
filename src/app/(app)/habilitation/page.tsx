@@ -80,6 +80,25 @@ export default function HabilitationPage() {
         />
       </Card>
 
+      <Card title="Couleurs des phases" icon={Zap}>
+        <p className="text-sm text-muted">Code couleur normalisé (NF C 15-100) des conducteurs, en tétraphasé (3 phases + neutre + terre).</p>
+        <ul className="grid gap-2 sm:grid-cols-3">
+          {[
+            { label: "Phase 1 (L1)", color: "#7a4a2a" },
+            { label: "Phase 2 (L2)", color: "#1a1a1a" },
+            { label: "Phase 3 (L3)", color: "#8a8a8a" },
+            { label: "Neutre (N)", color: "#1e6fd9" },
+            { label: "Terre (PE)", color: "linear-gradient(135deg, #2e9e3f 50%, #e8c200 50%)" },
+          ].map((p) => (
+            <li key={p.label} className="flex items-center gap-2 rounded-lg border border-line bg-bg px-3 py-2 text-sm">
+              <span className="size-4 shrink-0 rounded-full border border-line/60" style={{ background: p.color }} aria-hidden />
+              {p.label}
+            </li>
+          ))}
+        </ul>
+        <p className="text-xs text-muted">Marron, noir et gris pour les trois phases ; bleu pour le neutre ; vert et jaune (toujours les deux ensemble) pour la terre, jamais utilisée pour autre chose.</p>
+      </Card>
+
       <Card title="Correspondance calibre ↔ section de câble" icon={Zap}>
         <Table head={["Calibre", "Section minimale"]} rows={[["16 A", "2,5 mm²"], ["32 A", "6 mm²"], ["63 A", "16 mm²"], ["125 A", "25 mm²"]]} />
         <p className="text-xs text-muted">Repère rapide pour choisir un câble d&apos;alimentation. Pour une chute de tension précise selon la longueur, utilise la calculette <Link href="/calculettes" className="text-accent underline">Câble</Link>.</p>
