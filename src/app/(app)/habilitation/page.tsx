@@ -127,41 +127,50 @@ export default function HabilitationPage() {
       </Card>
 
       <Card title="Habilitations électriques (NF C 18-510)" icon={ShieldCheck}>
-        <p className="text-sm text-muted">Le symbole se lit en 3 caractères : <strong className="text-fg">1er</strong> le domaine de tension, <strong className="text-fg">2e</strong> le type d&apos;opération, <strong className="text-fg">3e</strong> (facultatif) une précision. Certains symboles prennent aussi un attribut : Essai, Vérification, Mesurage, Manœuvre.</p>
-        <Table
-          head={["Caractère", "Signification"]}
-          rows={[
-            ["1er : B", "Basse et très basse tension"],
-            ["1er : H", "Haute tension"],
-            ["2e : 0", "Opération d'ordre non électrique"],
-            ["2e : 1", "Exécutant d'opération d'ordre électrique"],
-            ["2e : 2", "Chargé de travaux d'ordre électrique"],
-            ["2e : C", "Consignation"],
-            ["2e : R", "Intervention BT générale"],
-            ["2e : S", "Intervention BT élémentaire"],
-            ["2e : E", "Opérations spécifiques (essai, vérification, mesurage, manœuvre)"],
-            ["2e : P", "Opérations BT élémentaires sur chaîne photovoltaïque"],
-            ["3e : T", "Travaux sous tension"],
-            ["3e : V", "Travaux au voisinage renforcé"],
-            ["3e : N", "Nettoyage sous tension"],
-            ["3e : X", "Opération spéciale"],
-          ]}
-        />
-        <Table
-          head={["Symbole", "Pour qui, pour quoi"]}
-          rows={[
-            ["B0 / H0", "Exécutant non électricien : accès à une zone électrique, sans aucune opération électrique"],
-            ["B0 / H0, « chargé de chantier »", "Dirige des travaux non électriques près d'une installation électrique"],
-            ["BS", "Intervention élémentaire sur un circuit terminal (400 V / 32 A maxi) : remplacer un fusible, une lampe, une prise, un interrupteur à l'identique, raccorder un appareil sur un circuit en attente protégé, réarmer une protection. Rien d'autre."],
-            ["BE / HE Manœuvre", "Réarmer un disjoncteur ou un relais, mettre hors ou sous tension un équipement — rien de plus"],
-            ["BR", "Intervention générale : dépannage, recherche de panne, remplacement de matériel, essais, jusqu'à 500 V / 63 A en présence de tension"],
-            ["B1 / H1 (exécutant), B1V / H1V (+ voisinage renforcé)", "Exécute des travaux électriques sous les ordres d'un chargé de travaux"],
-            ["B2 / H2 (chargé), B2V / H2V (+ voisinage renforcé)", "Dirige des travaux électriques, balise la zone, vérifie le travail"],
-            ["BC / HC", "Consigne un ouvrage ou une installation électrique"],
-            ["B1T, B2T… (travaux sous tension)", "Opérations réalisées sous tension (formation spécifique agréée obligatoire)"],
-            ["BF-HF", "Travaux en fouilles à proximité de canalisations électriques enterrées"],
-          ]}
-        />
+        <p className="text-sm text-muted">Le symbole se lit comme un petit code, caractère par caractère :</p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-xl border border-line bg-bg p-3">
+            <div className="text-center text-2xl font-bold text-accent">B · H</div>
+            <div className="mt-1 text-center text-xs font-semibold text-muted">1er caractère — la tension</div>
+            <div className="mt-1 text-xs text-muted">B = basse/très basse tension. H = haute tension.</div>
+          </div>
+          <div className="rounded-xl border border-line bg-bg p-3">
+            <div className="text-center text-2xl font-bold text-accent">0 · 1 · 2 · S…</div>
+            <div className="mt-1 text-center text-xs font-semibold text-muted">2e caractère — le rôle</div>
+            <div className="mt-1 text-xs text-muted">0 non électricien, 1 exécutant, 2 chargé de travaux, C consignation, R/S intervention, E manœuvre/essai.</div>
+          </div>
+          <div className="rounded-xl border border-line bg-bg p-3">
+            <div className="text-center text-2xl font-bold text-accent">T · V · N · X</div>
+            <div className="mt-1 text-center text-xs font-semibold text-muted">3e caractère — une précision</div>
+            <div className="mt-1 text-xs text-muted">T sous tension, V voisinage renforcé, N nettoyage sous tension, X opération spéciale.</div>
+          </div>
+        </div>
+        <p className="text-xs text-muted">Exemple : <strong className="text-fg">B1V</strong> = basse tension (B) + exécutant électricien (1) + travaille au voisinage renforcé (V).</p>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead><tr className="border-b border-line text-muted"><th className="py-1.5 pr-4 font-medium">Symbole</th><th className="py-1.5 pr-4 font-medium">Qui</th><th className="py-1.5 font-medium">A le droit de…</th></tr></thead>
+            <tbody>
+              {[
+                ["B0 / H0", "Non électricien", "Accéder à une zone électrique. Aucune opération électrique."],
+                ["BS", "Intervention élémentaire", "Un circuit terminal seulement (400 V / 32 A max) : remplacer fusible, lampe, prise, interrupteur ; raccorder un appareil déjà protégé ; réarmer une protection. Rien d'autre."],
+                ["BE / HE Manœuvre", "Manœuvre", "Réarmer, mettre hors/sous tension un équipement. Rien de plus."],
+                ["BR", "Intervention générale", "Dépannage, recherche de panne, remplacement de matériel, essais, jusqu'à 500 V / 63 A."],
+                ["B1 / H1, B1V / H1V", "Exécutant", "Exécute des travaux électriques, sous les ordres d'un chargé de travaux."],
+                ["B2 / H2, B2V / H2V", "Chargé de travaux", "Dirige les travaux, balise la zone, vérifie le travail fait."],
+                ["BC / HC", "Consignation", "Consigne un ouvrage ou une installation électrique."],
+                ["B1T, B2T…", "Travaux sous tension", "Formation spécifique obligatoire, par un organisme agréé."],
+                ["BF-HF", "Fouilles", "Travaux à proximité de canalisations électriques enterrées."],
+              ].map((row) => (
+                <tr key={row[0]} className="border-b border-line/60 align-top">
+                  <td className="whitespace-nowrap py-2 pr-4 font-semibold text-fg">{row[0]}</td>
+                  <td className="whitespace-nowrap py-2 pr-4 text-muted">{row[1]}</td>
+                  <td className="py-2 text-muted">{row[2]}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         <p className="text-xs text-muted">« Circuit terminal » : une prise, un chauffage, une lampe — câblé en 6 mm² maximum, 400 V maximum. « Voisinage renforcé » : à moins de 30 cm d&apos;une pièce nue sous tension en basse tension.</p>
       </Card>
 
