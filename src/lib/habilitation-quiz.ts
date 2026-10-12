@@ -118,4 +118,21 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
   { q: "Une batterie de micro HF ou de projecteur LED en court-circuit peut provoquer :", choices: ["Rien de grave", "Un échauffement voire un incendie", "Une simple perte de charge", "Une amélioration du son"], answer: 1 },
   { q: "Dans l'exemple du cours, pourquoi choisit-on une ligne 63 A plutôt que 32 A ?", choices: ["Par habitude", "Parce que 32 A tétraphasé (96 A) ne suffit pas pour 120 A nécessaires", "Parce que c'est moins cher", "Parce que le matériel l'exige par sa couleur"], answer: 1 },
   { q: "Dans l'exemple du cours, quelle est la puissance totale du matériel listé ?", choices: ["12,6 kW", "19,6 kW", "27,6 kW", "35,6 kW"], answer: 2 },
+
+  // ---------- Prises P17, VAT, et compléments ----------
+  { q: "Une résistance soumise à 400 V et parcourue par 2 A vaut :", choices: ["100 Ω", "200 Ω", "800 Ω", "2 Ω"], answer: 1 },
+  { q: "Sur une prise P17 (industrielle), quelle couleur pour la phase L1 ?", choices: ["Marron", "Noir", "Gris", "Bleu"], answer: 0 },
+  { q: "Sur une prise P17, quelle couleur pour le neutre ?", choices: ["Vert et jaune", "Bleu", "Marron", "Gris"], answer: 1 },
+  { q: "Une puissance de 23 000 W sous 230 V nécessite une intensité d'environ :", choices: ["23 A", "100 A", "10 A", "230 A"], answer: 1 },
+  { q: "Pour alimenter 23 kW, quelle ligne choisir ?", choices: ["32 A tétraphasé (96 A)", "16 A tétraphasé (48 A)", "63 A tétraphasé (189 A)", "16 A monophasé"], answer: 2 },
+  { q: "Le VAT (vérificateur d'absence de tension) se fait à quel moment ?", choices: ["Avant de couper le courant, pour prévenir", "Après la consignation, juste avant de toucher les pièces", "Une fois par mois seulement", "À la fin de l'intervention uniquement"], answer: 1 },
+  { q: "Où doit-on faire le test du VAT ?", choices: ["N'importe où dans le bâtiment", "Au plus près du point où l'on va travailler", "Uniquement sur le tableau principal", "Peu importe l'endroit"], answer: 1 },
+  { q: "Combien de domaines de tension existe-t-il (TBT, BT, HT) ?", choices: ["2", "3", "4", "5"], answer: 1 },
+  { q: "Comment appelle-t-on la zone à moins de 30 cm d'une pièce nue sous tension, en basse tension ?", choices: ["Zone de sécurité", "Voisinage renforcé", "Zone neutre", "Périmètre BT"], answer: 1 },
+  { q: "L'habilitation électrique dépend-elle du diplôme de la personne ?", choices: ["Oui, uniquement du diplôme", "Non, c'est une reconnaissance de l'employeur, indépendante du diplôme ou du poste", "Oui, mais seulement en haute tension", "Non, elle est automatique à la majorité"], answer: 1 },
+  { q: "Quel IP minimum recommandé pour une armoire électrique installée en extérieur ?", choices: ["IP 20", "IP 44", "IP 65", "IP 2X"], answer: 2 },
+  { q: "Un appareil de classe II porte le symbole :", choices: ["Un triangle avec un éclair", "Un double carré", "Les lettres CE", "Un cercle barré"], answer: 1 },
+  { q: "Un BS (chargé d'intervention élémentaire) peut intervenir sur :", choices: ["N'importe quelle installation, sous tension", "Uniquement un circuit terminal (400 V / 32 A maxi), pour des opérations limitées", "Uniquement en haute tension", "Toute l'armoire électrique"], answer: 1 },
+  { q: "Pendant une intervention, qui est responsable du port effectif de ses EPI ?", choices: ["L'employeur, à distance", "La personne habilitée elle-même", "Le responsable sécurité uniquement", "Personne, ce n'est pas obligatoire"], answer: 1 },
+  { q: "Avant de dégager une victime encore en contact avec une installation sous tension, il faut d'abord :", choices: ["La tirer immédiatement", "Couper le courant", "Lui parler pour la rassurer", "Appeler les pompiers et attendre sans rien faire"], answer: 1 },
 ];
