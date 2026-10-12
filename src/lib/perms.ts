@@ -11,9 +11,13 @@ export type RoleFlags = {
   viewBde: boolean;
   viewActus: boolean;
   viewGalerie: boolean;
+  viewSavoirs: boolean;
+  viewPromo: boolean;
+  viewVie: boolean;
 };
 
 export type Module = "materiel" | "bde" | "actus" | "galerie";
+export type Section = "savoirs" | "promo" | "vie";
 
 export type Perms = {
   admin: boolean; // administrateur : tous les droits
@@ -24,6 +28,8 @@ export type Perms = {
   galerie: boolean;
   /** Peut ouvrir le domaine (lecture) : « Voir » ou « Gérer ». */
   view: Record<Module, boolean>;
+  /** Voit cette partie du menu (Savoirs, Promo, Vie étudiante). Rien dans ces parties n'est géré finement par ailleurs. */
+  sections: Record<Section, boolean>;
 };
 
 /** Un administrateur a tous les droits, quel que soit le détail coché. */
@@ -42,8 +48,20 @@ export function permsOf(r: RoleFlags | null | undefined): Perms {
       actus: a || !!r?.permActus || (r ? !!r.viewActus : true),
       galerie: a || !!r?.permGalerie || (r ? !!r.viewGalerie : true),
     },
+    sections: {
+      savoirs: a || (r ? !!r.viewSavoirs : true),
+      promo: a || (r ? !!r.viewPromo : true),
+      vie: a || (r ? !!r.viewVie : true),
+    },
   };
 }
+
+/** Sections entières du menu, à cocher ou non par rôle (pas de niveau « Gérer », juste visible ou pas). */
+export const SECTION_FIELDS = [
+  { key: "savoirs", field: "viewSavoirs", label: "Savoirs", hint: "Wiki, bibliothèque, assistant, FAQ." },
+  { key: "promo", field: "viewPromo", label: "Promo", hint: "Actualités, annuaire, annonces, disponibilités, covoiturage." },
+  { key: "vie", field: "viewVie", label: "Vie étudiante", hint: "BDE, galerie, Instagram." },
+] as const;
 
 /** Domaines à trois niveaux (Aucun / Voir / Gérer). */
 export const LEVEL_FIELDS = [

@@ -33,6 +33,10 @@ export const roles = mysqlTable("roles", {
   viewBde: boolean("view_bde").notNull().default(true),
   viewActus: boolean("view_actus").notNull().default(true),
   viewGalerie: boolean("view_galerie").notNull().default(true),
+  // Sections entières du menu (pas de niveau « Gérer », juste visible ou pas) : utile pour un rôle externe réduit à l'essentiel.
+  viewSavoirs: boolean("view_savoirs").notNull().default(true),
+  viewPromo: boolean("view_promo").notNull().default(true),
+  viewVie: boolean("view_vie").notNull().default(true),
   createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
 });
 

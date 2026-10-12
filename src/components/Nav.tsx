@@ -89,6 +89,7 @@ export function Nav({ isAdmin, loanBadge, messageBadge = 0, views }: { isAdmin: 
   return (
     <nav className="space-y-0.5" aria-label="Navigation principale">
       {GROUPS.map((g) => {
+        if (views[g.id] === false) return null; // section entière masquée pour ce rôle (Savoirs, Promo, Vie étudiante)
         const items = g.items.filter((i) => (!i.adminOnly || isAdmin) && (!i.module || views[i.module]));
         if (items.length === 0) return null;
         const open = openId === g.id;

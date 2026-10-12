@@ -138,7 +138,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
 
   return (
     <AppShell
-      sidebar={<Sidebar user={{ name: user.name, email: user.email, roleName: user.roleName, isAdmin: user.perms.administration, views: user.perms.view, avatar: avatarUrl(user.avatarFile) }} loanBadge={loanBadge} messageBadge={unreadConvs} />}
+      sidebar={<Sidebar user={{ name: user.name, email: user.email, roleName: user.roleName, isAdmin: user.perms.administration, views: { ...user.perms.view, ...user.perms.sections }, avatar: avatarUrl(user.avatarFile) }} loanBadge={loanBadge} messageBadge={unreadConvs} />}
       bell={<><QuickTheme initial={skinFrom(user)} /><NotificationBell items={items} unread={unread} /></>}
       menu={<UserMenu name={user.name} email={user.email} isAdmin={admin} />}
     >

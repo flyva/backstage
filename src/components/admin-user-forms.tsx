@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { Trash2 } from "lucide-react";
 import type { FormState } from "@/lib/actions";
 import { deleteRole, deleteUser, resetUserPassword, saveRole, updateUser } from "@/lib/user-admin-actions";
-import { ADMIN_PERM, LEVEL_FIELDS, LEVEL_LABEL, levelOf, type Level } from "@/lib/perms";
+import { ADMIN_PERM, LEVEL_FIELDS, LEVEL_LABEL, levelOf, SECTION_FIELDS, type Level } from "@/lib/perms";
 import { PasswordField } from "@/components/PasswordField";
 
 function Feedback({ state }: { state: FormState }) {
@@ -58,6 +58,17 @@ export function RoleForm({ role = {} }: { role?: RoleValues }) {
             );
           })}
         </div>
+      </fieldset>
+
+      <fieldset className="space-y-2">
+        <legend className="label">Sections visibles du menu</legend>
+        <p className="text-xs text-muted">Décoché, toute la section disparaît du menu pour ce rôle (utile pour un accès externe réduit à l&apos;essentiel). L&apos;assistant en bas à droite reste toujours disponible.</p>
+        {SECTION_FIELDS.map((sf) => (
+          <label key={sf.key} className="flex items-start gap-3 rounded-xl border border-line p-3 text-sm has-[:checked]:border-accent has-[:checked]:bg-accent/5">
+            <input type="checkbox" name={sf.field} defaultChecked={role.id ? !!role[sf.field] : true} className="mt-0.5 size-4 accent-[var(--accent)]" />
+            <span><strong>{sf.label}</strong><span className="block text-xs text-muted">{sf.hint}</span></span>
+          </label>
+        ))}
       </fieldset>
 
       <Feedback state={state} />
