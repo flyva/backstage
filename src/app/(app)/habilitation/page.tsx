@@ -39,11 +39,14 @@ const DANGER = [
 
 export default function HabilitationPage() {
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="max-w-6xl space-y-6">
       <header className="space-y-1">
         <h1 className="text-2xl font-bold">Habilitation électrique</h1>
         <p className="text-sm text-muted">Fiche de référence du cours : formules, dangers, disjoncteurs, IP, classes, habilitations (NFC 18-510) et la procédure de consignation.</p>
       </header>
+
+      <div className="grid items-start gap-6 lg:grid-cols-[1fr_22rem]">
+      <div className="min-w-0 max-w-3xl space-y-6">
 
       <Card title="Les formules de base" icon={Zap}>
         <p className="text-sm text-muted">Loi d&apos;Ohm et puissance, pour tout relier : tension U (V), intensité I (A), puissance P (W), résistance R (Ω).</p>
@@ -201,9 +204,14 @@ export default function HabilitationPage() {
         <p className="text-xs text-muted">Refais ce calcul avec ton propre matériel dans la calculette <Link href="/calculettes" className="text-accent underline">Bilan de puissance</Link>, et retrouve la répartition détaillée sur les phases et les prises dans l&apos;onglet <strong className="text-fg">Charge</strong> d&apos;un projet.</p>
       </Card>
 
-      <QuizLoader />
-
       <p className="text-xs text-muted">Fiche de synthèse pédagogique, pas un document réglementaire : en situation réelle, suis les consignes de ton tuteur et de ton habilitation.</p>
+      </div>
+
+      {/* Reste collé pendant le défilement sur PC : le QCM suit la lecture, pas besoin de redescendre le chercher. */}
+      <aside className="lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto lg:slim-scroll">
+        <QuizLoader />
+      </aside>
+      </div>
     </div>
   );
 }
