@@ -61,14 +61,29 @@ export function RoleForm({ role = {} }: { role?: RoleValues }) {
       </fieldset>
 
       <fieldset className="space-y-2">
-        <legend className="label">Sections visibles du menu</legend>
-        <p className="text-xs text-muted">Décoché, toute la section disparaît du menu pour ce rôle (utile pour un accès externe réduit à l&apos;essentiel). L&apos;assistant en bas à droite reste toujours disponible.</p>
-        {SECTION_FIELDS.map((sf) => (
-          <label key={sf.key} className="flex items-start gap-3 rounded-xl border border-line p-3 text-sm has-[:checked]:border-accent has-[:checked]:bg-accent/5">
-            <input type="checkbox" name={sf.field} defaultChecked={role.id ? !!role[sf.field] : true} className="mt-0.5 size-4 accent-[var(--accent)]" />
-            <span><strong>{sf.label}</strong><span className="block text-xs text-muted">{sf.hint}</span></span>
-          </label>
-        ))}
+        <legend className="label">Sections du menu</legend>
+        <p className="text-xs text-muted">« Aucun » retire toute la section du menu pour ce rôle (utile pour un accès externe réduit à l&apos;essentiel). L&apos;assistant en bas à droite reste toujours disponible.</p>
+        <div className="space-y-2">
+          {SECTION_FIELDS.map((sf) => {
+            const cur = role.id ? (role[sf.field] ? "view" : "none") : "view";
+            return (
+              <div key={sf.key} className="rounded-xl border border-line p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <strong className="text-sm">{sf.label}</strong>
+                  <div role="radiogroup" aria-label={sf.label} className="flex overflow-hidden rounded-lg border border-line text-sm">
+                    {(["none", "view"] as const).map((lv) => (
+                      <label key={lv} className="cursor-pointer border-l border-line px-3 py-1 first:border-l-0 has-[:checked]:bg-accent has-[:checked]:text-accent-fg">
+                        <input type="radio" name={`section_${sf.key}`} value={lv} defaultChecked={cur === lv} className="sr-only" />
+                        {lv === "none" ? "Aucun" : "Voir"}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <p className="mt-1 text-xs text-muted">{sf.hint}</p>
+              </div>
+            );
+          })}
+        </div>
       </fieldset>
 
       <Feedback state={state} />

@@ -55,9 +55,9 @@ export async function saveRole(_: FormState, fd: FormData): Promise<FormState> {
     description: p.data.description || null,
     isAdmin: flag("isAdmin"),
     permAdministration: flag("permAdministration"),
-    viewSavoirs: flag("viewSavoirs"),
-    viewPromo: flag("viewPromo"),
-    viewVie: flag("viewVie"),
+    viewSavoirs: fd.get("section_savoirs") !== "none",
+    viewPromo: fd.get("section_promo") !== "none",
+    viewVie: fd.get("section_vie") !== "none",
     ...levels(fd),
   };
   const raw = Number(fd.get("id") || 0);
