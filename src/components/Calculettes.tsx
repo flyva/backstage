@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { Plus, Sigma, Trash2 } from "lucide-react";
 import {
   RHO_CU, SECTIONS, currentOf, outletsFor, solveOhm, suggestSupply, SUPPLY_LINE_AMPS,
@@ -266,24 +266,45 @@ function DbCalc() {
 
 // ---------- Bilan de puissance : méthode du cours ----------
 
-const COURSE_EXAMPLE = [
-  { name: "Friteuse", watts: "2000", qty: "1" },
-  { name: "Découpe", watts: "1000", qty: "4" },
-  { name: "PAR", watts: "1000", qty: "6" },
-  { name: "PAR LED Zoom", watts: "300", qty: "8" },
-  { name: "MAF", watts: "1200", qty: "1" },
-  { name: "Ampli", watts: "2000", qty: "4" },
-  { name: "Tireuse", watts: "1500", qty: "2" },
-  { name: "Régie", watts: "1000", qty: "1" },
-];
+type SupplyItem = { name: string; watts: string; qty: string };
+type SupplyState = { kind: SupplyKind; items: SupplyItem[] };
+const SUPPLY_STORE_KEY = "backstage:calc:bilan-puissance";
+const EMPTY_SUPPLY: SupplyState = { kind: "tetra", items: [] };
+
+// Petit store branché sur localStorage (comme le mode spectacle) : la liste et le type d'alimentation sont gardés sur cet
+// appareil (jamais envoyés au serveur) et retrouvés en changeant de page, sans l'aller-retour setState-dans-un-effet.
+const supplyListeners = new Set<() => void>();
+const subscribeSupply = (cb: () => void) => { supplyListeners.add(cb); return () => supplyListeners.delete(cb); };
+let supplyRaw: string | null | undefined;
+let supplyParsed = EMPTY_SUPPLY;
+function readSupply(): SupplyState {
+  let raw: string | null;
+  try { raw = localStorage.getItem(SUPPLY_STORE_KEY); } catch { raw = null; }
+  if (raw === supplyRaw) return supplyParsed; // même donnée qu'avant : on renvoie la même référence (exigé par useSyncExternalStore)
+  supplyRaw = raw;
+  try {
+    const v = raw ? (JSON.parse(raw) as { kind?: string; items?: SupplyItem[] }) : null;
+    supplyParsed = v ? { kind: v.kind === "mono" ? "mono" : "tetra", items: Array.isArray(v.items) ? v.items : [] } : EMPTY_SUPPLY;
+  } catch {
+    supplyParsed = EMPTY_SUPPLY;
+  }
+  return supplyParsed;
+}
+const getServerSupply = () => EMPTY_SUPPLY;
+function writeSupply(s: SupplyState) {
+  try { localStorage.setItem(SUPPLY_STORE_KEY, JSON.stringify(s)); } catch { /* navigation privée, etc. */ }
+  supplyRaw = undefined; // force readSupply() à relire au prochain appel
+  supplyListeners.forEach((l) => l());
+}
 
 export function SupplyCalc() {
-  const [kind, setKind] = useState<SupplyKind>("tetra");
-  const [items, setItems] = useState(COURSE_EXAMPLE);
+  const { kind, items } = useSyncExternalStore(subscribeSupply, readSupply, getServerSupply);
+  const setKind = (k: SupplyKind) => writeSupply({ kind: k, items });
+  const setItems = (next: SupplyItem[]) => writeSupply({ kind, items: next });
 
-  const update = (i: number, patch: Partial<(typeof items)[number]>) => setItems((cur) => cur.map((it, k) => (k === i ? { ...it, ...patch } : it)));
-  const remove = (i: number) => setItems((cur) => cur.filter((_, k) => k !== i));
-  const add = () => setItems((cur) => [...cur, { name: "", watts: "", qty: "1" }]);
+  const update = (i: number, patch: Partial<SupplyItem>) => setItems(items.map((it, k) => (k === i ? { ...it, ...patch } : it)));
+  const remove = (i: number) => setItems(items.filter((_, k) => k !== i));
+  const add = () => setItems([...items, { name: "", watts: "", qty: "1" }]);
 
   const totalWatts = items.reduce((s, it) => s + (ok(num(it.watts)) ? num(it.watts) : 0) * (ok(num(it.qty)) ? num(it.qty) : 0), 0);
   const r = suggestSupply(totalWatts, kind);
@@ -310,27 +331,32 @@ export function SupplyCalc() {
           </div>
         ))}
         <button type="button" onClick={add} className="btn-ghost text-sm"><Plus size={15} /> Ajouter un appareil</button>
+        {items.length === 0 && <p className="text-xs text-muted">Aucun appareil pour l&apos;instant : ajoute ton matériel.</p>}
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Big label="Puissance totale" value={`${f(totalWatts, 0)} W`} />
-        <Big label="Intensité nécessaire" value={`${f(r.neededAmps, 1)} A`} />
-        <Big label="Calibre conseillé" value={r.calibre ? `${r.calibre} A ${kind === "tetra" ? "tétra" : "mono"}` : "Aucun ne suffit"} tone={r.calibre ? undefined : "bad"} />
-      </div>
-      {r.calibre ? (
-        <Note>Une ligne {r.calibre} A {kind === "tetra" ? "tétraphasé" : "monophasé"} délivre {r.capacityAmps} A : {r.capacityAmps! >= r.neededAmps ? "suffisant" : ""} pour les {f(r.neededAmps, 1)} A demandés.</Note>
-      ) : (
-        <Note tone="bad">Même {SUPPLY_LINE_AMPS.at(-1)} A {kind === "tetra" ? "tétraphasé" : "monophasé"} ne suffit pas : passe en tétraphasé, ou répartis sur plusieurs lignes.</Note>
+      {detail.length > 0 && (
+        <>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Big label="Puissance totale" value={`${f(totalWatts, 0)} W`} />
+            <Big label="Intensité nécessaire" value={`${f(r.neededAmps, 1)} A`} />
+            <Big label="Calibre conseillé" value={r.calibre ? `${r.calibre} A ${kind === "tetra" ? "tétra" : "mono"}` : "Aucun ne suffit"} tone={r.calibre ? undefined : "bad"} />
+          </div>
+          {r.calibre ? (
+            <Note>Une ligne {r.calibre} A {kind === "tetra" ? "tétraphasé" : "monophasé"} délivre {r.capacityAmps} A : {r.capacityAmps! >= r.neededAmps ? "suffisant" : ""} pour les {f(r.neededAmps, 1)} A demandés.</Note>
+          ) : (
+            <Note tone="bad">Même {SUPPLY_LINE_AMPS.at(-1)} A {kind === "tetra" ? "tétraphasé" : "monophasé"} ne suffit pas : passe en tétraphasé, ou répartis sur plusieurs lignes.</Note>
+          )}
+        </>
       )}
 
-      <Steps lines={[
+      {detail.length > 0 && <Steps lines={[
         `1. Puissance totale : ${detail.map((it) => `${it.qty} × ${it.watts} W`).join(" + ") || "0"} = ${f(totalWatts, 0)} W`,
         `2. Intensité : I = P ÷ U = ${f(totalWatts, 0)} ÷ 230 = ${f(r.neededAmps, 2)} A`,
         `3. Capacité d'une ligne ${kind === "tetra" ? "tétraphasée (3 phases)" : "monophasée (1 phase)"} : calibre × ${r.phases}`,
         ...SUPPLY_LINE_AMPS.map((a) => `   ${a} A × ${r.phases} = ${a * r.phases} A ${a * r.phases >= r.neededAmps ? "→ suffisant" : "→ insuffisant"}`),
         `→ ${r.calibre ? `On utilisera une ligne ${r.calibre} A ${kind === "tetra" ? "tétraphasée" : "monophasée"}, qui peut délivrer ${r.capacityAmps} A.` : "Aucun calibre standard ne suffit en restant sur une seule ligne."}`,
-      ]} />
-      <Note>Exemple pré-rempli : celui du cours (27,6 kW → 120 A → une ligne 63 A tétraphasé, qui délivre 189 A). Remplace-le par ton propre matériel. Pour répartir ces appareils sur les phases et les prises d&apos;un vrai projet, utilise l&apos;onglet <strong className="text-fg">Charge</strong> du projet.</Note>
+      ]} />}
+      <Note>Ta liste est gardée sur cet appareil : elle reste si tu changes de page ou d&apos;onglet. Pour répartir ces appareils sur les phases et les prises d&apos;un vrai projet, utilise l&apos;onglet <strong className="text-fg">Charge</strong> du projet.</Note>
     </div>
   );
 }
