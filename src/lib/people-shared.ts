@@ -45,3 +45,6 @@ export function normalizeDiscord(raw: string): string | null {
 export const PHONE_RE = /^[+0-9][0-9 .()-]{5,24}$/;
 export const initialsOf = (name: string) =>
   name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join("") || "?";
+
+// Symboles d'habilitation électrique proposés dans le profil (voir la fiche /habilitation pour le détail de chacun).
+export const HABILITATION_SYMBOLS = ["B0", "BS", "BE Manœuvre", "BR", "B1", "B1V", "B2", "B2V", "BC", "H0", "H1", "H1V", "H2", "H2V", "HC"] as const;

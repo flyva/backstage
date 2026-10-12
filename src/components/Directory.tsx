@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Building2, Mail, Phone } from "lucide-react";
 import { Avatar, CopyChip } from "@/components/people-forms";
+import { HabilitationBadge } from "@/components/HabilitationBadge";
 import { LINK_LABEL } from "@/lib/people-shared";
 import type { LinkKind } from "@/db/schema";
 
@@ -17,6 +18,7 @@ export type Person = {
   email3is: string | null;
   phone: string | null;
   discord: string | null;
+  habilitation: string | null;
   company: string | null;
   links: { kind: LinkKind; url: string; label: string | null }[];
   cardUrl: string | null;
@@ -32,7 +34,7 @@ export function Directory({ people, tracks }: { people: Person[]; tracks: { id: 
     return people.filter((p) => {
       if (track === "none" ? p.trackId !== null : track && String(p.trackId) !== track) return false;
       if (!n) return true;
-      return [p.name, p.track, p.headline, p.email3is, p.discord, p.company, ...p.links.map((l) => `${LINK_LABEL[l.kind]} ${l.label ?? ""}`)].some((v) => v && norm(v).includes(n));
+      return [p.name, p.track, p.headline, p.email3is, p.discord, p.habilitation, p.company, ...p.links.map((l) => `${LINK_LABEL[l.kind]} ${l.label ?? ""}`)].some((v) => v && norm(v).includes(n));
     });
   }, [people, q, track]);
 
@@ -58,7 +60,10 @@ export function Directory({ people, tracks }: { people: Person[]; tracks: { id: 
             <Link href={`/annuaire/${p.id}`} aria-label={`Ouvrir la fiche de ${p.name}`}><Avatar name={p.name} url={p.avatar} size={52} /></Link>
             <div className="min-w-0 flex-1 space-y-1">
               <div className="truncate font-semibold"><Link href={`/annuaire/${p.id}`} className="hover:text-accent">{p.name}</Link></div>
-              {p.track && <span className="inline-block rounded-full border border-line px-2 py-0.5 text-[11px] font-semibold text-muted">{p.track}</span>}
+              <span className="flex flex-wrap items-center gap-1.5">
+                {p.track && <span className="inline-block rounded-full border border-line px-2 py-0.5 text-[11px] font-semibold text-muted">{p.track}</span>}
+                <HabilitationBadge value={p.habilitation} />
+              </span>
               {p.headline && <div className="text-sm text-muted">{p.headline}</div>}
               {p.company && <div className="flex items-center gap-1.5 text-sm text-muted"><Building2 size={13} aria-hidden /> Alternance chez {p.company}</div>}
               {p.email3is && <a href={`mailto:${p.email3is}`} className="flex items-center gap-1.5 truncate text-sm underline"><Mail size={13} aria-hidden /> {p.email3is}</a>}

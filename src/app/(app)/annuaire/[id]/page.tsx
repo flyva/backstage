@@ -11,6 +11,7 @@ import { ratingSummary } from "@/lib/messaging";
 import { LINK_LABEL, school3isEmail } from "@/lib/people-shared";
 import { ago } from "@/lib/relative-time";
 import { Avatar, CopyChip } from "@/components/people-forms";
+import { HabilitationBadge } from "@/components/HabilitationBadge";
 import { RatingBadge, Stars } from "@/components/Stars";
 
 export async function generateMetadata({ params }: PageProps<"/annuaire/[id]">) {
@@ -55,7 +56,10 @@ export default async function MemberPage({ params }: PageProps<"/annuaire/[id]">
             <h1 className="text-2xl font-bold">{u.name}</h1>
             {u.headline && <p className="text-muted">{u.headline}</p>}
             {u.showCompany && u.companyName && <p className="flex items-center justify-center gap-1.5 text-sm text-muted"><Building2 size={14} aria-hidden /> Alternance chez {u.companyName}</p>}
-            {trackRow[0] && <span className="inline-block rounded-full border border-line px-2.5 py-0.5 text-xs font-semibold text-muted">{trackRow[0].name}</span>}
+            <span className="flex flex-wrap items-center justify-center gap-1.5">
+              {trackRow[0] && <span className="inline-block rounded-full border border-line px-2.5 py-0.5 text-xs font-semibold text-muted">{trackRow[0].name}</span>}
+              <HabilitationBadge value={u.habilitation} />
+            </span>
             {rating && <div><RatingBadge avg={rating.avg} n={rating.n} /></div>}
           </div>
           <div className="space-y-2">

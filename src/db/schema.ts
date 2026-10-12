@@ -95,6 +95,7 @@ export const users = mysqlTable("users", {
   showCompany: boolean("show_company").notNull().default(false), // nom de l'entreprise d'alternance visible dans l'annuaire et sur la fiche (jamais son adresse)
   discord: varchar("discord", { length: 40 }), // pseudo Discord : visible dans l'annuaire dès qu'il est renseigné
   cardShowDiscord: boolean("card_show_discord").notNull().default(false), // pseudo Discord visible sur la carte de visite (publique)
+  habilitation: varchar("habilitation", { length: 12 }), // symbole d'habilitation électrique (B0, BS, B1V…) : visible dans l'annuaire dès qu'il est renseigné
   cardShowSchool: boolean("card_show_school").notNull().default(false), // lien vers le site de l'école (3iS Bègles) sur la carte de visite
   cardSlug: varchar("card_slug", { length: 16 }).unique(), // adresse publique non devinable de la carte
   cardEnabled: boolean("card_enabled").notNull().default(false),

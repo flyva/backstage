@@ -1,11 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useRef, useState } from "react";
 import { Check, Copy, ExternalLink, Trash2 } from "lucide-react";
 import type { FormState } from "@/lib/actions";
 import { Toggle } from "@/components/Toggle";
 import { LINK_KINDS, type LinkKind } from "@/db/schema";
-import { LINK_LABEL, initialsOf } from "@/lib/people-shared";
+import { HABILITATION_SYMBOLS, LINK_LABEL, initialsOf } from "@/lib/people-shared";
 import {
   addLink, deleteLink, regenerateCardSlug, removeAvatar, saveFiche, saveNetworkContact, saveTrack, setCardEnabled, uploadAvatar,
   deleteNetworkContact, deleteTrack, setFeedEnabled, regenerateFeedToken,
@@ -86,6 +87,7 @@ export function AvatarForm({ name, url }: { name: string; url: string | null }) 
 export function FicheForm(props: {
   tracks: { id: number; name: string }[]; trackId: number | null; headline: string; phone: string; contactEmail: string;
   showInDirectory: boolean; showPhone: boolean; cardShowPhone: boolean; discord: string; cardShowDiscord: boolean; cardShowSchool: boolean; showCompany: boolean; companyName: string; loginEmail: string;
+  habilitation: string;
 }) {
   const [state, action, pending] = useActionState(saveFiche, undefined);
   return (
@@ -115,6 +117,17 @@ export function FicheForm(props: {
         <label className="label" htmlFor="discord">Pseudo Discord (facultatif)</label>
         <input id="discord" name="discord" defaultValue={props.discord} maxLength={40} autoComplete="off" placeholder="ton_pseudo" className="input sm:max-w-xs" />
         <p className="mt-1 text-xs text-muted">Sans le @. Il apparaît dans l&apos;annuaire de la promo ; un interrupteur ci-dessous décide s&apos;il figure aussi sur ta carte de visite publique.</p>
+      </div>
+      <div>
+        <label className="label" htmlFor="habilitation">Habilitation électrique (facultatif)</label>
+        <select id="habilitation" name="habilitation" defaultValue={props.habilitation} className="input sm:max-w-xs">
+          <option value="">Non renseignée</option>
+          {HABILITATION_SYMBOLS.map((h) => <option key={h} value={h}>{h}</option>)}
+        </select>
+        <p className="mt-1 text-xs text-muted">
+          Visible dans l&apos;annuaire, pour savoir qui peut toucher à l&apos;électrique sur un projet. Détail des symboles sur la fiche{" "}
+          <Link href="/habilitation" className="text-accent underline">Habilitation électrique</Link>.
+        </p>
       </div>
       <fieldset className="space-y-2">
         <legend className="mb-1 text-sm font-semibold">Dans l&apos;annuaire de la promo</legend>

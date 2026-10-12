@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD `habilitation` varchar(12);

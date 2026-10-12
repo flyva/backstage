@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AlertTriangle, Calculator, ShieldCheck, Zap } from "lucide-react";
 import { ElectricalSymbols } from "@/components/ElectricalSymbols";
 import { QuizLoader } from "@/components/QuizLoader";
+import { PrintButton } from "@/components/PrintButton";
 
 export const metadata = { title: "Habilitation électrique" };
 
@@ -10,7 +11,7 @@ export const metadata = { title: "Habilitation électrique" };
 
 function Card({ title, icon: Icon, children }: { title: string; icon: typeof Zap; children: React.ReactNode }) {
   return (
-    <section className="card space-y-3">
+    <section className="card space-y-3 break-inside-avoid print:border print:shadow-none">
       <h2 className="flex items-center gap-2 text-lg font-semibold"><Icon size={18} className="text-accent" aria-hidden /> {title}</h2>
       {children}
     </section>
@@ -40,13 +41,16 @@ const DANGER = [
 export default function HabilitationPage() {
   return (
     <div className="max-w-6xl space-y-6">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-bold">Habilitation électrique</h1>
-        <p className="text-sm text-muted">Fiche de référence du cours : formules, dangers, disjoncteurs, IP, classes, habilitations (NFC 18-510) et la procédure de consignation.</p>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-bold">Habilitation électrique</h1>
+          <p className="text-sm text-muted">Fiche de référence du cours : formules, dangers, disjoncteurs, IP, classes, habilitations (NFC 18-510) et la procédure de consignation.</p>
+        </div>
+        <PrintButton />
       </header>
 
-      <div className="grid items-start gap-6 lg:grid-cols-[1fr_22rem]">
-      <div className="min-w-0 max-w-3xl space-y-6">
+      <div className="grid items-start gap-6 lg:grid-cols-[1fr_22rem] print:block">
+      <div className="min-w-0 max-w-3xl space-y-6 print:max-w-none">
 
       <Card title="Les formules de base" icon={Zap}>
         <p className="text-sm text-muted">Loi d&apos;Ohm et puissance, pour tout relier : tension U (V), intensité I (A), puissance P (W), résistance R (Ω).</p>
@@ -242,7 +246,7 @@ export default function HabilitationPage() {
       </div>
 
       {/* Reste collé pendant le défilement sur PC : le QCM suit la lecture, pas besoin de redescendre le chercher. */}
-      <aside className="lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto lg:slim-scroll">
+      <aside className="print:hidden lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto lg:slim-scroll">
         <QuizLoader />
       </aside>
       </div>
