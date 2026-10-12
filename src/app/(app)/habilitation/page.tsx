@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { AlertTriangle, Calculator, ShieldCheck, Zap } from "lucide-react";
+import { ElectricalSymbols } from "@/components/ElectricalSymbols";
+import { QuizLoader } from "@/components/QuizLoader";
 
 export const metadata = { title: "Habilitation électrique" };
 
@@ -117,6 +119,10 @@ export default function HabilitationPage() {
         />
       </Card>
 
+      <Card title="Symboles sur le matériel" icon={ShieldCheck}>
+        <ElectricalSymbols />
+      </Card>
+
       <Card title="Habilitations électriques (NFC 18-510)" icon={ShieldCheck}>
         <Table
           head={["Code", "Qui ?", "Quoi ?"]}
@@ -159,8 +165,10 @@ export default function HabilitationPage() {
         <p className="text-sm text-muted">1 friteuse (2 kW), 4 découpes (1 kW), 6 PAR (1 kW), 8 PAR LED Zoom (300 W), 1 MAF (1,2 kW), 4 amplis (2 kW), 2 tireuses (1,5 kW), 1 régie (1 kW).</p>
         <p className="text-sm">Puissance totale : <strong className="text-fg">27,6 kW</strong>. Intensité : 27 600 ÷ 230 = <strong className="text-fg">120 A</strong>.</p>
         <p className="text-sm">Une ligne 32 A tétraphasé ne délivre que 32 × 3 = 96 A : insuffisant. On choisit une <strong className="text-fg">63 A tétraphasé</strong>, qui délivre 63 × 3 = <strong className="text-fg">189 A</strong> : largement suffisant.</p>
-        <p className="text-xs text-muted">Retrouve cet exemple pré-rempli dans la calculette <Link href="/calculettes" className="text-accent underline">Bilan de puissance</Link>, et la répartition détaillée sur les phases et les prises dans l&apos;onglet <strong className="text-fg">Charge</strong> d&apos;un projet.</p>
+        <p className="text-xs text-muted">Refais ce calcul avec ton propre matériel dans la calculette <Link href="/calculettes" className="text-accent underline">Bilan de puissance</Link>, et retrouve la répartition détaillée sur les phases et les prises dans l&apos;onglet <strong className="text-fg">Charge</strong> d&apos;un projet.</p>
       </Card>
+
+      <QuizLoader />
 
       <p className="text-xs text-muted">Fiche de synthèse pédagogique, pas un document réglementaire : en situation réelle, suis les consignes de ton tuteur et de ton habilitation.</p>
     </div>
