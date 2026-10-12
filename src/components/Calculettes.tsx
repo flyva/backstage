@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { Plus, Sigma, Trash2 } from "lucide-react";
 import {
-  RHO_CU, SECTIONS, currentOf, outletsFor, solveOhm, dbToPowerRatio, dbToVoltageRatio, delayMs, maxLength, minSection, patchDmx, soundSpeed, splAtDistance, sumDb, voltageDropPct,
+  RHO_CU, SECTIONS, currentOf, outletsFor, solveOhm, suggestSupply, SUPPLY_LINE_AMPS,
+  type SupplyKind, dbToPowerRatio, dbToVoltageRatio, delayMs, maxLength, minSection, patchDmx, soundSpeed, splAtDistance, sumDb, voltageDropPct,
   type DmxLine, type Supply,
 } from "@/lib/calc";
 
@@ -12,6 +13,7 @@ const ok = (n: number) => Number.isFinite(n);
 const f = (n: number, d = 1) => (ok(n) ? n.toFixed(d).replace(".", ",") : "–");
 
 const TABS = [
+  { id: "bilan", label: "Bilan de puissance" },
   { id: "ohm", label: "Loi d'Ohm (P, U, I, R)" },
   { id: "prises", label: "Prises par phase" },
   { id: "cable", label: "Câble" },
@@ -262,6 +264,77 @@ function DbCalc() {
   );
 }
 
+// ---------- Bilan de puissance : méthode du cours ----------
+
+const COURSE_EXAMPLE = [
+  { name: "Friteuse", watts: "2000", qty: "1" },
+  { name: "Découpe", watts: "1000", qty: "4" },
+  { name: "PAR", watts: "1000", qty: "6" },
+  { name: "PAR LED Zoom", watts: "300", qty: "8" },
+  { name: "MAF", watts: "1200", qty: "1" },
+  { name: "Ampli", watts: "2000", qty: "4" },
+  { name: "Tireuse", watts: "1500", qty: "2" },
+  { name: "Régie", watts: "1000", qty: "1" },
+];
+
+export function SupplyCalc() {
+  const [kind, setKind] = useState<SupplyKind>("tetra");
+  const [items, setItems] = useState(COURSE_EXAMPLE);
+
+  const update = (i: number, patch: Partial<(typeof items)[number]>) => setItems((cur) => cur.map((it, k) => (k === i ? { ...it, ...patch } : it)));
+  const remove = (i: number) => setItems((cur) => cur.filter((_, k) => k !== i));
+  const add = () => setItems((cur) => [...cur, { name: "", watts: "", qty: "1" }]);
+
+  const totalWatts = items.reduce((s, it) => s + (ok(num(it.watts)) ? num(it.watts) : 0) * (ok(num(it.qty)) ? num(it.qty) : 0), 0);
+  const r = suggestSupply(totalWatts, kind);
+  const detail = items.filter((it) => it.name.trim() && ok(num(it.watts)) && ok(num(it.qty)));
+
+  return (
+    <div className="space-y-5">
+      <div className="max-w-xs">
+        <label className="label" htmlFor="sp-kind">Alimentation souhaitée</label>
+        <select id="sp-kind" value={kind} onChange={(e) => setKind(e.target.value as SupplyKind)} className="input">
+          <option value="tetra">Tétraphasé (3 phases + neutre)</option>
+          <option value="mono">Monophasé</option>
+        </select>
+      </div>
+
+      <div className="space-y-2">
+        <h3 className="text-sm font-semibold text-muted">Matériel</h3>
+        {items.map((it, i) => (
+          <div key={i} className="flex flex-wrap items-end gap-2">
+            <div className="min-w-32 flex-1"><label className="label" htmlFor={`sn${i}`}>Appareil</label><input id={`sn${i}`} value={it.name} onChange={(e) => update(i, { name: e.target.value })} className="input" placeholder="PAR, découpe, ampli…" /></div>
+            <div className="w-24"><label className="label" htmlFor={`sw${i}`}>Watts</label><input id={`sw${i}`} inputMode="decimal" value={it.watts} onChange={(e) => update(i, { watts: e.target.value })} className="input" /></div>
+            <div className="w-20"><label className="label" htmlFor={`sq${i}`}>Qté</label><input id={`sq${i}`} inputMode="decimal" value={it.qty} onChange={(e) => update(i, { qty: e.target.value })} className="input" /></div>
+            <button type="button" onClick={() => remove(i)} className="grid size-9 shrink-0 place-items-center rounded-lg text-muted hover:text-danger" aria-label="Retirer"><Trash2 size={16} /></button>
+          </div>
+        ))}
+        <button type="button" onClick={add} className="btn-ghost text-sm"><Plus size={15} /> Ajouter un appareil</button>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Big label="Puissance totale" value={`${f(totalWatts, 0)} W`} />
+        <Big label="Intensité nécessaire" value={`${f(r.neededAmps, 1)} A`} />
+        <Big label="Calibre conseillé" value={r.calibre ? `${r.calibre} A ${kind === "tetra" ? "tétra" : "mono"}` : "Aucun ne suffit"} tone={r.calibre ? undefined : "bad"} />
+      </div>
+      {r.calibre ? (
+        <Note>Une ligne {r.calibre} A {kind === "tetra" ? "tétraphasé" : "monophasé"} délivre {r.capacityAmps} A : {r.capacityAmps! >= r.neededAmps ? "suffisant" : ""} pour les {f(r.neededAmps, 1)} A demandés.</Note>
+      ) : (
+        <Note tone="bad">Même {SUPPLY_LINE_AMPS.at(-1)} A {kind === "tetra" ? "tétraphasé" : "monophasé"} ne suffit pas : passe en tétraphasé, ou répartis sur plusieurs lignes.</Note>
+      )}
+
+      <Steps lines={[
+        `1. Puissance totale : ${detail.map((it) => `${it.qty} × ${it.watts} W`).join(" + ") || "0"} = ${f(totalWatts, 0)} W`,
+        `2. Intensité : I = P ÷ U = ${f(totalWatts, 0)} ÷ 230 = ${f(r.neededAmps, 2)} A`,
+        `3. Capacité d'une ligne ${kind === "tetra" ? "tétraphasée (3 phases)" : "monophasée (1 phase)"} : calibre × ${r.phases}`,
+        ...SUPPLY_LINE_AMPS.map((a) => `   ${a} A × ${r.phases} = ${a * r.phases} A ${a * r.phases >= r.neededAmps ? "→ suffisant" : "→ insuffisant"}`),
+        `→ ${r.calibre ? `On utilisera une ligne ${r.calibre} A ${kind === "tetra" ? "tétraphasée" : "monophasée"}, qui peut délivrer ${r.capacityAmps} A.` : "Aucun calibre standard ne suffit en restant sur une seule ligne."}`,
+      ]} />
+      <Note>Exemple pré-rempli : celui du cours (27,6 kW → 120 A → une ligne 63 A tétraphasé, qui délivre 189 A). Remplace-le par ton propre matériel. Pour répartir ces appareils sur les phases et les prises d&apos;un vrai projet, utilise l&apos;onglet <strong className="text-fg">Charge</strong> du projet.</Note>
+    </div>
+  );
+}
+
 // ---------- Loi d'Ohm : P, U, I, R ----------
 
 const OHM_FORMULAS: Record<"u" | "i" | "p" | "r", Partial<Record<string, { f: string; sub: (v: Record<"u" | "i" | "p" | "r", string>) => string }>>> = {
@@ -377,6 +450,7 @@ export function OutletsCalc() {
 }
 
 const PANELS: Record<TabId, { title: string; hint: string; body: React.ReactNode }> = {
+  bilan: { title: "Bilan de puissance et choix de l'alimentation", hint: "La méthode du cours : additionne ton matériel, et trouve le calibre (16, 32, 63 ou 125 A) qui convient.", body: <SupplyCalc /> },
   ohm: { title: "Loi d'Ohm et puissance", hint: "P = U × I et R = U ÷ I : donne deux valeurs, la calculette trouve les deux autres.", body: <OhmCalc /> },
   prises: { title: "Prises de courant par phase", hint: "Combien de prises (16, 32 ou 63 A) pour une puissance donnée, et quelle intensité sur chacune.", body: <OutletsCalc /> },
   cable: { title: "Câble : intensité et chute de tension", hint: "Quelle section pour quelle longueur, sans perdre trop de tension.", body: <CableCalc /> },
@@ -388,7 +462,7 @@ const PANELS: Record<TabId, { title: string; hint: string; body: React.ReactNode
 };
 
 export function Calculettes() {
-  const [tab, setTab] = useState<TabId>("ohm");
+  const [tab, setTab] = useState<TabId>("bilan");
   const p = PANELS[tab];
   return (
     <div className="space-y-4">

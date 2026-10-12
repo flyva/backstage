@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { asc, eq } from "drizzle-orm";
 import { AlertTriangle, Trash2, Zap } from "lucide-react";
 import { db } from "@/db";
@@ -60,6 +61,10 @@ function Detail({ r }: { r: LineResult }) {
     <details open className="rounded-xl border border-line bg-bg p-3 text-xs">
       <summary className="cursor-pointer font-medium text-muted">Voir le détail du calcul</summary>
       <ol className="mt-2 list-decimal space-y-2.5 pl-4 leading-relaxed text-muted tabular-nums">
+        <li>
+          <strong className="text-fg">Vérification rapide</strong> (méthode du cours) : on additionne toute la puissance, on la divise par 230 V, et on compare au calibre de la ligne multiplié par le nombre de phases.
+          {" "}{fmtNum(r.watts)} ÷ 230 = {fmtNum(r.watts / VOLTS, 1)} A nécessaires, à comparer à {cal} × {tetra ? 3 : 1} = <strong className="text-fg">{r.capacityAmps} A disponibles</strong> : {r.watts / VOLTS <= r.capacityAmps ? "la ligne suffit." : "la ligne ne suffit pas, choisis un calibre supérieur."}
+        </li>
         <li>
           <strong className="text-fg">Capacité de la ligne</strong> : P = U × I.
           {" "}{tetra ? `Chaque phase peut porter ${cal} A, soit ${r.capacityAmps} A au total (3 × ${cal}).` : `La ligne peut porter ${cal} A.`}{" "}
@@ -177,6 +182,7 @@ export default async function PowerPage({ params }: PageProps<"/projets/[id]/cha
           Formules : <strong className="text-fg">P = U × I</strong> (puissance en W = tension en V × intensité en A), donc <strong className="text-fg">I = P ÷ U</strong> ;
           <strong className="text-fg"> R = U ÷ I</strong> (résistance en Ω, loi d&apos;Ohm). U = {VOLTS} V entre une phase et le neutre (400 V entre deux phases). Estimation avec un facteur de puissance de 1.
         </p>
+        <p className="text-xs"><Link href="/habilitation" className="text-accent underline">Fiche habilitation électrique</Link> : dangers, disjoncteurs, EPI, procédure de consignation.</p>
       </section>
 
       <details className="card space-y-4">

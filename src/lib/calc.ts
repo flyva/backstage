@@ -117,3 +117,16 @@ export function outletsFor(watts: number, phases: 1 | 3, outletAmps: number) {
   const ampsPerOutlet = perPhase > 0 ? amps / perPhase : 0;
   return { perPhaseW, amps, usable, perPhase, total: perPhase * phases, ampsPerOutlet, pctPerOutlet: (ampsPerOutlet / outletAmps) * 100 };
 }
+
+// ---------- Bilan de puissance et choix de l'alimentation (méthode du cours) ----------
+
+export type SupplyKind = "mono" | "tetra";
+export const SUPPLY_LINE_AMPS = [16, 32, 63, 125] as const;
+
+/** Calibre conseillé : on additionne la puissance, on la divise par 230 V, et on compare au calibre × nombre de phases (1 en mono, 3 en tétra). */
+export function suggestSupply(totalWatts: number, kind: SupplyKind) {
+  const neededAmps = totalWatts / 230;
+  const phases = kind === "tetra" ? 3 : 1;
+  const calibre = SUPPLY_LINE_AMPS.find((a) => a * phases >= neededAmps) ?? null;
+  return { neededAmps, phases, calibre, capacityAmps: calibre ? calibre * phases : null };
+}
