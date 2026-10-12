@@ -196,14 +196,39 @@ export default function HabilitationPage() {
         </ul>
       </Card>
 
-      <Card title="Consignation : la procédure en 5 étapes" icon={ShieldCheck}>
+      <Card title="Avant d'intervenir : la routine personnelle" icon={ShieldCheck}>
+        <p className="text-sm text-muted">Ce que fait l&apos;exécutant lui-même, juste avant de commencer, en plus de la consignation réalisée par le chargé de consignation.</p>
         <ol className="space-y-2 text-sm">
-          <li><strong className="text-fg">1. EPI</strong> — vérifier gants, tapis, tournevis isolé.</li>
-          <li><strong className="text-fg">2. Couper le courant</strong> — délester l&apos;armoire, couper le circuit.</li>
-          <li><strong className="text-fg">3. Poser un bloqueur</strong> — bloqueur sur le disjoncteur, cadenas, fiche technique (nom, prénom, date, numéro de téléphone).</li>
-          <li><strong className="text-fg">4. VAT</strong> — tester la continuité du vérificateur (contact des deux broches) avant et après le contrôle.</li>
+          <li><strong className="text-fg">1. EPI</strong> — vérifier gants, tapis, tournevis isolé, VAT en bon état.</li>
+          <li><strong className="text-fg">2. Couper le courant</strong> — délester l&apos;armoire, couper le circuit concerné.</li>
+          <li><strong className="text-fg">3. Poser un bloqueur</strong> — cadenas sur le disjoncteur, fiche technique (nom, prénom, date, numéro de téléphone).</li>
+          <li><strong className="text-fg">4. VAT</strong> — tester le vérificateur sur une source connue, vérifier l&apos;absence de tension, puis le retester après coup.</li>
           <li><strong className="text-fg">5. Prévenir le responsable</strong> — avant de commencer l&apos;intervention.</li>
         </ol>
+      </Card>
+
+      <Card title="La consignation : les 4 opérations officielles (NF C 18-510)" icon={ShieldCheck}>
+        <p className="text-sm text-muted">La consignation est réalisée par le <strong className="text-fg">chargé de consignation</strong>, avant toute intervention hors tension. Elle suit toujours le même ordre, formalisé par une <strong className="text-fg">attestation de consignation</strong> (en une ou deux étapes) remise au chargé de travaux.</p>
+        <ol className="space-y-3 text-sm">
+          <li>
+            <strong className="text-fg">1. Identification</strong> (ou pré-identification)
+            <p className="mt-0.5 text-muted">Repérer avec certitude l&apos;ouvrage ou le circuit exact sur lequel on va travailler, pour être sûr de ne pas intervenir sur la mauvaise installation.</p>
+          </li>
+          <li>
+            <strong className="text-fg">2. Séparation</strong>
+            <p className="mt-0.5 text-muted">Couper l&apos;alimentation sur tous les conducteurs actifs (les phases et le neutre), pour isoler complètement la zone de travail de toute source de tension.</p>
+          </li>
+          <li>
+            <strong className="text-fg">3. Condamnation</strong>
+            <p className="mt-0.5 text-muted">Immobiliser l&apos;organe de coupure en position d&apos;ouverture (cadenas, serrure) et signaler l&apos;intervention (pancarte avec nom et date), pour empêcher toute remise sous tension accidentelle.</p>
+          </li>
+          <li>
+            <strong className="text-fg">4. Vérification d&apos;absence de tension (VAT)</strong>
+            <p className="mt-0.5 text-muted">Juste avant de toucher les pièces, confirmer avec un VAT adapté que le circuit est bien hors tension — entre chaque phase, et entre chaque phase et le neutre.</p>
+          </li>
+        </ol>
+        <p className="text-sm">En <strong className="text-fg">haute tension</strong>, ou en basse tension s&apos;il existe un risque de tension induite, une 5e opération s&apos;ajoute : la <strong className="text-fg">mise à la terre et en court-circuit (MALT/CC)</strong>.</p>
+        <p className="text-sm">Une fois le travail terminé et la zone dégagée, la <strong className="text-fg">déconsignation</strong> remet l&apos;installation sous tension, dans l&apos;ordre inverse des 4 opérations.</p>
       </Card>
 
       <Card title="Exemple du cours : choisir une alimentation" icon={Calculator}>

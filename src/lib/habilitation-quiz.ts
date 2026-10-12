@@ -135,4 +135,18 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
   { q: "Un BS (chargé d'intervention élémentaire) peut intervenir sur :", choices: ["N'importe quelle installation, sous tension", "Uniquement un circuit terminal (400 V / 32 A maxi), pour des opérations limitées", "Uniquement en haute tension", "Toute l'armoire électrique"], answer: 1 },
   { q: "Pendant une intervention, qui est responsable du port effectif de ses EPI ?", choices: ["L'employeur, à distance", "La personne habilitée elle-même", "Le responsable sécurité uniquement", "Personne, ce n'est pas obligatoire"], answer: 1 },
   { q: "Avant de dégager une victime encore en contact avec une installation sous tension, il faut d'abord :", choices: ["La tirer immédiatement", "Couper le courant", "Lui parler pour la rassurer", "Appeler les pompiers et attendre sans rien faire"], answer: 1 },
+
+  // ---------- Les 4 opérations de la consignation ----------
+  { q: "Combien d'opérations compte la consignation officielle (NF C 18-510), en basse tension ?", choices: ["2", "3", "4", "6"], answer: 2 },
+  { q: "Quelle est la première opération de la consignation ?", choices: ["La séparation", "L'identification de l'ouvrage", "La condamnation", "Le VAT"], answer: 1 },
+  { q: "À quoi sert l'identification, en tout début de consignation ?", choices: ["À décorer l'armoire", "À être sûr de travailler sur le bon ouvrage", "À mesurer la tension", "À prévenir les pompiers"], answer: 1 },
+  { q: "Que fait-on pendant la « séparation » ?", choices: ["On pose un cadenas", "On coupe l'alimentation sur tous les conducteurs actifs", "On teste le VAT", "On remet sous tension"], answer: 1 },
+  { q: "Que fait-on pendant la « condamnation » ?", choices: ["On coupe le courant", "On immobilise l'organe de coupure et on signale l'intervention", "On vérifie l'absence de tension", "On débranche tous les appareils"], answer: 1 },
+  { q: "La « condamnation » sert surtout à :", choices: ["Mesurer l'intensité", "Empêcher une remise sous tension accidentelle", "Nettoyer le tableau électrique", "Vérifier la couleur des câbles"], answer: 1 },
+  { q: "Quelle est la dernière des 4 opérations de la consignation ?", choices: ["La séparation", "La condamnation", "La vérification d'absence de tension (VAT)", "L'identification"], answer: 2 },
+  { q: "Qui réalise la consignation d'un ouvrage électrique ?", choices: ["N'importe quel exécutant", "Le chargé de consignation", "Le client", "Le fabricant du matériel"], answer: 1 },
+  { q: "Quel document formalise une consignation entre le chargé de consignation et le chargé de travaux ?", choices: ["Une facture", "Une attestation de consignation", "Un plan d'évacuation", "Un bon de commande"], answer: 1 },
+  { q: "Quelle opération supplémentaire s'ajoute en haute tension (ou en cas de tension induite) ?", choices: ["Une deuxième VAT", "La mise à la terre et en court-circuit (MALT/CC)", "Une nouvelle habilitation", "Rien, les 4 opérations suffisent toujours"], answer: 1 },
+  { q: "Qu'est-ce que la déconsignation ?", choices: ["La même chose que la consignation", "Remettre l'installation sous tension une fois le travail terminé", "Couper définitivement une installation", "Une formation complémentaire"], answer: 1 },
+  { q: "Dans quel ordre se fait la déconsignation ?", choices: ["Dans le même ordre que la consignation", "Dans l'ordre inverse de la consignation", "L'ordre n'a pas d'importance", "Avant la consignation"], answer: 1 },
 ];
