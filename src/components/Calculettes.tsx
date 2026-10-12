@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Plus, Sigma, Trash2 } from "lucide-react";
 import {
   RHO_CU, SECTIONS, currentOf, outletsFor, solveOhm, suggestSupply, SUPPLY_LINE_AMPS,
   type SupplyKind, dbToPowerRatio, dbToVoltageRatio, delayMs, maxLength, minSection, patchDmx, soundSpeed, splAtDistance, sumDb, voltageDropPct,
   type DmxLine, type Supply,
 } from "@/lib/calc";
+import { saveSupplyList } from "@/lib/calc-actions";
 
 const num = (v: string) => Number(v.replace(",", "."));
 const ok = (n: number) => Number.isFinite(n);
@@ -267,44 +268,23 @@ function DbCalc() {
 // ---------- Bilan de puissance : méthode du cours ----------
 
 type SupplyItem = { name: string; watts: string; qty: string };
-type SupplyState = { kind: SupplyKind; items: SupplyItem[] };
-const SUPPLY_STORE_KEY = "backstage:calc:bilan-puissance";
-const EMPTY_SUPPLY: SupplyState = { kind: "tetra", items: [] };
 
-// Petit store branché sur localStorage (comme le mode spectacle) : la liste et le type d'alimentation sont gardés sur cet
-// appareil (jamais envoyés au serveur) et retrouvés en changeant de page, sans l'aller-retour setState-dans-un-effet.
-const supplyListeners = new Set<() => void>();
-const subscribeSupply = (cb: () => void) => { supplyListeners.add(cb); return () => supplyListeners.delete(cb); };
-let supplyRaw: string | null | undefined;
-let supplyParsed = EMPTY_SUPPLY;
-function readSupply(): SupplyState {
-  let raw: string | null;
-  try { raw = localStorage.getItem(SUPPLY_STORE_KEY); } catch { raw = null; }
-  if (raw === supplyRaw) return supplyParsed; // même donnée qu'avant : on renvoie la même référence (exigé par useSyncExternalStore)
-  supplyRaw = raw;
-  try {
-    const v = raw ? (JSON.parse(raw) as { kind?: string; items?: SupplyItem[] }) : null;
-    supplyParsed = v ? { kind: v.kind === "mono" ? "mono" : "tetra", items: Array.isArray(v.items) ? v.items : [] } : EMPTY_SUPPLY;
-  } catch {
-    supplyParsed = EMPTY_SUPPLY;
-  }
-  return supplyParsed;
-}
-const getServerSupply = () => EMPTY_SUPPLY;
-function writeSupply(s: SupplyState) {
-  try { localStorage.setItem(SUPPLY_STORE_KEY, JSON.stringify(s)); } catch { /* navigation privée, etc. */ }
-  supplyRaw = undefined; // force readSupply() à relire au prochain appel
-  supplyListeners.forEach((l) => l());
-}
+export function SupplyCalc({ initial }: { initial: { kind: SupplyKind; items: SupplyItem[] } }) {
+  const [kind, setKind] = useState<SupplyKind>(initial.kind);
+  const [items, setItems] = useState<SupplyItem[]>(initial.items);
+  const first = useRef(true);
 
-export function SupplyCalc() {
-  const { kind, items } = useSyncExternalStore(subscribeSupply, readSupply, getServerSupply);
-  const setKind = (k: SupplyKind) => writeSupply({ kind: k, items });
-  const setItems = (next: SupplyItem[]) => writeSupply({ kind, items: next });
+  // Enregistrée sur le compte (pas sur l'appareil) : un court délai après la dernière modification, pour ne pas écrire à
+  // chaque lettre tapée. « first » évite de réécrire la même liste dès l'affichage.
+  useEffect(() => {
+    if (first.current) { first.current = false; return; }
+    const t = setTimeout(() => { void saveSupplyList(kind, items); }, 800);
+    return () => clearTimeout(t);
+  }, [kind, items]);
 
-  const update = (i: number, patch: Partial<SupplyItem>) => setItems(items.map((it, k) => (k === i ? { ...it, ...patch } : it)));
-  const remove = (i: number) => setItems(items.filter((_, k) => k !== i));
-  const add = () => setItems([...items, { name: "", watts: "", qty: "1" }]);
+  const update = (i: number, patch: Partial<SupplyItem>) => setItems((cur) => cur.map((it, k) => (k === i ? { ...it, ...patch } : it)));
+  const remove = (i: number) => setItems((cur) => cur.filter((_, k) => k !== i));
+  const add = () => setItems((cur) => [...cur, { name: "", watts: "", qty: "1" }]);
 
   const totalWatts = items.reduce((s, it) => s + (ok(num(it.watts)) ? num(it.watts) : 0) * (ok(num(it.qty)) ? num(it.qty) : 0), 0);
   const r = suggestSupply(totalWatts, kind);
@@ -356,7 +336,7 @@ export function SupplyCalc() {
         ...SUPPLY_LINE_AMPS.map((a) => `   ${a} A × ${r.phases} = ${a * r.phases} A ${a * r.phases >= r.neededAmps ? "→ suffisant" : "→ insuffisant"}`),
         `→ ${r.calibre ? `On utilisera une ligne ${r.calibre} A ${kind === "tetra" ? "tétraphasée" : "monophasée"}, qui peut délivrer ${r.capacityAmps} A.` : "Aucun calibre standard ne suffit en restant sur une seule ligne."}`,
       ]} />}
-      <Note>Ta liste est gardée sur cet appareil : elle reste si tu changes de page ou d&apos;onglet. Pour répartir ces appareils sur les phases et les prises d&apos;un vrai projet, utilise l&apos;onglet <strong className="text-fg">Charge</strong> du projet.</Note>
+      <Note>Ta liste est gardée sur ton compte : tu la retrouves où que tu te connectes. Pour répartir ces appareils sur les phases et les prises d&apos;un vrai projet, utilise l&apos;onglet <strong className="text-fg">Charge</strong> du projet.</Note>
     </div>
   );
 }
@@ -475,20 +455,19 @@ export function OutletsCalc() {
   );
 }
 
-const PANELS: Record<TabId, { title: string; hint: string; body: React.ReactNode }> = {
-  bilan: { title: "Bilan de puissance et choix de l'alimentation", hint: "La méthode du cours : additionne ton matériel, et trouve le calibre (16, 32, 63 ou 125 A) qui convient.", body: <SupplyCalc /> },
-  ohm: { title: "Loi d'Ohm et puissance", hint: "P = U × I et R = U ÷ I : donne deux valeurs, la calculette trouve les deux autres.", body: <OhmCalc /> },
-  prises: { title: "Prises de courant par phase", hint: "Combien de prises (16, 32 ou 63 A) pour une puissance donnée, et quelle intensité sur chacune.", body: <OutletsCalc /> },
-  cable: { title: "Câble : intensité et chute de tension", hint: "Quelle section pour quelle longueur, sans perdre trop de tension.", body: <CableCalc /> },
-  dmx: { title: "Patch DMX", hint: "Combien d'univers, et à quelles adresses, pour tes projecteurs.", body: <DmxCalc /> },
-  distance: { title: "Niveau sonore selon la distance", hint: "De combien le niveau baisse en s'éloignant de l'enceinte.", body: <DistanceCalc /> },
-  somme: { title: "Somme de sources sonores", hint: "Le niveau total de plusieurs sources jouées ensemble.", body: <SumCalc /> },
-  delai: { title: "Délai d'enceinte", hint: "Le retard à donner à une enceinte de renfort pour rester alignée sur la façade.", body: <DelayCalc /> },
-  db: { title: "Décibels et rapports", hint: "Ce que vaut un gain en dB en tension et en puissance.", body: <DbCalc /> },
-};
-
-export function Calculettes() {
+export function Calculettes({ initialSupply }: { initialSupply: { kind: SupplyKind; items: SupplyItem[] } }) {
   const [tab, setTab] = useState<TabId>("bilan");
+  const PANELS: Record<TabId, { title: string; hint: string; body: React.ReactNode }> = {
+    bilan: { title: "Bilan de puissance et choix de l'alimentation", hint: "La méthode du cours : additionne ton matériel, et trouve le calibre (16, 32, 63 ou 125 A) qui convient.", body: <SupplyCalc initial={initialSupply} /> },
+    ohm: { title: "Loi d'Ohm et puissance", hint: "P = U × I et R = U ÷ I : donne deux valeurs, la calculette trouve les deux autres.", body: <OhmCalc /> },
+    prises: { title: "Prises de courant par phase", hint: "Combien de prises (16, 32 ou 63 A) pour une puissance donnée, et quelle intensité sur chacune.", body: <OutletsCalc /> },
+    cable: { title: "Câble : intensité et chute de tension", hint: "Quelle section pour quelle longueur, sans perdre trop de tension.", body: <CableCalc /> },
+    dmx: { title: "Patch DMX", hint: "Combien d'univers, et à quelles adresses, pour tes projecteurs.", body: <DmxCalc /> },
+    distance: { title: "Niveau sonore selon la distance", hint: "De combien le niveau baisse en s'éloignant de l'enceinte.", body: <DistanceCalc /> },
+    somme: { title: "Somme de sources sonores", hint: "Le niveau total de plusieurs sources jouées ensemble.", body: <SumCalc /> },
+    delai: { title: "Délai d'enceinte", hint: "Le retard à donner à une enceinte de renfort pour rester alignée sur la façade.", body: <DelayCalc /> },
+    db: { title: "Décibels et rapports", hint: "Ce que vaut un gain en dB en tension et en puissance.", body: <DbCalc /> },
+  };
   const p = PANELS[tab];
   return (
     <div className="space-y-4">

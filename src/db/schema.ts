@@ -951,3 +951,11 @@ export const courses = mysqlTable(
   (t) => [uniqueIndex("course_user_uid").on(t.userId, t.uid), index("course_user_start").on(t.userId, t.startsAt)],
 );
 
+
+// Bilan de puissance (calculette) : la liste de matériel de la personne, gardée pour la retrouver où qu'elle se connecte.
+export const calcSupplyLists = mysqlTable("calc_supply_lists", {
+  userId: int("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  kind: mysqlEnum("kind", ["mono", "tetra"]).notNull().default("tetra"),
+  items: mediumtext("items").notNull().default("[]"), // JSON : [{ name, watts, qty }]
+  updatedAt: datetime("updated_at").notNull().$defaultFn(() => new Date()),
+});
