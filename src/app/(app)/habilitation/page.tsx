@@ -123,19 +123,52 @@ export default function HabilitationPage() {
         <ElectricalSymbols />
       </Card>
 
-      <Card title="Habilitations électriques (NFC 18-510)" icon={ShieldCheck}>
+      <Card title="Habilitations électriques (NF C 18-510)" icon={ShieldCheck}>
+        <p className="text-sm text-muted">Le symbole se lit en 3 caractères : <strong className="text-fg">1er</strong> le domaine de tension, <strong className="text-fg">2e</strong> le type d&apos;opération, <strong className="text-fg">3e</strong> (facultatif) une précision. Certains symboles prennent aussi un attribut : Essai, Vérification, Mesurage, Manœuvre.</p>
         <Table
-          head={["Code", "Qui ?", "Quoi ?"]}
+          head={["Caractère", "Signification"]}
           rows={[
-            ["B0", "Exécutant non électricien", "Peut travailler à proximité, sans intervenir sur l'installation"],
-            ["B1", "Exécutant électricien", "Exécute des opérations sous les ordres d'un chargé de travaux"],
-            ["B2", "Chef (chargé de travaux)", "Dirige des travaux électriques"],
-            ["BS", "Chargé d'intervention élémentaire", "Remplace fusibles, réarme un disjoncteur, sur un circuit terminal"],
-            ["V", "Indice « voisinage renforcé »", "À moins de 30 cm d'une pièce nue sous tension"],
-            ["H0 / H1 / H2", "Équivalent B0/B1/B2 en haute tension", "Mêmes rôles, domaine haute tension"],
+            ["1er : B", "Basse et très basse tension"],
+            ["1er : H", "Haute tension"],
+            ["2e : 0", "Opération d'ordre non électrique"],
+            ["2e : 1", "Exécutant d'opération d'ordre électrique"],
+            ["2e : 2", "Chargé de travaux d'ordre électrique"],
+            ["2e : C", "Consignation"],
+            ["2e : R", "Intervention BT générale"],
+            ["2e : S", "Intervention BT élémentaire"],
+            ["2e : E", "Opérations spécifiques (essai, vérification, mesurage, manœuvre)"],
+            ["2e : P", "Opérations BT élémentaires sur chaîne photovoltaïque"],
+            ["3e : T", "Travaux sous tension"],
+            ["3e : V", "Travaux au voisinage renforcé"],
+            ["3e : N", "Nettoyage sous tension"],
+            ["3e : X", "Opération spéciale"],
           ]}
         />
-        <p className="text-xs text-muted">« Circuit terminal » : une prise, un chauffage, une lampe — hors tension, câblé en 6 mm² maximum, 400 V maximum.</p>
+        <Table
+          head={["Symbole", "Pour qui, pour quoi"]}
+          rows={[
+            ["B0 / H0", "Exécutant non électricien : accès à une zone électrique, sans aucune opération électrique"],
+            ["B0 / H0, « chargé de chantier »", "Dirige des travaux non électriques près d'une installation électrique"],
+            ["BS", "Intervention élémentaire sur un circuit terminal (400 V / 32 A maxi) : remplacer un fusible, une lampe, une prise, un interrupteur à l'identique, raccorder un appareil sur un circuit en attente protégé, réarmer une protection. Rien d'autre."],
+            ["BE / HE Manœuvre", "Réarmer un disjoncteur ou un relais, mettre hors ou sous tension un équipement — rien de plus"],
+            ["BR", "Intervention générale : dépannage, recherche de panne, remplacement de matériel, essais, jusqu'à 500 V / 63 A en présence de tension"],
+            ["B1 / H1 (exécutant), B1V / H1V (+ voisinage renforcé)", "Exécute des travaux électriques sous les ordres d'un chargé de travaux"],
+            ["B2 / H2 (chargé), B2V / H2V (+ voisinage renforcé)", "Dirige des travaux électriques, balise la zone, vérifie le travail"],
+            ["BC / HC", "Consigne un ouvrage ou une installation électrique"],
+            ["B1T, B2T… (travaux sous tension)", "Opérations réalisées sous tension (formation spécifique agréée obligatoire)"],
+            ["BF-HF", "Travaux en fouilles à proximité de canalisations électriques enterrées"],
+          ]}
+        />
+        <p className="text-xs text-muted">« Circuit terminal » : une prise, un chauffage, une lampe — câblé en 6 mm² maximum, 400 V maximum. « Voisinage renforcé » : à moins de 30 cm d&apos;une pièce nue sous tension en basse tension.</p>
+      </Card>
+
+      <Card title="Qui habilite, et pour combien de temps ?" icon={ShieldCheck}>
+        <p className="text-sm">C&apos;est <strong className="text-fg">l&apos;employeur</strong> qui délivre l&apos;habilitation, après une formation préalable théorique et pratique suivie d&apos;un avis du formateur. Elle n&apos;est liée ni au diplôme ni au poste : c&apos;est une reconnaissance, par l&apos;employeur, de la capacité réelle d&apos;une personne à travailler en sécurité face au risque électrique.</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-xl border border-line bg-bg p-3 text-sm"><div className="font-semibold">Suivi chaque année</div><div className="text-muted">L&apos;employeur vérifie que l&apos;habilitation reste adaptée aux tâches réellement confiées.</div></div>
+          <div className="rounded-xl border border-line bg-bg p-3 text-sm"><div className="font-semibold">Recyclage recommandé tous les 3 ans</div><div className="text-muted">1 an pour les travaux sous tension. La périodicité reste fixée par l&apos;employeur, réduite si la pratique est occasionnelle.</div></div>
+        </div>
+        <p className="text-xs text-muted">Source : brochure INRS ED 6127, « L&apos;habilitation électrique » (décembre 2020), d&apos;après la norme NF C 18-510.</p>
       </Card>
 
       <Card title="EPI (équipement de protection individuelle)" icon={ShieldCheck}>
