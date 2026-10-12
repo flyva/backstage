@@ -23,9 +23,12 @@ const ICON: Record<NotifItem["kind"], { icon: LucideIcon; color: string }> = {
   approval: { icon: UserCheck, color: "#f59e0b" },
 };
 
-// Cloche : pastille du nombre de nouveautés ; l'ouverture les marque comme vues.
-export function NotificationBell({ items, unread }: { items: NotifItem[]; unread: number }) {
+// Cloche : pastille du nombre de nouveautés ; l'ouverture les marque comme vues. Relue toutes les minutes (onglet visible
+// seulement) pour qu'une nouvelle notification arrive sans recharger la page.
+export function NotificationBell({ items: initial, unread: initialUnread }: { items: NotifItem[]; unread: number }) {
   const [open, setOpen] = useState(false);
+  const [items, setItems] = useState(initial);
+  const [unread, setUnread] = useState(initialUnread);
   // Nombre de nouveautés déjà vues à l'ouverture de la cloche : la pastille n'affiche que ce qui arrive ensuite.
   const [acked, setAcked] = useState(0);
   const count = unread > acked ? unread - acked : 0;
@@ -39,6 +42,22 @@ export function NotificationBell({ items, unread }: { items: NotifItem[]; unread
     document.addEventListener("keydown", onKey);
     return () => { document.removeEventListener("mousedown", onDown); document.removeEventListener("keydown", onKey); };
   }, [open]);
+
+  useEffect(() => {
+    const poll = async () => {
+      if (document.visibilityState !== "visible") return;
+      try {
+        const res = await fetch("/api/notifications", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = (await res.json()) as { items: NotifItem[]; unread: number };
+        setItems(data.items);
+        setUnread(data.unread);
+      } catch { /* hors ligne : on réessaie à la prochaine minute */ }
+    };
+    const id = setInterval(poll, 60000);
+    document.addEventListener("visibilitychange", poll);
+    return () => { clearInterval(id); document.removeEventListener("visibilitychange", poll); };
+  }, []);
 
   const toggle = () => {
     const next = !open;

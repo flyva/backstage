@@ -8,9 +8,19 @@ import type { AgendaEvent } from "@/lib/ical";
 
 // Hauteur de la grille : s'adapte à l'écran (l'agenda tient sans faire défiler la page), entre 420 et 860 px.
 const GRID_HEIGHT = "clamp(420px, calc(100vh - 18.5rem), 860px)";
-const MIN_EVENT_PX = 28;
+const MIN_EVENT_PX = 46; // assez haut pour 2 lignes de titre + l'heure, même sur un évènement court
 /** Page du cours (notes) : les évènements de l'agenda viennent de la copie en base, leur identifiant est « c » + numéro. */
-const courseHref = (id: string) => (/^cd+$/.test(id) ? `/cours/${id.slice(1)}` : null);
+const courseHref = (id: string) => (/^c\d+$/.test(id) ? `/cours/${id.slice(1)}` : null);
+/**
+ * Groupe en fin de titre (ex. « Analyse de spectacles - RT1 », « Anglais - GB1 ») : un code court après le dernier tiret.
+ * Affiché à part, dans une pastille toujours visible, pour qu'il ne disparaisse pas quand la colonne est étroite
+ * (plusieurs cours au même horaire, ex. groupes en parallèle).
+ */
+function splitGroupTag(title: string): { base: string; tag: string | null } {
+  const m = /^(.*)[-–]\s*([A-ZÀ-Ý]{1,4}\d{0,2})\s*$/.exec(title);
+  if (!m || m[1].trim().length < 3) return { base: title, tag: null };
+  return { base: m[1].trim(), tag: m[2] };
+}
 const dayFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "UTC", weekday: "short", day: "numeric" });
 const timeFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit" });
 const partsFmt = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
@@ -113,6 +123,8 @@ export function WeekGrid({ days, byDay, kinds, today, nowMinutes }: {
                 ))}
                 {placed.map(({ e, s, en, lane, lanes }) => {
                   const long = en - s >= 90; // assez haut pour afficher aussi la salle
+                  const narrow = lanes > 1; // plusieurs cours en même temps (ex. groupes RT1 / GB) : colonne plus étroite
+                  const { base, tag } = splitGroupTag(e.title);
                   return (
                     <Link
                       key={e.id}
@@ -121,8 +133,13 @@ export function WeekGrid({ days, byDay, kinds, today, nowMinutes }: {
                       style={{ top: pct(s - startH * 60), height: `calc(${pct(en - s)} - 2px)`, minHeight: MIN_EVENT_PX, left: `calc(${(lane / lanes) * 100}% + 2px)`, width: `calc(${100 / lanes}% - 4px)` }}
                       title={`${e.title}\n${timeFmt.format(e.start)} – ${timeFmt.format(e.end)}${e.location ? `\n${e.location}` : ""}`}
                     >
-                      <div className="font-semibold leading-tight text-accent tabular-nums">{timeFmt.format(e.start)} – {timeFmt.format(e.end)}</div>
-                      <div className="mt-0.5 text-[13px] font-medium leading-snug">{e.title}</div>
+                      <div className="flex items-start justify-between gap-1">
+                        <div className="font-semibold leading-tight text-accent tabular-nums">{timeFmt.format(e.start)} – {timeFmt.format(e.end)}</div>
+                        {/* Le groupe (RT1, GB…) reste toujours visible, même si la colonne est trop étroite pour le reste du titre. */}
+                        {tag && <span className="shrink-0 rounded bg-accent/20 px-1 text-[10px] font-bold leading-4 text-accent">{tag}</span>}
+                      </div>
+                      {/* line-clamp (pas de troncature brutale) : le reste du titre s'affiche tant qu'il y a la place. */}
+                      <div className={`mt-0.5 line-clamp-2 font-medium leading-snug ${narrow ? "text-[11px]" : "text-[13px]"}`}>{base}</div>
                       {e.location && long && <div className="mt-0.5 flex items-center gap-1 text-muted"><MapPin size={11} /> <span className="truncate">{e.location}</span></div>}
                     </Link>
                   );

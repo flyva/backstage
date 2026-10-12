@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useOptimistic, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useOptimistic, useState, useTransition } from "react";
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, LayoutGrid, Paperclip, Pencil, Plus, Table2, Trash2 } from "lucide-react";
 import { addCard, addColumn, deleteColumn, moveCard, moveColumn, renameColumn } from "@/lib/kanban-actions";
 import { CardDialog } from "@/components/KanbanCardDialog";
@@ -48,6 +49,20 @@ export function KanbanBoard(props: {
   const [dragging, setDragging] = useState<number | null>(null);
   const [overCol, setOverCol] = useState<number | null>(null);
   const [openId, setOpenId] = useState<number | null>(null);
+  const router = useRouter();
+
+  // Dès qu'une carte bouge, est ajoutée, modifiée, ou que les tâches/commentaires changent (par soi ou par quelqu'un
+  // d'autre qui a ce kanban ouvert), on récupère les données à jour, sans recharger la page.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const refresh = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => router.refresh(), 300); // regroupe plusieurs changements rapprochés
+    };
+    const es = new EventSource(`/api/projects/${projectId}/kanban/stream`);
+    es.addEventListener("changed", refresh);
+    return () => { es.close(); if (timer) clearTimeout(timer); };
+  }, [projectId, router]);
 
   const move = (cardId: number, toColumnId: number, index: number) => {
     startTransition(async () => {

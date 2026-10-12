@@ -8,10 +8,12 @@ import { kanbanCardAssignees, kanbanCards, kanbanChecklist, kanbanColumns, kanba
 import { removeProjectFile } from "@/lib/project-files";
 import { can } from "@/lib/projects";
 import { DEFAULT_KANBAN_COLUMNS, requireProject } from "@/lib/projects";
+import { emitKanban } from "@/lib/kanban-bus";
 import type { FormState } from "@/lib/actions";
 
 const id = z.coerce.number().int().positive();
-const touch = (projectId: number) => revalidatePath(`/projets/${projectId}/kanban`);
+// Revalide pour l'auteur du changement (prochaine navigation) et prévient en direct les autres personnes qui ont le kanban ouvert.
+const touch = (projectId: number) => { revalidatePath(`/projets/${projectId}/kanban`); emitKanban(projectId); };
 
 // L'identifiant de projet n'est jamais pris du client : on le retrouve depuis la colonne / la carte.
 async function projectOfColumn(columnId: number) {

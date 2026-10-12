@@ -217,7 +217,7 @@ export default async function PowerPage({ params }: PageProps<"/projets/[id]/cha
                   {r.phases.map((p) => (
                     <li key={p.phase} className="space-y-1">
                       <div className="flex flex-wrap items-baseline justify-between gap-x-3 text-sm">
-                        <span className="font-medium">{tetra ? `Phase L${p.phase}` : "Ligne"}</span>
+                        <span className="flex items-center gap-1.5 font-medium">{tetra ? `Phase L${p.phase}` : "Ligne"}{p.outlets.length > 0 && <span className="rounded-full border border-line px-1.5 py-0.5 text-[11px] font-normal text-muted">{p.outlets.length} prise{p.outlets.length > 1 ? "s" : ""}</span>}</span>
                         <span className="tabular-nums text-muted">{fmtNum(p.watts)} W · {fmtNum(p.amps, 2)} A ÷ {r.circuit.breakerAmps} A = <strong className="text-fg">{fmtNum(p.pct)} %</strong></span>
                       </div>
                       <Bar pct={p.pct} label={`Charge de ${r.circuit.name}${tetra ? ` L${p.phase}` : ""}`} />
@@ -257,7 +257,7 @@ export default async function PowerPage({ params }: PageProps<"/projets/[id]/cha
                         <ul className="space-y-2">
                           {fd.phases.filter((ph) => ph.groups.length > 0).map((ph) => (
                             <li key={ph.phase} className="space-y-1 text-xs">
-                              <div className="tabular-nums text-muted"><span className="font-medium text-fg">{tetra ? `Phase L${ph.phase}` : "Départ"}</span> : {fmtNum(ph.watts)} W · {fmtNum(ph.amps, 2)} A ÷ {r.feederAmps} A = {fmtNum(ph.pct)} %</div>
+                              <div className="tabular-nums text-muted"><span className="font-medium text-fg">{tetra ? `Phase L${ph.phase}` : "Départ"}</span> : {fmtNum(ph.watts)} W · {fmtNum(ph.amps, 2)} A ÷ {r.feederAmps} A = {fmtNum(ph.pct)} % · {ph.outlets.length} prise{ph.outlets.length > 1 ? "s" : ""}</div>
                               <ul className="grid gap-1 sm:grid-cols-2">
                                 {ph.outlets.map((o) => (
                                   <li key={o.index} className="rounded-lg border border-line px-2 py-1.5">
