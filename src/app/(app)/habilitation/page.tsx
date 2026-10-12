@@ -49,7 +49,7 @@ export default function HabilitationPage() {
         <PrintButton />
       </header>
 
-      <div className="grid items-start gap-6 lg:grid-cols-[1fr_22rem] print:block">
+      <div className="grid items-start gap-6 lg:grid-cols-[1fr_26rem] print:block">
       <div className="min-w-0 max-w-3xl space-y-6 print:max-w-none">
 
       <Card title="Les formules de base" icon={Zap}>

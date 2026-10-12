@@ -44,7 +44,7 @@ export function Quiz() {
         {questions.map((q, qi) => (
           <li key={`${qi}-${q.q}`} className="space-y-2">
             <p className="text-sm font-medium">{qi + 1}. {q.q}</p>
-            <div className="grid gap-1.5 sm:grid-cols-2">
+            <div className="grid gap-1.5">
               {q.choices.map((c, ci) => {
                 const picked = q.picked === ci;
                 const showResult = done && q.picked !== null;
