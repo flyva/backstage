@@ -7,6 +7,7 @@ import { contacts, faqItems, settings, usefulLinks, wikiPages, wikiRevisions } f
 import { requireAdmin } from "@/lib/auth";
 import { geocode } from "@/lib/mobility";
 import { GUIDE_CONTACTS, GUIDE_FAQ, GUIDE_LINKS, GUIDE_PAGES, GUIDE_SETTINGS } from "@/lib/guide-data";
+import { COURSES } from "@/lib/course-data";
 import type { FormState } from "@/lib/actions";
 
 /**
@@ -73,6 +74,31 @@ export async function importGuide(): Promise<FormState> {
   revalidatePath("/", "layout");
   const total = n.contacts + n.faq + n.links + n.pages + n.settings;
   return { ok: total === 0 ? "Tout est déjà à jour : rien à ajouter." : `Ajouté : ${n.contacts} contact(s), ${n.faq} question(s) FAQ, ${n.links} lien(s), ${n.pages} page(s) du wiki, ${n.settings} réglage(s).` };
+}
+
+/**
+ * Importe un cours (src/lib/course-data.ts) comme des pages du wiki, catégorie « Cours » : une page parente et ses
+ * sous-pages, éditables ensuite normalement. Sans danger si on le relance : les pages déjà importées (même slug) ne
+ * sont jamais écrasées ni dupliquées — pratique pour ajouter de nouvelles pages à un cours existant plus tard.
+ */
+export async function importCourse(key: string): Promise<FormState> {
+  const admin = await requireAdmin();
+  const course = COURSES.find((c) => c.key === key);
+  if (!course) return { error: "Cours introuvable" };
+
+  const now = new Date();
+  const idBySlug = new Map((await db.select({ id: wikiPages.id, slug: wikiPages.slug }).from(wikiPages)).map((p) => [p.slug, p.id]));
+  let added = 0;
+  for (const p of course.pages) {
+    if (idBySlug.has(p.slug)) continue;
+    const parentId = p.parent ? (idBySlug.get(p.parent) ?? null) : null;
+    const [res] = await db.insert(wikiPages).values({ slug: p.slug, title: p.title, category: "Cours", parentId, body: p.body, createdBy: admin.id, updatedBy: admin.id, createdAt: now, updatedAt: now });
+    await db.insert(wikiRevisions).values({ pageId: res.insertId, title: p.title, body: p.body, editorId: admin.id, createdAt: now });
+    idBySlug.set(p.slug, res.insertId);
+    added++;
+  }
+  revalidatePath("/", "layout");
+  return { ok: added === 0 ? "Tout est déjà à jour : rien à ajouter." : `${added} page(s) ajoutée(s) au wiki (catégorie « Cours »).` };
 }
 
 // ---------- Annuaire ----------

@@ -1,9 +1,10 @@
 "use client";
 
 import { useActionState, useTransition, useState } from "react";
-import { DatabaseZap } from "lucide-react";
+import { BookOpen, DatabaseZap } from "lucide-react";
 import type { FormState } from "@/lib/actions";
-import { importGuide, saveContact } from "@/lib/guide-actions";
+import { importCourse, importGuide, saveContact } from "@/lib/guide-actions";
+import { COURSES } from "@/lib/course-data";
 
 function Feedback({ state }: { state: FormState }) {
   if (state?.error) return <p className="text-sm text-danger" role="alert">{state.error}</p>;
@@ -22,6 +23,35 @@ export function ImportGuideButton() {
       </button>
       <Feedback state={state} />
     </div>
+  );
+}
+
+/** Importe un cours (src/lib/course-data.ts) dans le wiki, catégorie « Cours ». Relançable sans risque. */
+export function ImportCourseButton({ courseKey, label }: { courseKey: string; label: string }) {
+  const [state, setState] = useState<FormState>(undefined);
+  const [pending, start] = useTransition();
+  return (
+    <div className="space-y-2">
+      <button type="button" className="btn-ghost" disabled={pending} onClick={() => start(async () => setState(await importCourse(courseKey)))}>
+        <BookOpen size={16} /> {pending ? "Import en cours…" : `Importer « ${label} »`}
+      </button>
+      <Feedback state={state} />
+    </div>
+  );
+}
+
+/** Liste tous les cours disponibles (src/lib/course-data.ts) avec un bouton d'import chacun. */
+export function ImportCoursesList() {
+  return (
+    <ul className="space-y-2">
+      {COURSES.map((c) => (
+        <li key={c.key} className="rounded-xl border border-line p-3">
+          <p className="text-sm font-medium">{c.label}</p>
+          <p className="mb-2 text-xs text-muted">{c.description}</p>
+          <ImportCourseButton courseKey={c.key} label={c.label} />
+        </li>
+      ))}
+    </ul>
   );
 }
 
