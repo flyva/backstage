@@ -1,4 +1,4 @@
-import { desc } from "drizzle-orm";
+import { desc, gt, isNull, or } from "drizzle-orm";
 import { db } from "@/db";
 import { updates } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
@@ -8,7 +8,9 @@ export const metadata = { title: "Nouveautés" };
 
 export default async function UpdatesPage() {
   await requireUser();
-  const rows = await db.select().from(updates).orderBy(desc(updates.createdAt));
+  // Les nouveautés dont la date de fin de publication est passée restent enregistrées (modifiables en admin), mais
+  // ne s'affichent plus ici.
+  const rows = await db.select().from(updates).where(or(isNull(updates.publishUntil), gt(updates.publishUntil, new Date()))).orderBy(desc(updates.createdAt));
   return (
     <div className="max-w-2xl space-y-5">
       <div>

@@ -1,5 +1,5 @@
 import "server-only";
-import { and, count, desc, eq, inArray, lt, lte, sql } from "drizzle-orm";
+import { and, count, desc, eq, gt, inArray, isNull, lt, lte, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { bdeEvents, equipmentItems, galleryAlbums, loans, newsPosts, pollInvites, polls, updates, users } from "@/db/schema";
 import type { SessionUser } from "@/lib/auth";
@@ -49,7 +49,7 @@ export async function loadNotifications(user: SessionUser): Promise<{ items: Not
       .orderBy(desc(polls.createdAt))
       .limit(4),
     unreadConversations(user.id),
-    db.select({ id: updates.id, title: updates.title, at: updates.createdAt }).from(updates).orderBy(desc(updates.createdAt)).limit(3),
+    db.select({ id: updates.id, title: updates.title, at: updates.createdAt }).from(updates).where(or(isNull(updates.publishUntil), gt(updates.publishUntil, new Date()))).orderBy(desc(updates.createdAt)).limit(3),
   ]);
 
   const loanBadge = mineDue.length + requested.length + Number(lateAll[0]?.n ?? 0);

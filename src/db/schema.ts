@@ -195,6 +195,9 @@ export const updates = mysqlTable("updates", {
   title: varchar("title", { length: 150 }).notNull(),
   body: text("body").notNull(),
   authorId: int("author_id").notNull().references(() => users.id),
+  // Date de fin de publication (facultative) : passé cette date, la nouveauté n'est plus affichée (cloche, page
+  // /nouveautes) mais reste enregistrée et modifiable en admin.
+  publishUntil: datetime("publish_until"),
   createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
 });
 

@@ -10,7 +10,7 @@ function Feedback({ state }: { state: FormState }) {
   return null;
 }
 
-export function UpdateForm({ id, title = "", body = "" }: { id?: number; title?: string; body?: string }) {
+export function UpdateForm({ id, title = "", body = "", publishUntil = "" }: { id?: number; title?: string; body?: string; publishUntil?: string }) {
   const [state, action, pending] = useActionState(saveUpdate, undefined);
   const k = id ?? "new";
   return (
@@ -23,6 +23,11 @@ export function UpdateForm({ id, title = "", body = "" }: { id?: number; title?:
       <div>
         <label className="label" htmlFor={`ub${k}`}>Détail</label>
         <textarea id={`ub${k}`} name="body" defaultValue={body} required minLength={2} maxLength={4000} rows={4} className="input" placeholder="Ce qui a changé, pourquoi, comment l'utiliser…" />
+      </div>
+      <div>
+        <label className="label" htmlFor={`up${k}`}>Afficher jusqu&apos;au (facultatif)</label>
+        <input id={`up${k}`} name="publishUntil" type="date" defaultValue={publishUntil} className="input w-auto" />
+        <p className="mt-1 text-xs text-muted">Passé cette date, la nouveauté n&apos;est plus affichée (cloche, page Nouveautés) mais reste enregistrée ici, modifiable à tout moment. Vide = affichée sans limite de durée.</p>
       </div>
       <Feedback state={state} />
       <button className="btn" disabled={pending}>{pending ? "Enregistrement…" : id ? "Enregistrer" : "Publier"}</button>

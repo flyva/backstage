@@ -10,6 +10,7 @@ export const metadata = { title: "Nouveautés" };
 
 export default async function AdminUpdatesPage() {
   const rows = await db.select().from(updates).orderBy(desc(updates.createdAt));
+  const now = new Date();
   return (
     <div className="max-w-2xl space-y-6">
       <section className="card space-y-3">
@@ -22,21 +23,25 @@ export default async function AdminUpdatesPage() {
         <p className="text-sm text-muted">Aucune nouveauté publiée.</p>
       ) : (
         <ul className="space-y-2">
-          {rows.map((u) => (
-            <details key={u.id} className="card p-0">
-              <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 marker:hidden">
-                <span className="min-w-0 flex-1 truncate font-medium">{u.title}</span>
-                <span className="shrink-0 text-xs text-muted">{ago(u.createdAt)}</span>
-              </summary>
-              <div className="space-y-4 border-t border-line p-4">
-                <UpdateForm id={u.id} title={u.title} body={u.body} />
-                <form action={deleteUpdate} className="border-t border-line pt-3">
-                  <input type="hidden" name="id" value={u.id} />
-                  <button className="flex items-center gap-1 text-xs text-muted hover:text-danger"><Trash2 size={14} /> Supprimer</button>
-                </form>
-              </div>
-            </details>
-          ))}
+          {rows.map((u) => {
+            const expired = u.publishUntil && u.publishUntil.getTime() < now.getTime();
+            return (
+              <details key={u.id} className="card p-0">
+                <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 marker:hidden">
+                  <span className="min-w-0 flex-1 truncate font-medium">{u.title}</span>
+                  {expired && <span className="shrink-0 rounded-full bg-bg px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted">Plus affichée</span>}
+                  <span className="shrink-0 text-xs text-muted">{ago(u.createdAt)}</span>
+                </summary>
+                <div className="space-y-4 border-t border-line p-4">
+                  <UpdateForm id={u.id} title={u.title} body={u.body} publishUntil={u.publishUntil ? u.publishUntil.toISOString().slice(0, 10) : ""} />
+                  <form action={deleteUpdate} className="border-t border-line pt-3">
+                    <input type="hidden" name="id" value={u.id} />
+                    <button className="flex items-center gap-1 text-xs text-muted hover:text-danger"><Trash2 size={14} /> Supprimer</button>
+                  </form>
+                </div>
+              </details>
+            );
+          })}
         </ul>
       )}
     </div>
