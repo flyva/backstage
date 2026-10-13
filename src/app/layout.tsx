@@ -1,10 +1,12 @@
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 import { Geist } from "next/font/google";
 import { cookies } from "next/headers";
 import "./globals.css";
 import { skinFrom } from "@/lib/skin";
 import { siteIconVersion } from "@/lib/site-icon";
 import { PwaRegister } from "@/components/PwaRegister";
+import { RouteProgress } from "@/components/shell/RouteProgress";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 
@@ -37,6 +39,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       {/* Icônes Font Awesome utilisées par les liens utiles configurés en admin (classes stockées en base, ex. « fa-solid fa-link »). */}
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossOrigin="anonymous" referrerPolicy="no-referrer" />
       <body className="min-h-full" suppressHydrationWarning>
+        <Suspense fallback={null}><RouteProgress /></Suspense>
         {children}
         <PwaRegister />
       </body>

@@ -10,7 +10,7 @@ export const COURSES: Course[] = [
   {
     key: "reseaux",
     label: "Réseaux — Notions de base",
-    description: "Introduction aux réseaux informatiques : histoire, vocabulaire, PAN/LAN/MAN/WAN, Dante et Art-Net, glossaire.",
+    description: "Introduction aux réseaux informatiques : histoire, vocabulaire, PAN/LAN/MAN/WAN, adresses MAC/IP/IPv4/IPv6, Dante et Art-Net, glossaire.",
     pages: [
       {
         title: "Réseaux — Notions de base",
@@ -28,6 +28,7 @@ Ce cours pose les bases avant d'aller plus loin : un peu d'histoire, le vocabula
 - [[Histoire des réseaux et d'Internet]]
 - [[Bit, octet et débit]]
 - [[Tailles de réseaux : PAN, LAN, MAN, WAN]]
+- [[Adressage : MAC, IP, IPv4 et IPv6]]
 - [[Le réseau local : LAN, switch, routeur]]
 - [[Dante et Art-Net : l'audio et la lumière en réseau]]
 - [[Glossaire réseaux]]
@@ -184,6 +185,79 @@ Un réseau à l'échelle **d'un pays, d'un continent, ou du monde entier** : il 
 | **WAN** | Un pays, le monde | Internet, le réseau d'une entreprise multi-sites |`,
       },
       {
+        title: "Adressage : MAC, IP, IPv4 et IPv6",
+        slug: "adressage-mac-ip-ipv4-ipv6",
+        parent: "reseaux-notions-de-base",
+        body: `Chaque appareil sur un réseau a besoin d'être identifié pour qu'on puisse lui envoyer des données. Il existe en fait **deux adresses différentes** pour un même appareil : l'adresse **MAC** et l'adresse **IP**. Elles ne jouent pas du tout le même rôle.
+
+## L'adresse MAC : l'identité physique
+
+L'**adresse MAC** (*Media Access Control*) est un identifiant **gravé en usine** dans la carte réseau (Ethernet ou Wi-Fi) de l'appareil. Elle s'écrit en **6 octets en hexadécimal**, séparés par des deux-points ou des tirets :
+
+\`\`\`
+00:1A:2B:3C:4D:5E
+\`\`\`
+
+- Elle est en théorie **unique au monde** : les 3 premiers octets identifient le fabricant de la carte réseau, les 3 suivants l'appareil.
+- Elle **ne change jamais** (sauf trucage volontaire), quel que soit le réseau auquel l'appareil se connecte.
+- Elle ne sert qu'à l'intérieur d'un **même réseau local** : un switch l'utilise pour savoir sur quel port envoyer une trame ([[Le réseau local : LAN, switch, routeur]]), mais une adresse MAC **ne traverse jamais un routeur**.
+- Niveau concerné : la couche **liaison** (Ethernet).
+
+## L'adresse IP : l'identité logique
+
+L'**adresse IP** (*Internet Protocol*) est un identifiant **logique**, attribué à l'appareil (automatiquement par DHCP, ou manuellement). Elle sert à faire circuler les données **entre réseaux différents**, via les routeurs.
+
+- Elle **change** selon le réseau auquel l'appareil se connecte (le Wi-Fi de l'école, celui de la maison, un réseau 4G…).
+- C'est elle qui permet le **routage** : faire voyager une donnée d'un réseau à un autre, jusqu'à l'autre bout d'Internet si besoin.
+- Niveau concerné : la couche **réseau**.
+
+## MAC et IP, côte à côte
+
+| | Adresse MAC | Adresse IP |
+| --- | --- | --- |
+| Attribuée par | Le fabricant (gravée) | Le réseau (DHCP) ou à la main |
+| Change si on change de réseau ? | Non, fixe | Oui |
+| Utilisée par | Le switch (dans le LAN) | Le routeur (entre réseaux) |
+| Format | 6 octets en hexadécimal | 4 octets (IPv4) ou 16 octets (IPv6) |
+| Exemple | \`00:1A:2B:3C:4D:5E\` | \`192.168.1.42\` |
+
+## IPv4 : la version historique
+
+L'**IPv4** est la version d'adresse IP la plus utilisée aujourd'hui. Elle s'écrit sur **4 octets** (32 bits), en décimal, séparés par des points :
+
+\`\`\`
+192.168.1.42
+\`\`\`
+
+Chaque octet va de **0 à 255**. Avec 32 bits, il existe 2³² ≈ **4,3 milliards d'adresses IPv4 possibles** — ce qui paraissait énorme dans les années 1980, mais s'avère **insuffisant** face au nombre d'appareils connectés aujourd'hui (ordinateurs, téléphones, objets connectés…) : c'est l'**épuisement des adresses IPv4**.
+
+Deux types d'adresses IPv4 :
+
+- **Adresses privées** : réservées aux réseaux locaux, jamais routées sur Internet (ex. \`192.168.0.0\` à \`192.168.255.255\`, \`10.0.0.0\` à \`10.255.255.255\`, \`172.16.0.0\` à \`172.31.255.255\`). Plusieurs réseaux différents peuvent réutiliser les mêmes adresses privées sans conflit.
+- **Adresses publiques** : uniques sur Internet, attribuées par les fournisseurs d'accès. C'est l'adresse que voit le reste d'Internet (le routeur fait la conversion entre adresse privée et publique, voir [[Le réseau local : LAN, switch, routeur]]).
+
+## IPv6 : la relève
+
+L'**IPv6** a été créé pour résoudre le manque d'adresses IPv4. Elle s'écrit sur **16 octets** (128 bits), en hexadécimal, en 8 groupes séparés par des deux-points :
+
+\`\`\`
+2001:0db8:85a3:0000:0000:8a2e:0370:7334
+\`\`\`
+
+- Nombre d'adresses possibles : 2¹²⁸, un nombre astronomique (environ 340 **undécillions**, soit 340 suivi de 36 zéros) — de quoi donner une adresse à chaque grain de sable sur Terre, plusieurs fois.
+- Une écriture raccourcie existe : les zéros non significatifs peuvent être omis, et une seule série de groupes de zéros consécutifs peut être remplacée par \`::\` (une seule fois dans l'adresse). L'exemple ci-dessus peut s'écrire \`2001:db8:85a3::8a2e:370:7334\`.
+- IPv4 et IPv6 **coexistent** aujourd'hui (on parle de « double pile », *dual stack* ) : la plupart des réseaux et appareils gèrent les deux en même temps, le temps que la transition se termine.
+
+## IPv4 ou IPv6 ?
+
+| | IPv4 | IPv6 |
+| --- | --- | --- |
+| Taille de l'adresse | 32 bits (4 octets) | 128 bits (16 octets) |
+| Écriture | Décimal, points (\`192.168.1.42\`) | Hexadécimal, deux-points (\`2001:db8::1\`) |
+| Nombre d'adresses | ≈ 4,3 milliards | ≈ 340 undécillions |
+| Statut | Historique, encore très utilisée | En déploiement progressif |`,
+      },
+      {
         title: "Le réseau local : LAN, switch, routeur",
         slug: "le-reseau-local-lan-switch-routeur",
         parent: "reseaux-notions-de-base",
@@ -212,9 +286,17 @@ Un **switch** relie plusieurs appareils d'un même LAN, mais contrairement au hu
 
 ### Le routeur
 
-Un **routeur** relie des réseaux **différents** entre eux — typiquement, il relie le LAN local à un autre réseau (souvent Internet, via la « box » du fournisseur d'accès). Il gère l'attribution des adresses IP locales (souvent via **DHCP**, qui distribue automatiquement une adresse à chaque appareil qui se connecte) et fait la traduction entre adresses locales et adresse publique.
+Un **routeur** relie des réseaux **différents** entre eux — typiquement, il relie le LAN local à un autre réseau (souvent Internet, via la « box » du fournisseur d'accès). C'est l'équipement qui fait le lien entre le monde « dedans » (le réseau local) et le monde « dehors » (le WAN, Internet).
 
-> **En résumé** : le **switch** fait communiquer les appareils **entre eux, à l'intérieur** d'un même réseau local ; le **routeur** fait communiquer des réseaux **différents entre eux** (le LAN vers le WAN/Internet).
+**Son rôle en détail :**
+
+- **Router les paquets** : il regarde l'adresse IP de destination de chaque paquet et décide par quel chemin le faire passer pour qu'il arrive à bon port, y compris à travers plusieurs réseaux intermédiaires. C'est de là que vient son nom.
+- **Faire la passerelle (gateway)** : c'est par lui que transite toute donnée qui doit sortir du réseau local — c'est pour ça qu'on l'appelle aussi « passerelle par défaut ».
+- **Distribuer les adresses IP** : via **DHCP**, il attribue automatiquement une adresse IP locale à chaque appareil qui se connecte, pour éviter d'avoir à les configurer à la main.
+- **Traduire les adresses (NAT)** : les appareils du LAN ont des adresses IP **privées** (voir [[Adressage : MAC, IP, IPv4 et IPv6]]), invisibles depuis Internet. Le routeur fait la traduction entre ces adresses privées et sa propre adresse IP **publique** à chaque fois qu'un appareil du réseau communique vers l'extérieur — cette technique s'appelle le **NAT** (*Network Address Translation*). C'est aussi ce qui protège un peu le réseau local : personne depuis Internet ne peut joindre directement un appareil derrière le NAT sans configuration particulière.
+- **Filtrer le trafic** : beaucoup de routeurs embarquent un pare-feu (firewall) basique, qui bloque par défaut les connexions non sollicitées venant de l'extérieur.
+
+> **En résumé** : le **switch** fait communiquer les appareils **entre eux, à l'intérieur** d'un même réseau local (adresses MAC) ; le **routeur** fait communiquer des réseaux **différents entre eux** (adresses IP), typiquement le LAN vers le WAN/Internet.
 
 ## Adresse IP, masque, passerelle (les bases)
 
@@ -269,6 +351,8 @@ Techniquement possible, mais **déconseillé sans précaution** : mélanger de l
 | --- | --- |
 | **Adresse IP** | Identifiant numérique d'un appareil sur un réseau (ex. \`192.168.1.42\`). |
 | **Adresse MAC** | Identifiant physique unique, gravé dans chaque carte réseau. |
+| **Adresse privée** | Adresse IP valable uniquement à l'intérieur d'un réseau local, jamais routée sur Internet. |
+| **Adresse publique** | Adresse IP unique sur Internet, attribuée par le fournisseur d'accès. |
 | **AES67** | Standard ouvert d'audio-sur-IP, interopérable avec Dante. |
 | **ARPANET** | Premier réseau à grande échelle (1969), ancêtre d'Internet. |
 | **Art-Net** | Protocole qui transporte le DMX (lumière) sur un réseau Ethernet. |
@@ -287,11 +371,14 @@ Techniquement possible, mais **déconseillé sans précaution** : mélanger de l
 | **Gateway (passerelle)** | Équipement (souvent le routeur) par lequel sortent les données du réseau local. |
 | **Hub (concentrateur)** | Ancien équipement qui répète les données vers tous ses ports, sans intelligence. |
 | **IP (protocole)** | Protocole qui adresse et achemine les paquets de données entre réseaux. |
+| **IPv4** | Version d'adresse IP la plus répandue, sur 32 bits (ex. \`192.168.1.42\`) : environ 4,3 milliards d'adresses possibles. |
+| **IPv6** | Version d'adresse IP plus récente, sur 128 bits (ex. \`2001:db8::1\`), créée pour pallier le manque d'adresses IPv4. |
 | **LAN** | *Local Area Network* : réseau local (un bâtiment, un site). |
 | **Latence** | Délai de transmission d'une donnée d'un point à un autre. |
 | **MAN** | *Metropolitan Area Network* : réseau à l'échelle d'une ville. |
 | **Masque de sous-réseau** | Indique quelle partie d'une adresse IP désigne le réseau. |
 | **Modem** | Appareil qui convertit un signal numérique en signal transmissible (ligne téléphonique, etc.). |
+| **NAT** (*Network Address Translation*) | Traduction entre les adresses IP privées d'un LAN et l'adresse IP publique du routeur. |
 | **NDI** | Protocole de transport vidéo sur réseau IP. |
 | **Octet** | Groupe de 8 bits (256 valeurs possibles). |
 | **PAN** | *Personal Area Network* : réseau à l'échelle d'une personne (Bluetooth...). |
