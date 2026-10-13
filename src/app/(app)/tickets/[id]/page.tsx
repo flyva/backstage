@@ -19,6 +19,9 @@ export default async function TicketPage({ params }: PageProps<"/tickets/[id]">)
   const [ticket] = await db.select().from(tickets).where(admin ? eq(tickets.id, id) : and(eq(tickets.id, id), eq(tickets.createdBy, user.id))).limit(1);
   if (!ticket) notFound();
 
+  // L'auteur qui consulte son ticket le marque comme lu (plus de pastille « non lu » dans le menu/la cloche).
+  if (ticket.createdBy === user.id) await db.update(tickets).set({ ownerReadAt: new Date() }).where(eq(tickets.id, id));
+
   const [author, files, comments] = await Promise.all([
     db.select({ id: users.id, name: users.name }).from(users).where(eq(users.id, ticket.createdBy)).limit(1),
     db.select().from(ticketFiles).where(eq(ticketFiles.ticketId, id)).orderBy(asc(ticketFiles.createdAt)),

@@ -33,7 +33,7 @@ export default async function AdminUpdatesPage() {
                   <span className="shrink-0 text-xs text-muted">{ago(u.createdAt)}</span>
                 </summary>
                 <div className="space-y-4 border-t border-line p-4">
-                  <UpdateForm id={u.id} title={u.title} body={u.body} publishUntil={u.publishUntil ? u.publishUntil.toISOString().slice(0, 10) : ""} />
+                  <UpdateForm id={u.id} title={u.title} body={u.body} kind={u.kind} important={u.important} publishUntil={u.publishUntil ? u.publishUntil.toISOString().slice(0, 10) : ""} />
                   <form action={deleteUpdate} className="border-t border-line pt-3">
                     <input type="hidden" name="id" value={u.id} />
                     <button className="flex items-center gap-1 text-xs text-muted hover:text-danger"><Trash2 size={14} /> Supprimer</button>

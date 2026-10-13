@@ -49,6 +49,7 @@ export default async function WikiIndexPage({ searchParams }: PageProps<"/wiki">
         <div>
           <h1 className="text-2xl font-bold">Wiki</h1>
           <p className="text-sm text-muted">Les ressources de la promo : fiches de cours, méthodes, tutos, contacts. Tout le monde peut contribuer.</p>
+          <p className="text-xs text-muted">Une page déjà consultée reste lisible hors connexion (une fois Backstage installé).</p>
         </div>
         <Link href="/wiki/nouveau" className="btn"><FilePlus2 size={16} /> Nouvelle page</Link>
       </header>

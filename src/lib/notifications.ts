@@ -1,7 +1,7 @@
 import "server-only";
-import { and, count, desc, eq, gt, inArray, isNull, lt, lte, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, gt, inArray, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { bdeEvents, equipmentItems, galleryAlbums, loans, newsPosts, pollInvites, polls, updates, users } from "@/db/schema";
+import { bdeEvents, equipmentItems, galleryAlbums, loans, newsPosts, pollInvites, polls, tickets, updates, users, type UpdateKind } from "@/db/schema";
 import type { SessionUser } from "@/lib/auth";
 import { STATUS_LABEL, daysBetween, isManager, todayParis } from "@/lib/equipment";
 import { ago } from "@/lib/relative-time";
@@ -9,11 +9,13 @@ import { cardHref, dueCards } from "@/lib/reminders";
 import { unreadConversations } from "@/lib/messaging";
 import type { NotifItem } from "@/components/shell/NotificationBell";
 
+const UPDATE_KIND_LABEL: Record<UpdateKind, string> = { feature: "Nouveauté", fix: "Correction", maintenance: "Maintenance" };
+
 /**
  * Nouveautés de la personne (alertes à traiter + activité récente) : utilisé par la mise en page (premier affichage) et par
  * l'API de la cloche (relue toutes les minutes côté client), afin qu'une notification arrive sans recharger la page.
  */
-export async function loadNotifications(user: SessionUser): Promise<{ items: NotifItem[]; unread: number; loanBadge: number; messageBadge: number }> {
+export async function loadNotifications(user: SessionUser): Promise<{ items: NotifItem[]; unread: number; loanBadge: number; messageBadge: number; ticketsBadge: number }> {
   const today = todayParis();
   const tomorrow = new Date(`${today}T12:00:00Z`);
   tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
@@ -21,7 +23,7 @@ export async function loadNotifications(user: SessionUser): Promise<{ items: Not
   const manager = isManager(user);
   const admin = user.perms.administration;
 
-  const [mineDue, requested, lateAll, pendingUsers, news, events, albums, lastLoans, myCards, pollsToAnswer, unreadConvs, newUpdates] = await Promise.all([
+  const [mineDue, requested, lateAll, pendingUsers, news, events, albums, lastLoans, myCards, pollsToAnswer, unreadConvs, newUpdates, myUnreadTickets, openTickets] = await Promise.all([
     db
       .select({ id: loans.id, dueDate: loans.dueDate, name: equipmentItems.name })
       .from(loans)
@@ -49,10 +51,23 @@ export async function loadNotifications(user: SessionUser): Promise<{ items: Not
       .orderBy(desc(polls.createdAt))
       .limit(4),
     unreadConversations(user.id),
-    db.select({ id: updates.id, title: updates.title, at: updates.createdAt }).from(updates).where(or(isNull(updates.publishUntil), gt(updates.publishUntil, new Date()))).orderBy(desc(updates.createdAt)).limit(3),
+    db.select({ id: updates.id, title: updates.title, kind: updates.kind, at: updates.createdAt }).from(updates).where(or(isNull(updates.publishUntil), gt(updates.publishUntil, new Date()))).orderBy(desc(updates.createdAt)).limit(3),
+    // Tickets de l'utilisateur avec une réponse à lire (le dernier à avoir agi n'est pas lui).
+    db
+      .select({ id: tickets.id, title: tickets.title, at: tickets.updatedAt })
+      .from(tickets)
+      .where(and(
+        eq(tickets.createdBy, user.id),
+        or(isNull(tickets.lastActorId), ne(tickets.lastActorId, user.id)),
+        or(isNull(tickets.ownerReadAt), gt(tickets.updatedAt, tickets.ownerReadAt)),
+      ))
+      .orderBy(desc(tickets.updatedAt))
+      .limit(5),
+    admin ? db.select({ at: tickets.createdAt }).from(tickets).where(eq(tickets.status, "open")) : Promise.resolve([] as { at: Date }[]),
   ]);
 
   const loanBadge = mineDue.length + requested.length + Number(lateAll[0]?.n ?? 0);
+  const ticketsBadge = myUnreadTickets.length + openTickets.length;
   const seenAt = (user.notifSeenAt ?? user.createdAt).getTime();
 
   const alerts: NotifItem[] = [
@@ -113,6 +128,26 @@ export async function loadNotifications(user: SessionUser): Promise<{ items: Not
           unread: pendingUsers.some((p) => p.at.getTime() > seenAt),
         }]
       : []),
+    ...(myUnreadTickets.length > 0
+      ? [{
+          key: "tickets-replied",
+          kind: "alert" as const,
+          text: `${myUnreadTickets.length} de tes ticket(s) ${myUnreadTickets.length > 1 ? "ont" : "a"} une réponse`,
+          when: "Tickets",
+          href: "/tickets",
+          unread: true,
+        }]
+      : []),
+    ...(admin && openTickets.length > 0
+      ? [{
+          key: "tickets-todo",
+          kind: "alert" as const,
+          text: `${openTickets.length} ticket(s) ouvert(s) à traiter`,
+          when: "À traiter",
+          href: "/admin/tickets",
+          unread: openTickets.some((t) => t.at.getTime() > seenAt),
+        }]
+      : []),
   ];
 
   const activity = [
@@ -120,7 +155,7 @@ export async function loadNotifications(user: SessionUser): Promise<{ items: Not
     ...events.map((e) => ({ key: `bde-${e.id}`, kind: "bde" as const, text: `BDE : ${e.title}`, at: e.at, href: "/bde" })),
     ...albums.map((a) => ({ key: `album-${a.id}`, kind: "gallery" as const, text: `Album « ${a.title} »`, at: a.at, href: `/galerie/${a.id}` })),
     ...lastLoans.map((l) => ({ key: `loan-${l.id}`, kind: "loan" as const, text: `${l.name} : ${STATUS_LABEL[l.status].toLowerCase()}`, at: l.at, href: "/materiel" })),
-    ...newUpdates.map((u) => ({ key: `update-${u.id}`, kind: "update" as const, text: `Nouveauté : ${u.title}`, at: u.at, href: "/nouveautes" })),
+    ...newUpdates.map((u) => ({ key: `update-${u.id}`, kind: "update" as const, text: `${UPDATE_KIND_LABEL[u.kind]} : ${u.title}`, at: u.at, href: "/nouveautes" })),
   ]
     .sort((a, b) => b.at.getTime() - a.at.getTime())
     .slice(0, 8)
@@ -128,5 +163,5 @@ export async function loadNotifications(user: SessionUser): Promise<{ items: Not
 
   const items = [...alerts, ...activity];
   const unread = items.filter((i) => i.unread).length;
-  return { items, unread, loanBadge, messageBadge: unreadConvs };
+  return { items, unread, loanBadge, messageBadge: unreadConvs, ticketsBadge };
 }

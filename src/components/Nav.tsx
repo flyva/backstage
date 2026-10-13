@@ -8,7 +8,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-type Badge = "loans" | "messages";
+type Badge = "loans" | "messages" | "tickets";
 type Item = { href: string; label: string; icon: LucideIcon; badge?: Badge; adminOnly?: boolean; module?: string; heading?: string };
 type Group = { id: string; title: string; items: Item[] };
 
@@ -33,7 +33,7 @@ const GROUPS: Group[] = [
       { href: "/materiel", label: "Matériel", icon: Package, badge: "loans", module: "materiel" },
       { href: "/reseau", label: "Carnet de réseau", icon: Contact },
       { href: "/calculettes", label: "Calculettes", icon: Calculator },
-      { href: "/tickets", label: "Tickets", icon: Ticket },
+      { href: "/tickets", label: "Tickets", icon: Ticket, badge: "tickets" },
       { href: "/cours", label: "Mes cours", icon: NotebookPen, module: "cours", heading: "Cours" },
       { href: "/habilitation", label: "Habilitation électrique", icon: ShieldCheck, module: "habilitation" },
     ],
@@ -77,7 +77,7 @@ const GROUPS: Group[] = [
 
 const isActive = (pathname: string, href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 
-export function Nav({ isAdmin, loanBadge, messageBadge = 0, views }: { isAdmin: boolean; loanBadge: number; messageBadge?: number; views: Record<string, boolean> }) {
+export function Nav({ isAdmin, loanBadge, messageBadge = 0, ticketsBadge = 0, views }: { isAdmin: boolean; loanBadge: number; messageBadge?: number; ticketsBadge?: number; views: Record<string, boolean> }) {
   const pathname = usePathname();
   // Groupe ouvert : celui de la page en cours, sauf si la personne en a choisi un autre (ou tout refermé) sur cette page.
   // Changer de page revient au groupe de la nouvelle page.
@@ -85,7 +85,7 @@ export function Nav({ isAdmin, loanBadge, messageBadge = 0, views }: { isAdmin: 
   const activeId = GROUPS.find((g) => g.items.some((i) => isActive(pathname, i.href)))?.id ?? GROUPS[0].id;
   const openId = choice && choice.path === pathname ? choice.id : activeId;
   const toggle = (id: string) => setChoice({ id: openId === id ? null : id, path: pathname });
-  const countOf = (badge?: Badge) => (badge === "loans" ? loanBadge : badge === "messages" ? messageBadge : 0);
+  const countOf = (badge?: Badge) => (badge === "loans" ? loanBadge : badge === "messages" ? messageBadge : badge === "tickets" ? ticketsBadge : 0);
 
   return (
     <nav className="space-y-0.5" aria-label="Navigation principale">

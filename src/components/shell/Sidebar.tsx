@@ -5,7 +5,7 @@ import { Nav } from "@/components/Nav";
 const initials = (name: string) =>
   name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join("") || "?";
 
-export function Sidebar({ user, loanBadge, messageBadge = 0 }: { user: { name: string; email: string; roleName: string; isAdmin: boolean; views: Record<string, boolean>; avatar?: string | null }; loanBadge: number; messageBadge?: number }) {
+export function Sidebar({ user, loanBadge, messageBadge = 0, ticketsBadge = 0 }: { user: { name: string; email: string; roleName: string; isAdmin: boolean; views: Record<string, boolean>; avatar?: string | null }; loanBadge: number; messageBadge?: number; ticketsBadge?: number }) {
   return (
     <>
       <div className="flex h-14 shrink-0 items-center gap-2 border-b border-side-line px-4">
@@ -30,7 +30,7 @@ export function Sidebar({ user, loanBadge, messageBadge = 0 }: { user: { name: s
       </Link>
 
       <div className="no-scrollbar flex-1 overflow-y-auto p-3">
-        <Nav isAdmin={user.isAdmin} views={user.views} loanBadge={loanBadge} messageBadge={messageBadge} />
+        <Nav isAdmin={user.isAdmin} views={user.views} loanBadge={loanBadge} messageBadge={messageBadge} ticketsBadge={ticketsBadge} />
       </div>
     </>
   );

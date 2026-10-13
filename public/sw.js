@@ -1,9 +1,21 @@
 // Service worker de Backstage.
-// Volontairement minimal : il ne met JAMAIS en cache les pages, les API ni les médias
-// (ils dépendent de la session). Il sert seulement à l'installation, aux fichiers statiques
-// immuables, à des pages « hors ligne » (dont le Jour J) et aux notifications push.
-const CACHE = "backstage-static-v2";
+// Volontairement minimal : il ne met JAMAIS en cache les pages personnelles, les API ni les médias (ils dépendent de
+// la session). Seule exception, volontaire : les pages du wiki et le cours Habilitation électrique (connaissance
+// partagée par toute la promo, pas de donnée personnelle), mises en cache après une première visite en ligne, pour
+// rester lisibles hors connexion ensuite (mode avion, salle sans réseau…). Le reste du service worker gère
+// l'installation, les fichiers statiques immuables, les pages « hors ligne » (dont le Jour J) et les notifications push.
+const CACHE = "backstage-static-v3";
+const PAGES_CACHE = "backstage-pages-v1";
 const PRECACHE = ["/offline.html", "/jour-j-offline.html", "/icon-192.png"];
+
+// Lecture seule et partagée : le wiki (hors création/modification/historique/impression/export) et Habilitation électrique.
+function isOfflineReadable(pathname) {
+  if (/^\/wiki\/nouveau/.test(pathname)) return false;
+  if (/^\/wiki\/[^/]+\/(modifier|historique|imprimer|export)/.test(pathname)) return false;
+  if (/^\/wiki(\/|$)/.test(pathname)) return true;
+  if (/^\/habilitation(\/|$)/.test(pathname)) return true;
+  return false;
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(PRECACHE)).then(() => self.skipWaiting()));
@@ -12,7 +24,7 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE && k !== PAGES_CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
   );
 });
@@ -30,6 +42,18 @@ self.addEventListener("fetch", (event) => {
         if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); }
         return res;
       })),
+    );
+    return;
+  }
+
+  // Wiki et Habilitation : réseau d'abord (toujours à jour si une connexion est là), le cache ne sert que hors ligne.
+  // Couvre à la fois la navigation complète et les requêtes React Server Components des clics internes (même URL).
+  if (isOfflineReadable(url.pathname)) {
+    event.respondWith(
+      fetch(req).then((res) => {
+        if (res.ok) { const copy = res.clone(); caches.open(PAGES_CACHE).then((c) => c.put(req, copy)); }
+        return res;
+      }).catch(() => caches.match(req).then((hit) => hit || (req.mode === "navigate" ? caches.match("/offline.html") : Response.error()))),
     );
     return;
   }

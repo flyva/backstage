@@ -35,11 +35,11 @@ export async function removeSubscription(endpoint: string) {
   revalidatePath("/profil");
 }
 
-export async function updateNotifyPrefs(prefs: { news: boolean; bde: boolean; loans: boolean; reminders: boolean; messages: boolean; listings: boolean }) {
+export async function updateNotifyPrefs(prefs: { news: boolean; bde: boolean; loans: boolean; reminders: boolean; messages: boolean; listings: boolean; updates: boolean }) {
   const user = await requireUser();
   await db
     .update(users)
-    .set({ notifyNews: !!prefs.news, notifyBde: !!prefs.bde, notifyLoans: !!prefs.loans, notifyReminders: !!prefs.reminders, notifyMessages: !!prefs.messages, notifyListings: !!prefs.listings })
+    .set({ notifyNews: !!prefs.news, notifyBde: !!prefs.bde, notifyLoans: !!prefs.loans, notifyReminders: !!prefs.reminders, notifyMessages: !!prefs.messages, notifyListings: !!prefs.listings, notifyUpdates: !!prefs.updates })
     .where(eq(users.id, user.id));
   revalidatePath("/profil");
 }

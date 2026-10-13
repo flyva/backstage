@@ -109,6 +109,7 @@ export const users = mysqlTable("users", {
   notifyReminders: boolean("notify_reminders").notNull().default(true),
   notifyMessages: boolean("notify_messages").notNull().default(true), // messages des annonces, vente validée, nouvel avis
   notifyListings: boolean("notify_listings").notNull().default(false), // nouvelle annonce publiée par la promo (désactivé par défaut : peut être bavard)
+  notifyUpdates: boolean("notify_updates").notNull().default(true), // nouveauté marquée importante
   createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
 });
 
@@ -155,6 +156,10 @@ export const tickets = mysqlTable(
     body: text("body").notNull(),
     status: mysqlEnum("status", TICKET_STATUSES).notNull().default("open"),
     createdBy: int("created_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+    // Qui a fait la dernière action (commentaire ou changement de statut) : sert à savoir si l'auteur du ticket a
+    // une réponse à lire (si ce n'est pas lui qui a agi en dernier).
+    lastActorId: int("last_actor_id").references(() => users.id),
+    ownerReadAt: datetime("owner_read_at"), // dernière fois que l'auteur a consulté son ticket
     createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
     updatedAt: datetime("updated_at").notNull().$defaultFn(() => new Date()),
   },
@@ -190,10 +195,16 @@ export const ticketComments = mysqlTable(
 
 // ---------- Nouveautés internes (changelog discret, affiché dans la cloche) ----------
 
+export const UPDATE_KINDS = ["feature", "fix", "maintenance"] as const;
+export type UpdateKind = (typeof UPDATE_KINDS)[number];
+
 export const updates = mysqlTable("updates", {
   id: int("id").primaryKey().autoincrement(),
   title: varchar("title", { length: 150 }).notNull(),
   body: text("body").notNull(),
+  kind: mysqlEnum("kind", UPDATE_KINDS).notNull().default("feature"),
+  // Mise en avant (facultatif) : en plus de la cloche, envoie une notification push à qui l'a activé.
+  important: boolean("important").notNull().default(false),
   authorId: int("author_id").notNull().references(() => users.id),
   // Date de fin de publication (facultative) : passé cette date, la nouveauté n'est plus affichée (cloche, page
   // /nouveautes) mais reste enregistrée et modifiable en admin.

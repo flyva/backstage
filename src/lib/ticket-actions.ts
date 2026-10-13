@@ -36,7 +36,7 @@ export async function createTicket(_: FormState, fd: FormData): Promise<FormStat
     if (f.size > MAX_TICKET_FILE_BYTES) return { error: `« ${f.name} » dépasse 15 Mo` };
   }
 
-  const [res] = await db.insert(tickets).values({ title: p.data.title, body: p.data.body, createdBy: user.id });
+  const [res] = await db.insert(tickets).values({ title: p.data.title, body: p.data.body, createdBy: user.id, lastActorId: user.id, ownerReadAt: new Date() });
 
   if (files.length > 0) {
     await ensureTicketFilesDir();
@@ -64,18 +64,19 @@ export async function addTicketComment(_: FormState, fd: FormData): Promise<Form
   const body = String(fd.get("body") ?? "").trim();
   if (!body || body.length > 3000) return { error: "Message vide ou trop long" };
   await db.insert(ticketComments).values({ ticketId: id, userId: user.id, body });
-  await db.update(tickets).set({ updatedAt: new Date() }).where(eq(tickets.id, id));
+  // Si c'est l'auteur qui répond, son ticket reste « lu » pour lui ; si c'est un admin, l'auteur aura une réponse à lire.
+  await db.update(tickets).set({ updatedAt: new Date(), lastActorId: user.id, ...(user.id === ticket.createdBy ? { ownerReadAt: new Date() } : {}) }).where(eq(tickets.id, id));
   revalidatePath(`/tickets/${id}`);
   revalidatePath("/admin/tickets");
   return { ok: "Message ajouté" };
 }
 
 export async function setTicketStatus(fd: FormData) {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const id = Number(fd.get("ticketId"));
   const status = String(fd.get("status") ?? "") as TicketStatus;
   if (!Number.isInteger(id) || !TICKET_STATUSES.includes(status)) return;
-  await db.update(tickets).set({ status, updatedAt: new Date() }).where(eq(tickets.id, id));
+  await db.update(tickets).set({ status, updatedAt: new Date(), lastActorId: admin.id }).where(eq(tickets.id, id));
   revalidatePath(`/tickets/${id}`);
   revalidatePath("/tickets");
   revalidatePath("/admin/tickets");

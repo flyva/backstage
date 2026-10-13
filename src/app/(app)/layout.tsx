@@ -12,11 +12,11 @@ import { UserMenu } from "@/components/shell/UserMenu";
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const user = await requireUser();
   const admin = user.perms.administration;
-  const { items, unread, loanBadge, messageBadge } = await loadNotifications(user);
+  const { items, unread, loanBadge, messageBadge, ticketsBadge } = await loadNotifications(user);
 
   return (
     <AppShell
-      sidebar={<Sidebar user={{ name: user.name, email: user.email, roleName: user.roleName, isAdmin: user.perms.administration, views: { ...user.perms.view, ...user.perms.sections, ...user.perms.courses }, avatar: avatarUrl(user.avatarFile) }} loanBadge={loanBadge} messageBadge={messageBadge} />}
+      sidebar={<Sidebar user={{ name: user.name, email: user.email, roleName: user.roleName, isAdmin: user.perms.administration, views: { ...user.perms.view, ...user.perms.sections, ...user.perms.courses }, avatar: avatarUrl(user.avatarFile) }} loanBadge={loanBadge} messageBadge={messageBadge} ticketsBadge={ticketsBadge} />}
       bell={<><HeaderClock /><QuickTheme initial={skinFrom(user)} /><NotificationBell items={items} unread={unread} /></>}
       menu={<UserMenu name={user.name} email={user.email} isAdmin={admin} />}
     >
