@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 
 type Badge = "loans" | "messages";
-type Item = { href: string; label: string; icon: LucideIcon; badge?: Badge; adminOnly?: boolean; module?: string };
+type Item = { href: string; label: string; icon: LucideIcon; badge?: Badge; adminOnly?: boolean; module?: string; heading?: string };
 type Group = { id: string; title: string; items: Item[] };
 
 // Six groupes par thème, dépliés UN SEUL à la fois (accordéon) : le menu ne dépasse jamais la hauteur de l'écran, donc il ne défile pas.
@@ -28,13 +28,13 @@ const GROUPS: Group[] = [
   {
     id: "travail", title: "Travail",
     items: [
-      { href: "/cours", label: "Mes cours", icon: NotebookPen },
       { href: "/projets", label: "Projets", icon: Briefcase },
       { href: "/kanban", label: "Mon kanban", icon: SquareKanban },
       { href: "/materiel", label: "Matériel", icon: Package, badge: "loans", module: "materiel" },
       { href: "/reseau", label: "Carnet de réseau", icon: Contact },
       { href: "/calculettes", label: "Calculettes", icon: Calculator },
-      { href: "/habilitation", label: "Habilitation électrique", icon: ShieldCheck },
+      { href: "/cours", label: "Mes cours", icon: NotebookPen, module: "cours", heading: "Cours" },
+      { href: "/habilitation", label: "Habilitation électrique", icon: ShieldCheck, module: "habilitation" },
     ],
   },
   {
@@ -111,11 +111,14 @@ export function Nav({ isAdmin, loanBadge, messageBadge = 0, views }: { isAdmin: 
             </button>
             {open && (
               <ul id={`nav-${g.id}`} className="mb-1.5 space-y-0.5">
-                {items.map(({ href, label, icon: Icon, badge }) => {
+                {items.map(({ href, label, icon: Icon, badge, heading }) => {
                   const active = isActive(pathname, href);
                   const count = countOf(badge);
                   return (
                     <li key={href}>
+                      {heading && (
+                        <p className="mt-1.5 px-3 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-side-muted">{heading}</p>
+                      )}
                       <Link
                         href={href}
                         aria-current={active ? "page" : undefined}

@@ -14,10 +14,19 @@ export type RoleFlags = {
   viewSavoirs: boolean;
   viewPromo: boolean;
   viewVie: boolean;
+  courseTags: string | null;
 };
 
 export type Module = "materiel" | "bde" | "actus" | "galerie";
 export type Section = "savoirs" | "promo" | "vie";
+
+/** Pages du sous-menu « Cours » (dans Travail). D'autres s'ajouteront avec le temps : chacune a une clé stable, à cocher
+ * ou non par rôle, sans toucher à la base (elles sont stockées comme une liste de clés dans `courseTags`). */
+export const COURSE_PAGES = [
+  { key: "cours", label: "Mes cours" },
+  { key: "habilitation", label: "Habilitation électrique" },
+] as const;
+export type CoursePageKey = (typeof COURSE_PAGES)[number]["key"];
 
 export type Perms = {
   admin: boolean; // administrateur : tous les droits
@@ -30,6 +39,8 @@ export type Perms = {
   view: Record<Module, boolean>;
   /** Voit cette partie du menu (Savoirs, Promo, Vie étudiante). Rien dans ces parties n'est géré finement par ailleurs. */
   sections: Record<Section, boolean>;
+  /** Pages du sous-menu Cours que ce rôle voit. */
+  courses: Record<CoursePageKey, boolean>;
 };
 
 /** Un administrateur a tous les droits, quel que soit le détail coché. */
@@ -53,7 +64,14 @@ export function permsOf(r: RoleFlags | null | undefined): Perms {
       promo: a || (r ? !!r.viewPromo : true),
       vie: a || (r ? !!r.viewVie : true),
     },
+    courses: courseAccess(a, r?.courseTags ?? null),
   };
+}
+
+/** `courseTags` vide ou absent = toutes les pages de Cours sont visibles (comportement par défaut, sans configuration). */
+function courseAccess(admin: boolean, tags: string | null): Record<CoursePageKey, boolean> {
+  const allowed = tags ? new Set(tags.split(",").map((t) => t.trim()).filter(Boolean)) : null;
+  return Object.fromEntries(COURSE_PAGES.map((p) => [p.key, admin || !allowed || allowed.has(p.key)])) as Record<CoursePageKey, boolean>;
 }
 
 /** Sections entières du menu, à cocher ou non par rôle (pas de niveau « Gérer », juste visible ou pas). */

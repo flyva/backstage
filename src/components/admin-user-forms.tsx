@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { Trash2 } from "lucide-react";
 import type { FormState } from "@/lib/actions";
 import { deleteRole, deleteUser, resetUserPassword, saveRole, updateUser } from "@/lib/user-admin-actions";
-import { ADMIN_PERM, LEVEL_FIELDS, LEVEL_LABEL, levelOf, SECTION_FIELDS, type Level } from "@/lib/perms";
+import { ADMIN_PERM, COURSE_PAGES, LEVEL_FIELDS, LEVEL_LABEL, levelOf, SECTION_FIELDS, type Level } from "@/lib/perms";
 import { PasswordField } from "@/components/PasswordField";
 
 function Feedback({ state }: { state: FormState }) {
@@ -80,6 +80,32 @@ export function RoleForm({ role = {} }: { role?: RoleValues }) {
                   </div>
                 </div>
                 <p className="mt-1 text-xs text-muted">{sf.hint}</p>
+              </div>
+            );
+          })}
+        </div>
+      </fieldset>
+
+      <fieldset className="space-y-2">
+        <legend className="label">Pages de Cours (sous-menu de Travail)</legend>
+        <p className="text-xs text-muted">« Aucun » retire cette page précise du sous-menu Cours, sans toucher aux autres. D&apos;autres pages s&apos;ajouteront ici avec le temps.</p>
+        <div className="space-y-2">
+          {COURSE_PAGES.map((cp) => {
+            const tags = typeof role.courseTags === "string" ? role.courseTags : null;
+            const cur = !role.id || !tags ? "view" : tags.split(",").includes(cp.key) ? "view" : "none";
+            return (
+              <div key={cp.key} className="rounded-xl border border-line p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <strong className="text-sm">{cp.label}</strong>
+                  <div role="radiogroup" aria-label={cp.label} className="flex overflow-hidden rounded-lg border border-line text-sm">
+                    {(["none", "view"] as const).map((lv) => (
+                      <label key={lv} className="cursor-pointer border-l border-line px-3 py-1 first:border-l-0 has-[:checked]:bg-accent has-[:checked]:text-accent-fg">
+                        <input type="radio" name={`course_${cp.key}`} value={lv} defaultChecked={cur === lv} className="sr-only" />
+                        {lv === "none" ? "Aucun" : "Voir"}
+                      </label>
+                    ))}
+                  </div>
+                </div>
               </div>
             );
           })}

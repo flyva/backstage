@@ -8,6 +8,7 @@ import { db } from "@/db";
 import { roles, sessions, users } from "@/db/schema";
 import { hashPassword, requireAdmin } from "@/lib/auth";
 import { joinName } from "@/lib/names";
+import { COURSE_PAGES } from "@/lib/perms";
 import type { FormState } from "@/lib/actions";
 
 const id = z.coerce.number().int().positive();
@@ -58,6 +59,11 @@ export async function saveRole(_: FormState, fd: FormData): Promise<FormState> {
     viewSavoirs: fd.get("section_savoirs") !== "none",
     viewPromo: fd.get("section_promo") !== "none",
     viewVie: fd.get("section_vie") !== "none",
+    // null = tout visible, y compris les pages de Cours ajoutées plus tard ; une liste explicite ne fige que si quelque chose est vraiment décoché.
+    courseTags: (() => {
+      const kept = COURSE_PAGES.filter((c) => fd.get(`course_${c.key}`) !== "none").map((c) => c.key);
+      return kept.length === COURSE_PAGES.length ? null : kept.join(",");
+    })(),
     ...levels(fd),
   };
   const raw = Number(fd.get("id") || 0);
