@@ -21,6 +21,7 @@ export default async function LiensPage() {
           <div className="grid gap-3 sm:grid-cols-2">
             {list.map((l) => (
               <a key={l.id} href={l.url} target="_blank" rel="noopener noreferrer" className="card flex items-start gap-3 hover:border-accent">
+                {l.icon && <i className={`${l.icon} fa-fw mt-0.5 shrink-0 text-lg text-accent`} aria-hidden />}
                 <div className="min-w-0 flex-1">
                   <div className="font-medium">{l.label}</div>
                   {l.description && <div className="text-sm text-muted">{l.description}</div>}

@@ -29,7 +29,7 @@ export default async function AdminLinksPage() {
                 <span className="hidden max-w-xs truncate text-xs text-muted sm:block">{l.url}</span>
               </summary>
               <div className="space-y-4 border-t border-line p-4">
-                <LinkForm id={l.id} category={l.category} label={l.label} url={l.url} description={l.description ?? ""} categories={categories} />
+                <LinkForm id={l.id} category={l.category} label={l.label} url={l.url} description={l.description ?? ""} icon={l.icon ?? ""} categories={categories} />
                 <div className="flex items-center gap-2 border-t border-line pt-3">
                   <form action={moveLink}>
                     <input type="hidden" name="id" value={l.id} /><input type="hidden" name="dir" value="up" />

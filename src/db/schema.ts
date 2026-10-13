@@ -138,7 +138,64 @@ export const usefulLinks = mysqlTable("useful_links", {
   label: varchar("label", { length: 120 }).notNull(),
   url: varchar("url", { length: 1000 }).notNull(),
   description: varchar("description", { length: 255 }),
+  icon: varchar("icon", { length: 60 }), // classe FontAwesome (ex. « fa-solid fa-graduation-cap »), facultative
   position: int("position").notNull().default(0),
+});
+
+// ---------- Tickets (support) ----------
+
+export const TICKET_STATUSES = ["open", "in_progress", "closed"] as const;
+export type TicketStatus = (typeof TICKET_STATUSES)[number];
+
+export const tickets = mysqlTable(
+  "tickets",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    title: varchar("title", { length: 150 }).notNull(),
+    body: text("body").notNull(),
+    status: mysqlEnum("status", TICKET_STATUSES).notNull().default("open"),
+    createdBy: int("created_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+    updatedAt: datetime("updated_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [index("tickets_user_idx").on(t.createdBy, t.createdAt)],
+);
+
+export const ticketFiles = mysqlTable(
+  "ticket_files",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    ticketId: int("ticket_id").notNull().references(() => tickets.id, { onDelete: "cascade" }),
+    file: varchar("file", { length: 60 }).notNull(),
+    originalName: varchar("original_name", { length: 200 }).notNull(),
+    mime: varchar("mime", { length: 60 }).notNull(),
+    size: int("size").notNull(),
+    uploadedBy: int("uploaded_by").notNull().references(() => users.id),
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [index("tf_ticket_idx").on(t.ticketId)],
+);
+
+export const ticketComments = mysqlTable(
+  "ticket_comments",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    ticketId: int("ticket_id").notNull().references(() => tickets.id, { onDelete: "cascade" }),
+    userId: int("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    body: text("body").notNull(),
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [index("tc_ticket_idx").on(t.ticketId, t.createdAt)],
+);
+
+// ---------- Nouveautés internes (changelog discret, affiché dans la cloche) ----------
+
+export const updates = mysqlTable("updates", {
+  id: int("id").primaryKey().autoincrement(),
+  title: varchar("title", { length: 150 }).notNull(),
+  body: text("body").notNull(),
+  authorId: int("author_id").notNull().references(() => users.id),
+  createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
 });
 
 // Paramètres globaux clé/valeur (wifi, plan, webmail, …)

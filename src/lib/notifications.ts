@@ -1,7 +1,7 @@
 import "server-only";
 import { and, count, desc, eq, inArray, lt, lte, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { bdeEvents, equipmentItems, galleryAlbums, loans, newsPosts, pollInvites, polls, users } from "@/db/schema";
+import { bdeEvents, equipmentItems, galleryAlbums, loans, newsPosts, pollInvites, polls, updates, users } from "@/db/schema";
 import type { SessionUser } from "@/lib/auth";
 import { STATUS_LABEL, daysBetween, isManager, todayParis } from "@/lib/equipment";
 import { ago } from "@/lib/relative-time";
@@ -21,7 +21,7 @@ export async function loadNotifications(user: SessionUser): Promise<{ items: Not
   const manager = isManager(user);
   const admin = user.perms.administration;
 
-  const [mineDue, requested, lateAll, pendingUsers, news, events, albums, lastLoans, myCards, pollsToAnswer, unreadConvs] = await Promise.all([
+  const [mineDue, requested, lateAll, pendingUsers, news, events, albums, lastLoans, myCards, pollsToAnswer, unreadConvs, newUpdates] = await Promise.all([
     db
       .select({ id: loans.id, dueDate: loans.dueDate, name: equipmentItems.name })
       .from(loans)
@@ -49,6 +49,7 @@ export async function loadNotifications(user: SessionUser): Promise<{ items: Not
       .orderBy(desc(polls.createdAt))
       .limit(4),
     unreadConversations(user.id),
+    db.select({ id: updates.id, title: updates.title, at: updates.createdAt }).from(updates).orderBy(desc(updates.createdAt)).limit(3),
   ]);
 
   const loanBadge = mineDue.length + requested.length + Number(lateAll[0]?.n ?? 0);
@@ -119,6 +120,7 @@ export async function loadNotifications(user: SessionUser): Promise<{ items: Not
     ...events.map((e) => ({ key: `bde-${e.id}`, kind: "bde" as const, text: `BDE : ${e.title}`, at: e.at, href: "/bde" })),
     ...albums.map((a) => ({ key: `album-${a.id}`, kind: "gallery" as const, text: `Album « ${a.title} »`, at: a.at, href: `/galerie/${a.id}` })),
     ...lastLoans.map((l) => ({ key: `loan-${l.id}`, kind: "loan" as const, text: `${l.name} : ${STATUS_LABEL[l.status].toLowerCase()}`, at: l.at, href: "/materiel" })),
+    ...newUpdates.map((u) => ({ key: `update-${u.id}`, kind: "update" as const, text: `Nouveauté : ${u.title}`, at: u.at, href: "/nouveautes" })),
   ]
     .sort((a, b) => b.at.getTime() - a.at.getTime())
     .slice(0, 8)

@@ -59,7 +59,7 @@ export function FaqForm({ id, category = "Général", question = "", answer = ""
   );
 }
 
-export function LinkForm({ id, category = "École", label = "", url = "", description = "", categories }: { id?: number; category?: string; label?: string; url?: string; description?: string; categories: string[] }) {
+export function LinkForm({ id, category = "École", label = "", url = "", description = "", icon = "", categories }: { id?: number; category?: string; label?: string; url?: string; description?: string; icon?: string; categories: string[] }) {
   const [state, action, pending] = useActionState(saveLink, undefined);
   const k = id ?? "new";
   return (
@@ -81,6 +81,14 @@ export function LinkForm({ id, category = "École", label = "", url = "", descri
       <div>
         <label className="label" htmlFor={`ld${k}`}>Description (facultatif)</label>
         <input id={`ld${k}`} name="description" defaultValue={description} maxLength={255} className="input" />
+      </div>
+      <div className="sm:col-span-2">
+        <label className="label" htmlFor={`li${k}`}>Icône (facultatif)</label>
+        <div className="flex items-center gap-2">
+          {icon && <i className={`${icon} fa-fw text-lg text-muted`} aria-hidden />}
+          <input id={`li${k}`} name="icon" defaultValue={icon} maxLength={60} className="input" placeholder="fa-solid fa-graduation-cap" />
+        </div>
+        <p className="mt-1 text-xs text-muted">Classe <a href="https://fontawesome.com/search?o=r&m=free" target="_blank" rel="noopener noreferrer" className="underline">Font Awesome</a> (ex. <code>fa-solid fa-graduation-cap</code>, <code>fa-brands fa-discord</code>). Vide = pas d&apos;icône.</p>
       </div>
       <div className="space-y-2 sm:col-span-2">
         <Feedback state={state} />

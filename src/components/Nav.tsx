@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
-  BookOpen, BookUser, Bot, Briefcase, Calculator, Car, ChevronRight, Library, CalendarDays, Camera, CircleHelp, Home, Images, Link2, Newspaper, Package, PartyPopper, School, NotebookPen, ShieldCheck, SquareKanban, TramFront, Users, Contact, Megaphone, CalendarClock, MessageSquare,
+  BookOpen, BookUser, Bot, Briefcase, Calculator, Car, ChevronRight, Library, CalendarDays, Camera, CircleHelp, Home, Images, Link2, Newspaper, Package, PartyPopper, School, NotebookPen, ShieldCheck, SquareKanban, Ticket, TramFront, Users, Contact, Megaphone, CalendarClock, MessageSquare,
   type LucideIcon,
 } from "lucide-react";
 
@@ -33,6 +33,7 @@ const GROUPS: Group[] = [
       { href: "/materiel", label: "Matériel", icon: Package, badge: "loans", module: "materiel" },
       { href: "/reseau", label: "Carnet de réseau", icon: Contact },
       { href: "/calculettes", label: "Calculettes", icon: Calculator },
+      { href: "/tickets", label: "Tickets", icon: Ticket },
       { href: "/cours", label: "Mes cours", icon: NotebookPen, module: "cours", heading: "Cours" },
       { href: "/habilitation", label: "Habilitation électrique", icon: ShieldCheck, module: "habilitation" },
     ],

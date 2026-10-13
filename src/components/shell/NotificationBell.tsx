@@ -2,12 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, Bell, Check, Images, Newspaper, PartyPopper, UserCheck, type LucideIcon } from "lucide-react";
+import { AlertTriangle, Bell, Check, Images, Newspaper, PartyPopper, Sparkles, UserCheck, type LucideIcon } from "lucide-react";
 import { markNotificationsSeen } from "@/lib/actions";
 
 export type NotifItem = {
   key: string;
-  kind: "news" | "bde" | "gallery" | "loan" | "alert" | "approval";
+  kind: "news" | "bde" | "gallery" | "loan" | "alert" | "approval" | "update";
   text: string;
   when: string;
   href: string;
@@ -21,6 +21,7 @@ const ICON: Record<NotifItem["kind"], { icon: LucideIcon; color: string }> = {
   loan: { icon: Check, color: "#28a745" },
   alert: { icon: AlertTriangle, color: "#dc3545" },
   approval: { icon: UserCheck, color: "#f59e0b" },
+  update: { icon: Sparkles, color: "#6366f1" },
 };
 
 // Cloche : pastille du nombre de nouveautés ; l'ouverture les marque comme vues. Relue toutes les minutes (onglet visible
@@ -110,6 +111,9 @@ export function NotificationBell({ items: initial, unread: initialUnread }: { it
               })}
             </ul>
           )}
+          <div className="border-t border-line px-4 py-2 text-center">
+            <Link href="/nouveautes" onClick={() => setOpen(false)} className="text-xs text-muted hover:text-fg">Voir toutes les nouveautés</Link>
+          </div>
         </div>
       )}
     </div>

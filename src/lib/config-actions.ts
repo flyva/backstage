@@ -106,13 +106,14 @@ const linkSchema = z.object({
   label: z.string().trim().min(1, "Titre requis").max(120),
   url: z.string().trim().max(1000).refine((v) => /^https?:\/\/[^\s]+$/i.test(v), "Adresse invalide (https://…)"),
   description: z.string().trim().max(255),
+  icon: z.string().trim().max(60),
 });
 
 export async function saveLink(_: FormState, fd: FormData): Promise<FormState> {
   await requireAdmin();
-  const p = linkSchema.safeParse({ category: fd.get("category"), label: fd.get("label"), url: fd.get("url"), description: fd.get("description") ?? "" });
+  const p = linkSchema.safeParse({ category: fd.get("category"), label: fd.get("label"), url: fd.get("url"), description: fd.get("description") ?? "", icon: fd.get("icon") ?? "" });
   if (!p.success) return { error: p.error.issues[0].message };
-  const values = { ...p.data, description: p.data.description || null };
+  const values = { ...p.data, description: p.data.description || null, icon: p.data.icon || null };
   const raw = fd.get("id");
   if (raw) {
     await db.update(usefulLinks).set(values).where(eq(usefulLinks.id, id.parse(raw)));

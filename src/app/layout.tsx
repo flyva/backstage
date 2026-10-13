@@ -34,6 +34,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       // Des extensions (LanguageTool, etc.) ajoutent des attributs sur <html>/<body> avant React : sans cela, alerte d'hydratation.
       suppressHydrationWarning
     >
+      {/* Icônes Font Awesome utilisées par les liens utiles configurés en admin (classes stockées en base, ex. « fa-solid fa-link »). */}
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossOrigin="anonymous" referrerPolicy="no-referrer" />
       <body className="min-h-full" suppressHydrationWarning>
         {children}
         <PwaRegister />
