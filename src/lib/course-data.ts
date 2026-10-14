@@ -397,4 +397,175 @@ Techniquement possible, mais **déconseillé sans précaution** : mélanger de l
       },
     ],
   },
+  {
+    key: "meca",
+    label: "Mécanique du spectacle — Notions de base",
+    description: "Introduction à la mécanique du spectacle : forces, masse et poids, résultante et triangle des forces, angle et charge sur élingues, CMU et coefficient de sécurité, glossaire.",
+    pages: [
+      {
+        title: "Mécanique du spectacle — Notions de base",
+        slug: "mecanique-du-spectacle-notions-de-base",
+        body: `## Introduction
+
+En régie technique, la **mécanique** intervient dès qu'on lève, suspend ou retient quelque chose : un pont lumière au gril, une enceinte accrochée, un décor tracté, une structure autoportée (truss) montée sur pieds. Mal évaluer une force ou un angle peut faire céder un point d'ancrage ou une élingue : ce cours pose les bases pour comprendre **ce qui se passe réellement** quand une charge est suspendue, avant de toucher au matériel de levage.
+
+## Sommaire
+
+- [[Forces, masse et poids]]
+- [[Résultante de forces et triangle des forces]]
+- [[Angle et charge sur élingues]]
+- [[CMU et coefficient de sécurité]]
+- [[Glossaire mécanique]]
+
+## L'essentiel à retenir
+
+- Une **force** a une direction, un sens et une intensité : ce n'est pas qu'un nombre, c'est un vecteur.
+- Le **poids** (en newtons, N) n'est pas la **masse** (en kilogrammes, kg) : le poids dépend de la gravité.
+- Suspendre une charge avec des brins **inclinés** augmente la tension dans chaque brin, parfois très fortement : un angle trop fermé peut dépasser la résistance du matériel.
+- La **CMU** (charge maximale d'utilisation) d'un accessoire de levage n'est jamais la charge à viser : on garde toujours une marge, et on ne dépasse **jamais** la CMU réelle, angle compris.
+
+*Cours à compléter au fil de l'année.*`,
+      },
+      {
+        title: "Forces, masse et poids",
+        slug: "forces-masse-et-poids",
+        parent: "mecanique-du-spectacle-notions-de-base",
+        body: `## Qu'est-ce qu'une force ?
+
+Une **force** est une action capable de déplacer, déformer ou maintenir en équilibre un objet. Elle se représente par un **vecteur** : une flèche qui a une **direction**, un **sens** et une **intensité** (sa longueur). Deux forces de même intensité mais de sens opposé ne produisent pas le même effet qu'additionnées dans le même sens.
+
+L'unité de force du Système international est le **newton (N)**.
+
+## Masse et poids : une confusion fréquente
+
+- La **masse** (kg) est une quantité de matière : elle ne change pas, où qu'on soit (sur Terre, sur la Lune).
+- Le **poids** (N) est la force exercée par la gravité sur cette masse : il change selon la gravité du lieu.
+
+\`\`\`
+Poids (N) = masse (kg) × g
+g ≈ 9,81 m/s² sur Terre
+\`\`\`
+
+Exemple : une enceinte de **30 kg** a un poids d'environ **30 × 9,81 ≈ 294 N**.
+
+## Le raccourci « 1 kg = 1 daN » en régie
+
+Sur le terrain, la plupart des professionnels du spectacle utilisent un raccourci pratique : **1 kilogramme-force (kgf) ≈ 1 daN** (décanewton), puisque 1 kgf = 9,81 N ≈ 10 N = 1 daN. C'est une **approximation** (l'écart est d'environ 2 %), mais elle est largement utilisée pour estimer rapidement une charge en daN à partir d'un poids en kg. C'est pour cette raison que les calculettes de ce cours raisonnent directement **en kg** pour les charges : c'est la pratique courante, à condition de connaître l'approximation qu'elle représente.
+
+## Pourquoi ça compte pour le levage
+
+Tout le matériel de levage et d'accroche (élingues, manilles, palans, points d'ancrage) est noté avec une **charge maximale d'utilisation** exprimée en kg ou en daN (voir [[CMU et coefficient de sécurité]]). Avant de lever quoi que ce soit, il faut donc savoir évaluer correctement le **poids réel** de la charge, et comment il se répartit une fois suspendu à plusieurs points (voir [[Résultante de forces et triangle des forces]] et [[Angle et charge sur élingues]]).`,
+      },
+      {
+        title: "Résultante de forces et triangle des forces",
+        slug: "resultante-de-forces-et-triangle-des-forces",
+        parent: "mecanique-du-spectacle-notions-de-base",
+        body: `## Additionner des forces
+
+Quand plusieurs forces s'appliquent au même point, leur effet combiné est une seule force équivalente : la **résultante**. Contrairement à des nombres, on ne peut pas juste additionner les intensités des forces si elles n'ont pas la même direction : il faut tenir compte de leur **direction** et de leur **sens**.
+
+- Deux forces de même direction et même sens : leurs intensités s'additionnent directement.
+- Deux forces de même direction et de sens opposé : leurs intensités se soustraient.
+- Deux forces de directions différentes : il faut les additionner **vectoriellement**.
+
+## La méthode du triangle (ou du parallélogramme)
+
+Pour additionner deux forces de directions différentes, une méthode visuelle classique : on place la deuxième flèche à la suite de la première (bout à bout), et la résultante est la flèche qui va du départ de la première à l'arrivée de la deuxième. C'est la **méthode du triangle des forces**. Elle permet de visualiser pourquoi deux brins d'élingue inclinés « tirent » plus fort qu'un seul brin vertical porteur de la même charge.
+
+## Cas d'une charge suspendue à deux brins
+
+Une charge suspendue par **deux brins symétriques** est un cas très courant en régie (élingue en V, pont suspendu à deux points). Le poids de la charge est une force **verticale**, vers le bas. Chaque brin tire vers le haut, selon son propre angle. Pour que le système soit en équilibre, la somme des composantes **verticales** des deux tensions doit être égale au poids de la charge :
+
+\`\`\`
+Composante verticale d'un brin = Tension du brin × sin(angle au sol)
+\`\`\`
+
+Plus l'angle au sol (entre le brin et l'horizontale) est **petit**, plus le sinus est petit, et donc plus la tension nécessaire dans le brin pour fournir la même composante verticale est **grande**. C'est tout l'enjeu de la page suivante : [[Angle et charge sur élingues]].`,
+      },
+      {
+        title: "Angle et charge sur élingues",
+        slug: "angle-et-charge-sur-elingues",
+        parent: "mecanique-du-spectacle-notions-de-base",
+        body: `## La formule
+
+Pour une charge suspendue par plusieurs brins symétriques, la tension dans **chaque brin** se calcule ainsi :
+
+\`\`\`
+T = Charge ÷ (nombre de brins × sin(angle au sol))
+\`\`\`
+
+L'**angle au sol** est l'angle entre le brin et l'horizontale (un brin parfaitement vertical fait 90°). C'est exactement le calcul de la calculette **Angle et charge sur élingues** (Calculettes → Mécanique).
+
+## Pourquoi l'angle change tout
+
+Prenons une charge de **200 kg**, suspendue par **2 brins symétriques** :
+
+| Angle au sol | sin(angle) | Tension par brin | Facteur par rapport à l'idéal (100 kg) |
+| --- | --- | --- | --- |
+| 90° (vertical) | 1,00 | 100 kg | × 1,00 |
+| 60° | 0,87 | 115 kg | × 1,15 |
+| 45° | 0,71 | 141 kg | × 1,41 |
+| 30° | 0,50 | 200 kg | × 2,00 |
+| 15° | 0,26 | 387 kg | × 3,86 |
+
+**Plus l'angle se referme (brins plus horizontaux), plus la tension explose.** En dessous de 30°, la tension dans chaque brin dépasse déjà le double de ce qu'elle serait à la verticale : un angle aussi fermé est généralement **déconseillé** en pratique.
+
+## Bonnes pratiques
+
+- Privilégier des angles au sol **supérieurs à 45°** quand c'est possible : au-delà, l'augmentation de tension reste raisonnable.
+- Entre 30° et 45° : vérifier que la **CMU** de chaque brin (avec son coefficient de sécurité, voir [[CMU et coefficient de sécurité]]) reste largement supérieure à la tension calculée.
+- En dessous de 30° : éviter, ou recalculer très précisément avec une marge importante.
+- Ce calcul suppose une charge **centrée** et des brins **symétriques** : un déséquilibre (charge décalée, brins de longueurs différentes) répartit la charge différemment entre les brins, et doit être étudié à part.`,
+      },
+      {
+        title: "CMU et coefficient de sécurité",
+        slug: "cmu-et-coefficient-de-securite",
+        parent: "mecanique-du-spectacle-notions-de-base",
+        body: `## La CMU : charge maximale d'utilisation
+
+La **CMU** (charge maximale d'utilisation), parfois notée WLL en anglais (*Working Load Limit*), est la charge maximale qu'un accessoire de levage (élingue, manille, mousqueton, palan, point d'ancrage…) peut supporter **en usage normal**, dans des conditions précises (souvent : traction droite, dans l'axe). Elle est gravée ou étiquetée sur le matériel professionnel : **ne jamais utiliser un accessoire dont la CMU est inconnue ou illisible.**
+
+## Le coefficient de sécurité
+
+La CMU n'est pas la charge à laquelle le matériel casse : elle intègre déjà une marge, le **coefficient de sécurité** (ou coefficient d'utilisation), qui varie selon le type de matériel et la réglementation applicable (souvent entre 5 et 10 pour les accessoires de levage de spectacle). Concrètement :
+
+\`\`\`
+Charge de rupture ≈ CMU × coefficient de sécurité
+\`\`\`
+
+Ce coefficient absorbe les incertitudes : usure, chocs, vieillissement, erreurs d'estimation de charge, conditions d'usage imparfaites. **Il ne doit jamais être consommé volontairement** en dépassant la CMU affichée.
+
+## Pourquoi l'angle réduit la CMU utile
+
+Quand une élingue travaille **inclinée** plutôt que verticale, la tension réelle dans le brin (voir [[Angle et charge sur élingues]]) dépasse la charge verticale idéale : il faut donc comparer cette tension réelle, **pas la charge totale**, à la CMU de l'élingue. Une élingue de CMU 500 kg utilisée à 30° sur une charge de 500 kg (2 brins) subit une tension de 500 kg par brin — alors qu'un calcul rapide et faux (« 500 ÷ 2 = 250 kg, ça passe ») aurait laissé croire à une marge confortable.
+
+## Avant de lever quoi que ce soit
+
+- Identifier la **CMU réelle** de chaque accessoire du système de levage (élingue, manille, point d'ancrage…) : c'est la plus petite CMU de la chaîne qui limite tout le système, pas la plus grande.
+- Calculer la **tension réelle** dans chaque brin selon l'angle (voir [[Angle et charge sur élingues]]), pas juste la charge divisée par le nombre de brins.
+- Vérifier que la tension réelle reste **largement en dessous** de la CMU, jamais au plus juste.
+- En cas de doute, demander à un référent ou un professionnel qualifié : une erreur de levage peut être dangereuse.`,
+      },
+      {
+        title: "Glossaire mécanique",
+        slug: "glossaire-mecanique",
+        parent: "mecanique-du-spectacle-notions-de-base",
+        body: `| Terme | Définition |
+| --- | --- |
+| **Angle au sol** | Angle entre un brin d'élingue et l'horizontale (90° = brin vertical). |
+| **CMU** | Charge maximale d'utilisation : charge maximale admise pour un accessoire de levage, en usage normal. |
+| **Coefficient de sécurité** | Marge entre la CMU affichée et la charge réelle de rupture du matériel. |
+| **daN (décanewton)** | 10 newtons ; approximativement égal au poids d'une masse de 1 kg sur Terre (1 kg ≈ 1 daN). |
+| **Élingue** | Accessoire textile, chaîne ou câble utilisé pour attacher une charge à un point de levage. |
+| **Élingue en V** | Élingue à deux brins symétriques partant d'un même point de levage vers la charge. |
+| **Force** | Action vectorielle (direction, sens, intensité) capable de déplacer, déformer ou maintenir un objet. |
+| **Masse** | Quantité de matière d'un objet (kg), constante quel que soit le lieu. |
+| **Newton (N)** | Unité de force du Système international. |
+| **Poids** | Force exercée par la gravité sur une masse (N) : poids = masse × g. |
+| **Résultante** | Force unique équivalente à l'effet combiné de plusieurs forces appliquées au même point. |
+| **Triangle des forces** | Méthode graphique pour additionner deux forces de directions différentes. |
+| **WLL** | *Working Load Limit* : équivalent anglais de la CMU. |`,
+      },
+    ],
+  },
 ];

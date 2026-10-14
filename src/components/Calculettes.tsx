@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Plus, Sigma, Trash2 } from "lucide-react";
 import {
-  RHO_CU, SECTIONS, currentOf, outletsFor, solveOhm, suggestSupply, SUPPLY_LINE_AMPS,
+  RHO_CU, SECTIONS, currentOf, outletsFor, slingTension, solveOhm, suggestSupply, SUPPLY_LINE_AMPS,
   type SupplyKind, dbToPowerRatio, dbToVoltageRatio, delayMs, maxLength, minSection, patchDmx, soundSpeed, splAtDistance, sumDb, voltageDropPct,
   type DmxLine, type Supply,
 } from "@/lib/calc";
@@ -13,17 +13,26 @@ const num = (v: string) => Number(v.replace(",", "."));
 const ok = (n: number) => Number.isFinite(n);
 const f = (n: number, d = 1) => (ok(n) ? n.toFixed(d).replace(".", ",") : "–");
 
-const TABS = [
-  { id: "bilan", label: "Bilan de puissance" },
-  { id: "ohm", label: "Loi d'Ohm (P, U, I, R)" },
-  { id: "prises", label: "Prises par phase" },
-  { id: "cable", label: "Câble" },
-  { id: "dmx", label: "Patch DMX" },
-  { id: "distance", label: "Niveau et distance" },
-  { id: "somme", label: "Somme de sources" },
-  { id: "delai", label: "Délai d'enceinte" },
-  { id: "db", label: "Décibels" },
+const CATEGORIES = [
+  { id: "elec", label: "Électricité" },
+  { id: "son", label: "Son & lumière" },
+  { id: "meca", label: "Mécanique" },
+  { id: "reseaux", label: "Réseaux" },
 ] as const;
+type CategoryId = (typeof CATEGORIES)[number]["id"];
+
+const TABS = [
+  { id: "bilan", label: "Bilan de puissance", cat: "elec" },
+  { id: "ohm", label: "Loi d'Ohm (P, U, I, R)", cat: "elec" },
+  { id: "prises", label: "Prises par phase", cat: "elec" },
+  { id: "cable", label: "Câble", cat: "elec" },
+  { id: "dmx", label: "Patch DMX", cat: "son" },
+  { id: "distance", label: "Niveau et distance", cat: "son" },
+  { id: "somme", label: "Somme de sources", cat: "son" },
+  { id: "delai", label: "Délai d'enceinte", cat: "son" },
+  { id: "db", label: "Décibels", cat: "son" },
+  { id: "elingue", label: "Angle et charge sur élingues", cat: "meca" },
+] as const satisfies readonly { id: string; label: string; cat: CategoryId }[];
 type TabId = (typeof TABS)[number]["id"];
 
 function Field({ id, label, value, onChange, unit }: { id: string; label: string; value: string; onChange: (v: string) => void; unit?: string }) {
@@ -455,8 +464,57 @@ export function OutletsCalc() {
   );
 }
 
+// ---------- Mécanique : angle et charge sur élingues ----------
+
+export function SlingCalc() {
+  const [load, setLoad] = useState("200");
+  const [angle, setAngle] = useState("60");
+  const [legs, setLegs] = useState<"2" | "4">("2");
+  const l = num(load), a = num(angle), n = Number(legs);
+  const valid = ok(l) && l > 0 && ok(a) && a > 0 && a <= 90;
+  const r = valid ? slingTension(l, a, n) : null;
+  const danger = !!r && a < 30;
+  const warn = !!r && !danger && a < 45;
+
+  return (
+    <div className="space-y-5">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Field id="m-load" label="Charge totale" value={load} onChange={setLoad} unit="kg" />
+        <Field id="m-angle" label="Angle au sol (par brin)" value={angle} onChange={setAngle} unit="°" />
+        <div>
+          <label className="label" htmlFor="m-legs">Nombre de brins</label>
+          <select id="m-legs" value={legs} onChange={(e) => setLegs(e.target.value as "2" | "4")} className="input"><option value="2">2 (élingue en V)</option><option value="4">4 (élingue 4 brins)</option></select>
+        </div>
+      </div>
+      <Note>Angle mesuré entre le brin et l&apos;horizontale (90° = brin vertical). Brins supposés symétriques, charge centrée.</Note>
+
+      {r ? (
+        <>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Big label="Tension par brin" value={`${f(r.tensionPerLeg, 0)} kg`} tone={danger ? "bad" : warn ? "warn" : undefined} />
+            <Big label="Charge verticale idéale" value={`${f(r.idealPerLeg, 0)} kg`} />
+            <Big label="Facteur multiplicateur" value={`× ${f(r.factor, 2)}`} tone={danger ? "bad" : warn ? "warn" : undefined} />
+          </div>
+          {danger && <Note tone="bad">En dessous de 30°, la tension dépasse le double de la charge verticale idéale : angle généralement déconseillé, vérifie la CMU du matériel avec une bonne marge.</Note>}
+          {warn && <Note>Entre 30° et 45°, la tension augmente vite : vérifie que la CMU de l&apos;élingue (avec son coefficient de sécurité) reste largement au-dessus de la tension calculée.</Note>}
+          <Steps lines={[
+            `1. Angle au sol : α = ${f(a, 0)}°, sin(α) = ${f(r.sin, 3)}`,
+            `2. Charge verticale idéale par brin (brins verticaux) : ${f(l, 0)} ÷ ${n} = ${f(r.idealPerLeg, 1)} kg`,
+            `3. Tension réelle par brin : T = Charge ÷ (brins × sin(α)) = ${f(l, 0)} ÷ (${n} × ${f(r.sin, 3)})`,
+            `→ T = ${f(r.tensionPerLeg, 1)} kg par brin`,
+            `4. Facteur par rapport à l'idéal : ${f(r.tensionPerLeg, 1)} ÷ ${f(r.idealPerLeg, 1)} = × ${f(r.factor, 2)}`,
+          ]} />
+        </>
+      ) : (
+        <Note>Indique une charge et un angle compris entre 0 et 90°.</Note>
+      )}
+    </div>
+  );
+}
+
 export function Calculettes({ initialSupply }: { initialSupply: { kind: SupplyKind; items: SupplyItem[] } }) {
   const [tab, setTab] = useState<TabId>("bilan");
+  const [cat, setCat] = useState<CategoryId>("elec");
   const PANELS: Record<TabId, { title: string; hint: string; body: React.ReactNode }> = {
     bilan: { title: "Bilan de puissance et choix de l'alimentation", hint: "La méthode du cours : additionne ton matériel, et trouve le calibre (16, 32, 63 ou 125 A) qui convient.", body: <SupplyCalc initial={initialSupply} /> },
     ohm: { title: "Loi d'Ohm et puissance", hint: "P = U × I et R = U ÷ I : donne deux valeurs, la calculette trouve les deux autres.", body: <OhmCalc /> },
@@ -467,30 +525,50 @@ export function Calculettes({ initialSupply }: { initialSupply: { kind: SupplyKi
     somme: { title: "Somme de sources sonores", hint: "Le niveau total de plusieurs sources jouées ensemble.", body: <SumCalc /> },
     delai: { title: "Délai d'enceinte", hint: "Le retard à donner à une enceinte de renfort pour rester alignée sur la façade.", body: <DelayCalc /> },
     db: { title: "Décibels et rapports", hint: "Ce que vaut un gain en dB en tension et en puissance.", body: <DbCalc /> },
+    elingue: { title: "Angle et charge sur élingues", hint: "La tension dans chaque brin d'une élingue augmente quand l'angle au sol diminue.", body: <SlingCalc /> },
+  };
+  const tabsInCat = TABS.filter((t) => t.cat === cat);
+  const changeCat = (next: CategoryId) => {
+    setCat(next);
+    const first = TABS.find((t) => t.cat === next);
+    if (first) setTab(first.id);
   };
   const p = PANELS[tab];
   return (
     <div className="space-y-4">
-      <div role="tablist" aria-label="Calculettes" className="flex flex-wrap gap-2">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            role="tab"
-            aria-selected={tab === t.id}
-            onClick={() => setTab(t.id)}
-            className={`rounded-full px-4 py-1.5 text-sm ${tab === t.id ? "bg-accent text-accent-fg" : "border border-line text-muted hover:text-fg"}`}
-          >
-            {t.label}
-          </button>
-        ))}
+      <div className="max-w-xs">
+        <label className="label" htmlFor="calc-cat">Domaine</label>
+        <select id="calc-cat" value={cat} onChange={(e) => changeCat(e.target.value as CategoryId)} className="input">
+          {CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+        </select>
       </div>
-      <section className="card space-y-5 p-6" role="tabpanel">
-        <div>
-          <h2 className="text-lg font-semibold">{p.title}</h2>
-          <p className="text-sm text-muted">{p.hint}</p>
-        </div>
-        {p.body}
-      </section>
+
+      {tabsInCat.length === 0 ? (
+        <p className="card text-sm text-muted">Aucune calculette dans ce domaine pour l&apos;instant.</p>
+      ) : (
+        <>
+          <div role="tablist" aria-label="Calculettes" className="flex flex-wrap gap-2">
+            {tabsInCat.map((t) => (
+              <button
+                key={t.id}
+                role="tab"
+                aria-selected={tab === t.id}
+                onClick={() => setTab(t.id)}
+                className={`rounded-full px-4 py-1.5 text-sm ${tab === t.id ? "bg-accent text-accent-fg" : "border border-line text-muted hover:text-fg"}`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <section className="card space-y-5 p-6" role="tabpanel">
+            <div>
+              <h2 className="text-lg font-semibold">{p.title}</h2>
+              <p className="text-sm text-muted">{p.hint}</p>
+            </div>
+            {p.body}
+          </section>
+        </>
+      )}
       <p className="text-xs text-muted">Estimations pour préparer un montage : cuivre, facteur de puissance 1, son en champ libre. Ce ne sont pas des calculs réglementaires ni des mesures.</p>
     </div>
   );

@@ -130,3 +130,19 @@ export function suggestSupply(totalWatts: number, kind: SupplyKind) {
   const calibre = SUPPLY_LINE_AMPS.find((a) => a * phases >= neededAmps) ?? null;
   return { neededAmps, phases, calibre, capacityAmps: calibre ? calibre * phases : null };
 }
+
+// ---------- Mécanique (levage, élingues) ----------
+
+/**
+ * Tension dans chaque brin d'une élingue à plusieurs brins symétriques, selon l'angle au sol (angle entre le brin et
+ * l'horizontale, en degrés) : T = Charge ÷ (nombre de brins × sin(angle)). Plus l'angle est petit (brins plus
+ * horizontaux), plus la tension dans chaque brin augmente par rapport à la charge verticale idéale (charge ÷ brins).
+ */
+export function slingTension(loadKg: number, angleDeg: number, legs: number) {
+  const rad = (angleDeg * Math.PI) / 180;
+  const sin = Math.sin(rad);
+  const tensionPerLeg = sin > 0 ? loadKg / (legs * sin) : Infinity;
+  const idealPerLeg = loadKg / legs;
+  const factor = idealPerLeg > 0 ? tensionPerLeg / idealPerLeg : Infinity;
+  return { sin, tensionPerLeg, idealPerLeg, factor };
+}
