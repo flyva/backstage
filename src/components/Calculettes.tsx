@@ -3,9 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Plus, Sigma, Trash2 } from "lucide-react";
 import {
-  RHO_CU, SECTIONS, currentOf, outletsFor, slingTension, solveOhm, suggestSupply, SUPPLY_LINE_AMPS,
+  RHO_CU, SECTIONS, beamReactions, currentOf, outletsFor, slingTension, solveOhm, suggestSupply, SUPPLY_LINE_AMPS,
   type SupplyKind, dbToPowerRatio, dbToVoltageRatio, delayMs, maxLength, minSection, patchDmx, soundSpeed, splAtDistance, sumDb, voltageDropPct,
-  type DmxLine, type Supply,
+  type DmxLine, type PointLoad, type Supply,
 } from "@/lib/calc";
 import { saveSupplyList } from "@/lib/calc-actions";
 
@@ -32,6 +32,7 @@ const TABS = [
   { id: "delai", label: "Délai d'enceinte", cat: "son" },
   { id: "db", label: "Décibels", cat: "son" },
   { id: "elingue", label: "Angle et charge sur élingues", cat: "meca" },
+  { id: "plancharge", label: "Plan de charges", cat: "meca" },
 ] as const satisfies readonly { id: string; label: string; cat: CategoryId }[];
 type TabId = (typeof TABS)[number]["id"];
 
@@ -512,6 +513,109 @@ export function SlingCalc() {
   );
 }
 
+// ---------- Mécanique : plan de charges (réactions d'appuis d'une poutre) ----------
+
+type LoadRow = { name: string; position: string; kg: string };
+
+/** Schéma 2D de la poutre : appuis aux deux bouts, charges en flèche vers le bas, réactions en flèche vers le haut. */
+function BeamDiagram({ lengthM, loads, reactionA, reactionB }: { lengthM: number; loads: PointLoad[]; reactionA: number; reactionB: number }) {
+  const W = 640, H = 220, padX = 50, beamY = 110;
+  const span = Math.max(1, lengthM);
+  const scale = (W - padX * 2) / span;
+  const xOf = (posM: number) => padX + posM * scale;
+  const maxLoad = Math.max(1, ...loads.map((l) => l.kg), reactionA, reactionB);
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full max-w-2xl" role="img" aria-label="Schéma de la poutre, des charges et des réactions d'appuis">
+      {/* La poutre */}
+      <line x1={padX} y1={beamY} x2={W - padX} y2={beamY} stroke="currentColor" strokeWidth={6} className="text-muted" strokeLinecap="round" />
+      {/* Appuis (triangles) */}
+      {[0, span].map((pos, i) => (
+        <g key={i}>
+          <polygon points={`${xOf(pos)},${beamY} ${xOf(pos) - 12},${beamY + 20} ${xOf(pos) + 12},${beamY + 20}`} className="fill-accent" />
+          <line x1={xOf(pos) - 18} y1={beamY + 20} x2={xOf(pos) + 18} y2={beamY + 20} stroke="currentColor" strokeWidth={3} className="text-muted" />
+        </g>
+      ))}
+      {/* Réactions (flèches vers le haut, sous les appuis) */}
+      {[{ pos: 0, r: reactionA, label: "A" }, { pos: span, r: reactionB, label: "B" }].map(({ pos, r, label }) => (
+        <g key={label}>
+          <line x1={xOf(pos)} y1={beamY + 55} x2={xOf(pos)} y2={beamY + 24} stroke="currentColor" strokeWidth={2.5} className="text-accent" markerEnd="url(#arrowUp)" />
+          <text x={xOf(pos)} y={beamY + 70} textAnchor="middle" className="fill-accent text-[11px] font-semibold">{label} · {f(r, 0)} kg</text>
+        </g>
+      ))}
+      {/* Charges (flèches vers le bas, au-dessus de la poutre) */}
+      {loads.map((l, i) => {
+        const h = 20 + (l.kg / maxLoad) * 55;
+        return (
+          <g key={i}>
+            <line x1={xOf(l.positionM)} y1={beamY - h} x2={xOf(l.positionM)} y2={beamY - 4} stroke="currentColor" strokeWidth={2.5} className="text-danger" markerEnd="url(#arrowDown)" />
+            <text x={xOf(l.positionM)} y={beamY - h - 6} textAnchor="middle" className="fill-fg text-[11px] font-semibold">{f(l.kg, 0)} kg</text>
+          </g>
+        );
+      })}
+      <defs>
+        <marker id="arrowUp" markerWidth="8" markerHeight="8" refX="4" refY="0" orient="auto"><path d="M0,8 L4,0 L8,8 Z" className="fill-accent" /></marker>
+        <marker id="arrowDown" markerWidth="8" markerHeight="8" refX="4" refY="8" orient="auto"><path d="M0,0 L8,0 L4,8 Z" className="fill-danger" /></marker>
+      </defs>
+    </svg>
+  );
+}
+
+export function LoadPlanCalc() {
+  const [length, setLength] = useState("6");
+  const [rows, setRows] = useState<LoadRow[]>([
+    { name: "Projecteur 1", position: "1.5", kg: "40" },
+    { name: "Enceinte", position: "4", kg: "60" },
+  ]);
+  const L = num(length);
+  const parsedLoads: PointLoad[] = rows.map((r) => ({ positionM: num(r.position), kg: num(r.kg) })).filter((l) => ok(l.positionM) && ok(l.kg) && l.kg > 0);
+  const outOfRange = ok(L) && L > 0 && parsedLoads.some((l) => l.positionM < 0 || l.positionM > L);
+  const r = ok(L) && L > 0 && !outOfRange ? beamReactions(L, parsedLoads) : null;
+  const set = (i: number, k: keyof LoadRow, v: string) => setRows((ls) => ls.map((l, j) => (j === i ? { ...l, [k]: v } : l)));
+
+  return (
+    <div className="space-y-5">
+      <div className="max-w-xs"><Field id="pc-l" label="Portée entre les deux points de levage" value={length} onChange={setLength} unit="m" /></div>
+
+      <div className="space-y-2">
+        <h3 className="text-sm font-semibold text-muted">Charges (depuis le point de levage A)</h3>
+        {rows.map((row, i) => (
+          <div key={i} className="grid grid-cols-[1fr_6rem_6rem_2rem] items-end gap-2">
+            <div><label className="label" htmlFor={`pc-n${i}`}>Repère</label><input id={`pc-n${i}`} value={row.name} onChange={(e) => set(i, "name", e.target.value)} className="input" /></div>
+            <div><label className="label" htmlFor={`pc-p${i}`}>Position</label><input id={`pc-p${i}`} inputMode="decimal" value={row.position} onChange={(e) => set(i, "position", e.target.value)} className="input" /></div>
+            <div><label className="label" htmlFor={`pc-k${i}`}>Charge</label><input id={`pc-k${i}`} inputMode="decimal" value={row.kg} onChange={(e) => set(i, "kg", e.target.value)} className="input" /></div>
+            <button type="button" className="mb-2 p-1 text-muted hover:text-danger" aria-label="Retirer" onClick={() => setRows((ls) => ls.filter((_, j) => j !== i))}><Trash2 size={15} /></button>
+          </div>
+        ))}
+        <button type="button" className="btn-ghost text-xs" onClick={() => setRows((ls) => [...ls, { name: "", position: "", kg: "" }])}><Plus size={14} /> Ajouter une charge</button>
+      </div>
+
+      {outOfRange && <Note tone="bad">Une charge est positionnée en dehors de la portée indiquée.</Note>}
+
+      {r && parsedLoads.length > 0 ? (
+        <>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Big label="Charge totale" value={`${f(r.total, 0)} kg`} />
+            <Big label="Réaction en A" value={`${f(r.reactionA, 0)} kg`} tone={r.reactionA < 0 ? "bad" : undefined} />
+            <Big label="Réaction en B" value={`${f(r.reactionB, 0)} kg`} tone={r.reactionB < 0 ? "bad" : undefined} />
+          </div>
+          {(r.reactionA < 0 || r.reactionB < 0) && <Note tone="bad">Une réaction négative veut dire que ce point de levage serait en réalité tiré vers le bas (charges trop excentrées) : répartition à revoir.</Note>}
+          <div className="card bg-bg p-4"><BeamDiagram lengthM={L} loads={parsedLoads} reactionA={r.reactionA} reactionB={r.reactionB} /></div>
+          <Steps lines={[
+            "On prend les moments autour du point A pour trouver la réaction en B, puis l'équilibre des forces verticales donne la réaction en A.",
+            `1. Moment en A : Σ(charge × distance à A) = ${parsedLoads.map((l) => `${f(l.kg, 0)} × ${f(l.positionM, 1)}`).join(" + ")} = ${f(r.reactionB * L, 0)} kg·m`,
+            `2. Réaction en B : ${f(r.reactionB * L, 0)} ÷ ${f(L, 1)} = ${f(r.reactionB, 1)} kg`,
+            `3. Réaction en A : charge totale − réaction en B = ${f(r.total, 0)} − ${f(r.reactionB, 1)} = ${f(r.reactionA, 1)} kg`,
+          ]} />
+          <Note>Poutre supposée rigide, appuis ponctuels, poids propre de la structure non compté (ajoute-le comme une charge de plus si besoin). Compare toujours chaque réaction à la CMU réelle du point de levage.</Note>
+        </>
+      ) : (
+        <Note>Indique la portée et au moins une charge valide.</Note>
+      )}
+    </div>
+  );
+}
+
 export function Calculettes({ initialSupply }: { initialSupply: { kind: SupplyKind; items: SupplyItem[] } }) {
   const [tab, setTab] = useState<TabId>("bilan");
   const [cat, setCat] = useState<CategoryId>("elec");
@@ -526,6 +630,7 @@ export function Calculettes({ initialSupply }: { initialSupply: { kind: SupplyKi
     delai: { title: "Délai d'enceinte", hint: "Le retard à donner à une enceinte de renfort pour rester alignée sur la façade.", body: <DelayCalc /> },
     db: { title: "Décibels et rapports", hint: "Ce que vaut un gain en dB en tension et en puissance.", body: <DbCalc /> },
     elingue: { title: "Angle et charge sur élingues", hint: "La tension dans chaque brin d'une élingue augmente quand l'angle au sol diminue.", body: <SlingCalc /> },
+    plancharge: { title: "Plan de charges", hint: "Les réactions aux deux points de levage d'une poutre (pont, truss), avec un schéma 2D.", body: <LoadPlanCalc /> },
   };
   const tabsInCat = TABS.filter((t) => t.cat === cat);
   const changeCat = (next: CategoryId) => {

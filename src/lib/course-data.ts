@@ -219,6 +219,23 @@ Charge de rupture ≈ CMU × coefficient de sécurité
 
 Ce coefficient absorbe l'usure, les chocs, les erreurs d'estimation. **On ne le consomme jamais volontairement** en dépassant la CMU affichée. Et surtout : une élingue inclinée travaille avec une **tension réelle** supérieure à la charge divisée bêtement par le nombre de brins (voir le tableau ci-dessus) — c'est **cette tension réelle** qu'il faut comparer à la CMU, pas la charge totale.
 
+## 📋 Plan de charges
+
+Un **plan de charges** répertorie tout ce qu'on accroche à une structure (pont, truss, gril) : quoi, où, et combien ça pèse — pour vérifier qu'aucun point de levage ni aucune partie de la structure n'est surchargé. C'est l'équivalent, côté mécanique, d'un plan de feux côté lumière.
+
+Le cas le plus courant : un **pont (ou truss) tenu à ses deux extrémités** par deux points de levage (A et B), avec plusieurs charges accrochées à différents endroits entre les deux. Chaque point de levage ne supporte **pas forcément la moitié** de la charge totale : ça dépend d'où sont les charges. Une charge posée pile au milieu se répartit à 50/50 ; une charge excentrée vers A fait porter davantage A que B.
+
+**La méthode (équilibre des moments)** : on prend les moments autour du point A — chaque charge « tire » sur B proportionnellement à sa distance à A.
+
+\`\`\`
+Réaction en B = Σ(charge × distance à A) ÷ portée totale
+Réaction en A = charge totale − réaction en B
+\`\`\`
+
+C'est exactement le calcul (avec un schéma 2D de la poutre, des charges et des réactions) de la calculette **Plan de charges** (Calculettes → Mécanique) : indique la portée et la liste des charges avec leur position, elle calcule et dessine les deux réactions.
+
+> 🎯 **Pourquoi ça compte** : une fois les réactions calculées, on les compare à la **CMU** de chaque point de levage (voir plus haut) — pas à la charge totale divisée par le nombre de points. Un point de levage peut être en limite de CMU alors que l'autre est large, simplement parce que la charge n'est pas centrée.
+
 ## 📖 Petit lexique
 
 - **Angle au sol** — angle entre un brin d'élingue et l'horizontale.
@@ -228,7 +245,9 @@ Ce coefficient absorbe l'usure, les chocs, les erreurs d'estimation. **On ne le 
 - **Élingue en V** — élingue à deux brins symétriques depuis un point de levage.
 - **Force** — action vectorielle (direction, sens, intensité) capable de déplacer ou déformer.
 - **Newton (N)** — unité de force du Système international.
+- **Plan de charges** — répertoire de ce qu'on accroche à une structure, pour vérifier chaque point de levage.
 - **Poids** — force exercée par la gravité sur une masse (poids = masse × g).
+- **Réaction d'appui** — force que doit fournir un point de levage pour tenir la part de charge qui lui revient.
 - **Résultante** — force unique équivalente à plusieurs forces combinées.
 - **WLL** — *Working Load Limit*, l'équivalent anglais de la CMU.
 
@@ -242,6 +261,9 @@ Ce coefficient absorbe l'usure, les chocs, les erreurs d'estimation. **On ne le 
 
 **3.** La CMU, c'est la charge à laquelle le matériel casse ?
 💡 *Réponse : non ! La CMU inclut déjà une marge (coefficient de sécurité) ; la charge de rupture réelle est bien plus haute.*
+
+**4.** Sur un pont tenu à ses deux bouts, une charge excentrée vers A fait porter plus de poids à…
+💡 *Réponse : A — chaque charge « tire » davantage sur l'appui le plus proche d'elle.*
 
 *Cours à compléter au fil de l'année. Voir aussi la [[Mécanique — Fiche mémo]] pour réviser vite.*`,
       },
@@ -259,6 +281,8 @@ Ce coefficient absorbe l'usure, les chocs, les erreurs d'estimation. **On ne le 
 | 1 kg ≈ 1 daN | Raccourci terrain (≈ 2 % d'écart) |
 | T = Charge ÷ (brins × sin(angle au sol)) | Tension dans chaque brin d'une élingue symétrique |
 | Charge de rupture ≈ CMU × coefficient de sécurité | Ce que la CMU laisse déjà en marge |
+| Réaction en B = Σ(charge × distance à A) ÷ portée | Plan de charges : réaction au point de levage B |
+| Réaction en A = charge totale − réaction en B | Plan de charges : réaction au point de levage A |
 
 ## Tableau angle → facteur (2 brins)
 

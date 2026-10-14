@@ -146,3 +146,22 @@ export function slingTension(loadKg: number, angleDeg: number, legs: number) {
   const factor = idealPerLeg > 0 ? tensionPerLeg / idealPerLeg : Infinity;
   return { sin, tensionPerLeg, idealPerLeg, factor };
 }
+
+// ---------- Plan de charges : réactions d'appuis d'une poutre (pont, truss) ----------
+
+export type PointLoad = { positionM: number; kg: number };
+
+/**
+ * Réactions aux deux points de levage d'une poutre (pont, truss) tenue à ses deux extrémités, chargée en plusieurs
+ * points : équilibre des moments autour de l'appui A pour trouver la réaction en B, puis équilibre des forces
+ * verticales pour trouver la réaction en A. Hypothèse classique : poutre rigide, appuis ponctuels, poids propre
+ * négligé (ou à ajouter comme une charge de plus, répartie en son centre).
+ */
+export function beamReactions(lengthM: number, loads: PointLoad[]) {
+  const valid = loads.filter((l) => l.kg > 0 && l.positionM >= 0 && l.positionM <= lengthM);
+  const total = valid.reduce((s, l) => s + l.kg, 0);
+  const momentAtA = valid.reduce((s, l) => s + l.kg * l.positionM, 0);
+  const reactionB = lengthM > 0 ? momentAtA / lengthM : 0;
+  const reactionA = total - reactionB;
+  return { total, reactionA, reactionB, valid };
+}
