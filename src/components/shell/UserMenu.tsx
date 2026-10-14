@@ -2,10 +2,12 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { Bell, KeyRound, LogOut, Palette, Settings, Shield, User } from "lucide-react";
+import { Bell, KeyRound, LogOut, Palette, Settings, Shield, Ticket, User } from "lucide-react";
 import { logout } from "@/lib/actions";
 
-const ITEMS: { href: string; label: string; icon: typeof User; hint?: string }[] = [
+type MenuItem = { href: string; label: string; icon: typeof User; hint?: string; badge?: number };
+
+const BASE_ITEMS: MenuItem[] = [
   { href: "/profil", label: "Mon profil", icon: User, hint: "Nom, adresse, planning Ypareo" },
   { href: "/parametres", label: "Personnalisation", icon: Palette, hint: "Thème, couleurs, menu" },
   { href: "/parametres/notifications", label: "Notifications", icon: Bell },
@@ -13,9 +15,12 @@ const ITEMS: { href: string; label: string; icon: typeof User; hint?: string }[]
 ];
 
 const ADMIN_ITEM = { href: "/admin", label: "Administration", icon: Shield, hint: "Utilisateurs, rôles, réglages" };
+const TICKETS_GESTION_ITEM = { href: "/tickets/gestion", label: "Gestion des tickets", icon: Ticket, hint: "Tous les tickets de la promo" };
 
 // Bouton « Paramètres » (engrenage) avec menu déroulant, et lien vers la page complète.
-export function UserMenu({ name, email, footer, isAdmin = false }: { name: string; email: string; footer?: ReactNode; isAdmin?: boolean }) {
+export function UserMenu({
+  name, email, footer, isAdmin = false, canManageTickets = false, ticketsBadge = 0,
+}: { name: string; email: string; footer?: ReactNode; isAdmin?: boolean; canManageTickets?: boolean; ticketsBadge?: number }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
 
@@ -27,6 +32,14 @@ export function UserMenu({ name, email, footer, isAdmin = false }: { name: strin
     document.addEventListener("keydown", onKey);
     return () => { document.removeEventListener("mousedown", onDown); document.removeEventListener("keydown", onKey); };
   }, [open]);
+
+  const items: MenuItem[] = [
+    ...BASE_ITEMS.slice(0, 1),
+    { href: "/tickets", label: "Mes tickets", icon: Ticket, hint: "Tes demandes de support", badge: ticketsBadge },
+    ...BASE_ITEMS.slice(1),
+    ...(canManageTickets ? [TICKETS_GESTION_ITEM] : []),
+    ...(isAdmin ? [ADMIN_ITEM] : []),
+  ];
 
   return (
     <div ref={box} className="relative">
@@ -47,11 +60,14 @@ export function UserMenu({ name, email, footer, isAdmin = false }: { name: strin
             <div className="truncate text-xs text-muted">{email}</div>
           </div>
           <ul className="p-1.5">
-            {(isAdmin ? [...ITEMS, ADMIN_ITEM] : ITEMS).map(({ href, label, icon: Icon, hint }) => (
+            {items.map(({ href, label, icon: Icon, hint, badge }) => (
               <li key={href}>
                 <Link href={href} role="menuitem" onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm hover:bg-bg">
                   <Icon size={16} className="shrink-0 text-accent" />
-                  <span className="min-w-0"><span className="block">{label}</span>{hint && <span className="block text-xs text-muted">{hint}</span>}</span>
+                  <span className="min-w-0 flex-1"><span className="block">{label}</span>{hint && <span className="block text-xs text-muted">{hint}</span>}</span>
+                  {!!badge && (
+                    <span className="shrink-0 rounded-full bg-[#dc3545] px-1.5 text-[10px] font-semibold text-white" aria-label={`${badge} à traiter`}>{badge}</span>
+                  )}
                 </Link>
               </li>
             ))}

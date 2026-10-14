@@ -22,6 +22,7 @@ export async function loadNotifications(user: SessionUser): Promise<{ items: Not
   const limit = tomorrow.toISOString().slice(0, 10);
   const manager = isManager(user);
   const admin = user.perms.administration;
+  const canManageTickets = user.perms.tickets;
 
   const [mineDue, requested, lateAll, pendingUsers, news, events, albums, lastLoans, myCards, pollsToAnswer, unreadConvs, newUpdates, myUnreadTickets, openTickets] = await Promise.all([
     db
@@ -63,7 +64,7 @@ export async function loadNotifications(user: SessionUser): Promise<{ items: Not
       ))
       .orderBy(desc(tickets.updatedAt))
       .limit(5),
-    admin ? db.select({ at: tickets.createdAt }).from(tickets).where(eq(tickets.status, "open")) : Promise.resolve([] as { at: Date }[]),
+    canManageTickets ? db.select({ at: tickets.createdAt }).from(tickets).where(eq(tickets.status, "open")) : Promise.resolve([] as { at: Date }[]),
   ]);
 
   const loanBadge = mineDue.length + requested.length + Number(lateAll[0]?.n ?? 0);
@@ -138,13 +139,13 @@ export async function loadNotifications(user: SessionUser): Promise<{ items: Not
           unread: true,
         }]
       : []),
-    ...(admin && openTickets.length > 0
+    ...(canManageTickets && openTickets.length > 0
       ? [{
           key: "tickets-todo",
           kind: "alert" as const,
           text: `${openTickets.length} ticket(s) ouvert(s) à traiter`,
           when: "À traiter",
-          href: "/admin/tickets",
+          href: "/tickets/gestion",
           unread: openTickets.some((t) => t.at.getTime() > seenAt),
         }]
       : []),

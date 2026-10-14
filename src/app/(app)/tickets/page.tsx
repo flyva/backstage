@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { desc, eq } from "drizzle-orm";
-import { Plus } from "lucide-react";
+import { Plus, Settings2 } from "lucide-react";
 import { db } from "@/db";
 import { tickets } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { ago } from "@/lib/relative-time";
-import { STATUS_COLOR, STATUS_LABEL } from "@/components/ticket-forms";
+import { STATUS_COLOR, STATUS_LABEL } from "@/lib/ticket-shared";
 
 export const metadata = { title: "Tickets" };
 
@@ -20,7 +20,10 @@ export default async function TicketsPage() {
           <h1 className="text-2xl font-bold">Tickets</h1>
           <p className="text-sm text-muted">Signale un problème (matériel, site, école…) et suis son traitement.</p>
         </div>
-        <Link href="/tickets/nouveau" className="btn"><Plus size={16} /> Nouveau ticket</Link>
+        <div className="flex gap-2">
+          {user.perms.tickets && <Link href="/tickets/gestion" className="btn-ghost"><Settings2 size={16} /> Gestion</Link>}
+          <Link href="/tickets/nouveau" className="btn"><Plus size={16} /> Nouveau ticket</Link>
+        </div>
       </div>
 
       {mine.length === 0 ? (

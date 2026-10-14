@@ -14,9 +14,9 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string; fileI
   const fid = Number(fileId);
   if (!Number.isInteger(ticketId) || !Number.isInteger(fid)) return new Response("Introuvable", { status: 404 });
 
-  // Visible uniquement par l'auteur du ticket ou un administrateur.
+  // Visible uniquement par l'auteur du ticket ou une personne avec le droit de gestion des tickets.
   const [ticket] = await db.select({ createdBy: tickets.createdBy }).from(tickets).where(eq(tickets.id, ticketId)).limit(1);
-  if (!ticket || (ticket.createdBy !== user.id && !user.perms.administration)) return new Response("Introuvable", { status: 404 });
+  if (!ticket || (ticket.createdBy !== user.id && !user.perms.tickets)) return new Response("Introuvable", { status: 404 });
 
   const [row] = await db.select().from(ticketFiles).where(and(eq(ticketFiles.id, fid), eq(ticketFiles.ticketId, ticketId))).limit(1);
   if (!row || !TICKET_FILE_NAME.test(row.file)) return new Response("Introuvable", { status: 404 });

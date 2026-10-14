@@ -7,6 +7,7 @@ export type RoleFlags = {
   permBde: boolean;
   permActus: boolean;
   permGalerie: boolean;
+  permTickets: boolean;
   viewMateriel: boolean;
   viewBde: boolean;
   viewActus: boolean;
@@ -35,6 +36,8 @@ export type Perms = {
   bde: boolean;
   actus: boolean;
   galerie: boolean;
+  /** Voit et gère tous les tickets (sans besoin d'être administrateur). */
+  tickets: boolean;
   /** Peut ouvrir le domaine (lecture) : « Voir » ou « Gérer ». */
   view: Record<Module, boolean>;
   /** Voit cette partie du menu (Savoirs, Promo, Vie étudiante). Rien dans ces parties n'est géré finement par ailleurs. */
@@ -53,6 +56,7 @@ export function permsOf(r: RoleFlags | null | undefined): Perms {
     bde: a || !!r?.permBde,
     actus: a || !!r?.permActus,
     galerie: a || !!r?.permGalerie,
+    tickets: a || !!r?.permTickets,
     view: {
       materiel: a || !!r?.permMateriel || (r ? !!r.viewMateriel : true),
       bde: a || !!r?.permBde || (r ? !!r.viewBde : true),
@@ -95,3 +99,9 @@ export const levelOf = (r: Record<string, unknown>, f: (typeof LEVEL_FIELDS)[num
 
 /** Droit « Administration » (une seule case : pas de lecture seule). */
 export const ADMIN_PERM = { field: "permAdministration", label: "Administration", hint: "Accès aux pages d'administration : utilisateurs, rôles, FAQ, liens, modèles de checklists, réglages de l'école." } as const;
+
+/** Droit « Tickets » (une seule case) : gérer les tickets de tout le monde sans avoir besoin d'être administrateur. */
+export const TICKETS_PERM = { field: "permTickets", label: "Gestion des tickets", hint: "Voir tous les tickets, changer leur statut et y répondre (page séparée de l'administration)." } as const;
+
+/** Gère les tickets de tout le monde : les rôles avec le droit « Gestion des tickets » (les admins ont tout). */
+export const canManageTickets = (u: { perms: { tickets: boolean } }) => u.perms.tickets;

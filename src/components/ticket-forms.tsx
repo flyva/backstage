@@ -5,15 +5,13 @@ import { Paperclip, Send } from "lucide-react";
 import type { FormState } from "@/lib/actions";
 import { addTicketComment, createTicket, setTicketStatus } from "@/lib/ticket-actions";
 import { type TicketStatus } from "@/db/schema";
+import { STATUS_LABEL } from "@/lib/ticket-shared";
 
 function Feedback({ state }: { state: FormState }) {
   if (state?.error) return <p className="text-sm text-danger" role="alert">{state.error}</p>;
   if (state?.ok) return <p className="text-sm text-green-600 dark:text-green-400" role="status">{state.ok}</p>;
   return null;
 }
-
-export const STATUS_LABEL: Record<TicketStatus, string> = { open: "Ouvert", in_progress: "En cours", closed: "Fermé" };
-export const STATUS_COLOR: Record<TicketStatus, string> = { open: "#dc3545", in_progress: "#f59e0b", closed: "#28a745" };
 
 export function TicketCreateForm() {
   const [state, action, pending] = useActionState(createTicket, undefined);

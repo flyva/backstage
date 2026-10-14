@@ -8,20 +8,27 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { ticketComments, ticketFiles, tickets, TICKET_STATUSES, type TicketStatus } from "@/db/schema";
-import { requireAdmin, requireUser } from "@/lib/auth";
+import { requireUser } from "@/lib/auth";
+import { canManageTickets } from "@/lib/perms";
 import type { FormState } from "@/lib/actions";
 import {
   MAX_TICKET_FILE_BYTES, MAX_TICKET_FILES, ensureTicketFilesDir, newTicketFileName, removeTicketFile, sniff, ticketFilesDir,
 } from "@/lib/ticket-files";
+
+export async function requireTicketManager() {
+  const user = await requireUser();
+  if (!canManageTickets(user)) redirect("/tickets");
+  return user;
+}
 
 const ticketSchema = z.object({
   title: z.string().trim().min(3, "Titre requis (3 caractères minimum)").max(150),
   body: z.string().trim().min(5, "Décris le problème (5 caractères minimum)").max(5000),
 });
 
-/** Un ticket n'est visible que par son auteur ou un administrateur. */
-async function loadVisibleTicket(id: number, userId: number, admin: boolean) {
-  const [row] = await db.select().from(tickets).where(admin ? eq(tickets.id, id) : and(eq(tickets.id, id), eq(tickets.createdBy, userId))).limit(1);
+/** Un ticket n'est visible que par son auteur ou une personne avec le droit de gestion des tickets. */
+async function loadVisibleTicket(id: number, userId: number, canManage: boolean) {
+  const [row] = await db.select().from(tickets).where(canManage ? eq(tickets.id, id) : and(eq(tickets.id, id), eq(tickets.createdBy, userId))).limit(1);
   return row ?? null;
 }
 
@@ -51,7 +58,7 @@ export async function createTicket(_: FormState, fd: FormData): Promise<FormStat
     }
   }
   revalidatePath("/tickets");
-  revalidatePath("/admin/tickets");
+  revalidatePath("/tickets/gestion");
   redirect(`/tickets/${res.insertId}`);
 }
 
@@ -59,27 +66,29 @@ export async function addTicketComment(_: FormState, fd: FormData): Promise<Form
   const user = await requireUser();
   const id = Number(fd.get("ticketId"));
   if (!Number.isInteger(id)) return { error: "Ticket introuvable" };
-  const ticket = await loadVisibleTicket(id, user.id, user.perms.administration);
+  const ticket = await loadVisibleTicket(id, user.id, canManageTickets(user));
   if (!ticket) return { error: "Ticket introuvable" };
   const body = String(fd.get("body") ?? "").trim();
   if (!body || body.length > 3000) return { error: "Message vide ou trop long" };
   await db.insert(ticketComments).values({ ticketId: id, userId: user.id, body });
-  // Si c'est l'auteur qui répond, son ticket reste « lu » pour lui ; si c'est un admin, l'auteur aura une réponse à lire.
+  // Si c'est l'auteur qui répond, son ticket reste « lu » pour lui ; si c'est quelqu'un qui gère les tickets, l'auteur aura une réponse à lire.
   await db.update(tickets).set({ updatedAt: new Date(), lastActorId: user.id, ...(user.id === ticket.createdBy ? { ownerReadAt: new Date() } : {}) }).where(eq(tickets.id, id));
   revalidatePath(`/tickets/${id}`);
-  revalidatePath("/admin/tickets");
+  revalidatePath(`/tickets/gestion/${id}`);
+  revalidatePath("/tickets/gestion");
   return { ok: "Message ajouté" };
 }
 
 export async function setTicketStatus(fd: FormData) {
-  const admin = await requireAdmin();
+  const manager = await requireTicketManager();
   const id = Number(fd.get("ticketId"));
   const status = String(fd.get("status") ?? "") as TicketStatus;
   if (!Number.isInteger(id) || !TICKET_STATUSES.includes(status)) return;
-  await db.update(tickets).set({ status, updatedAt: new Date(), lastActorId: admin.id }).where(eq(tickets.id, id));
+  await db.update(tickets).set({ status, updatedAt: new Date(), lastActorId: manager.id }).where(eq(tickets.id, id));
   revalidatePath(`/tickets/${id}`);
+  revalidatePath(`/tickets/gestion/${id}`);
   revalidatePath("/tickets");
-  revalidatePath("/admin/tickets");
+  revalidatePath("/tickets/gestion");
 }
 
 export async function deleteTicketFile(fd: FormData) {
@@ -87,7 +96,7 @@ export async function deleteTicketFile(fd: FormData) {
   const fileId = Number(fd.get("fileId"));
   const ticketId = Number(fd.get("ticketId"));
   if (!Number.isInteger(fileId) || !Number.isInteger(ticketId)) return;
-  const ticket = await loadVisibleTicket(ticketId, user.id, user.perms.administration);
+  const ticket = await loadVisibleTicket(ticketId, user.id, canManageTickets(user));
   if (!ticket) return;
   const [file] = await db.select().from(ticketFiles).where(and(eq(ticketFiles.id, fileId), eq(ticketFiles.ticketId, ticketId))).limit(1);
   if (!file) return;

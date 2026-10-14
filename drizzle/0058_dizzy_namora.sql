@@ -1,0 +1,1 @@
+ALTER TABLE `roles` ADD `perm_tickets` boolean DEFAULT false NOT NULL;

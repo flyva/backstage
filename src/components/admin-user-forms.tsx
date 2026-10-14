@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { Trash2 } from "lucide-react";
 import type { FormState } from "@/lib/actions";
 import { deleteRole, deleteUser, resetUserPassword, saveRole, updateUser } from "@/lib/user-admin-actions";
-import { ADMIN_PERM, COURSE_PAGES, LEVEL_FIELDS, LEVEL_LABEL, levelOf, SECTION_FIELDS, type Level } from "@/lib/perms";
+import { ADMIN_PERM, COURSE_PAGES, LEVEL_FIELDS, LEVEL_LABEL, levelOf, SECTION_FIELDS, TICKETS_PERM, type Level } from "@/lib/perms";
 import { PasswordField } from "@/components/PasswordField";
 
 function Feedback({ state }: { state: FormState }) {
@@ -36,6 +36,10 @@ export function RoleForm({ role = {} }: { role?: RoleValues }) {
         <label className="flex items-start gap-3 rounded-xl border border-line p-3 text-sm has-[:checked]:border-accent has-[:checked]:bg-accent/5">
           <input type="checkbox" name={ADMIN_PERM.field} defaultChecked={!!role[ADMIN_PERM.field]} className="mt-0.5 size-4 accent-[var(--accent)]" />
           <span><strong>{ADMIN_PERM.label}</strong><span className="block text-xs text-muted">{ADMIN_PERM.hint}</span></span>
+        </label>
+        <label className="flex items-start gap-3 rounded-xl border border-line p-3 text-sm has-[:checked]:border-accent has-[:checked]:bg-accent/5">
+          <input type="checkbox" name={TICKETS_PERM.field} defaultChecked={!!role[TICKETS_PERM.field]} className="mt-0.5 size-4 accent-[var(--accent)]" />
+          <span><strong>{TICKETS_PERM.label}</strong><span className="block text-xs text-muted">{TICKETS_PERM.hint}</span></span>
         </label>
         <div className="space-y-2">
           {LEVEL_FIELDS.map((f) => {

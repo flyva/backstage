@@ -27,6 +27,7 @@ export const roles = mysqlTable("roles", {
   permBde: boolean("perm_bde").notNull().default(false), // publier pour le BDE (évènements, actus BDE)
   permActus: boolean("perm_actus").notNull().default(false), // publier des actus de l'école
   permGalerie: boolean("perm_galerie").notNull().default(false), // gérer la galerie
+  permTickets: boolean("perm_tickets").notNull().default(false), // voir et gérer tous les tickets (pas besoin d'être admin)
   // Niveau « Voir » de chaque domaine : accès en lecture (les étudiants voient sans gérer). Aucun = ni voir ni gérer ;
   // Gérer (perm_*) inclut toujours Voir.
   viewMateriel: boolean("view_materiel").notNull().default(true),

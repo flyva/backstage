@@ -56,6 +56,7 @@ export async function saveRole(_: FormState, fd: FormData): Promise<FormState> {
     description: p.data.description || null,
     isAdmin: flag("isAdmin"),
     permAdministration: flag("permAdministration"),
+    permTickets: flag("permTickets"),
     viewSavoirs: fd.get("section_savoirs") !== "none",
     viewPromo: fd.get("section_promo") !== "none",
     viewVie: fd.get("section_vie") !== "none",
