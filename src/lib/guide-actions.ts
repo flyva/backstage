@@ -1,9 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, count, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { contacts, faqItems, settings, usefulLinks, wikiPages, wikiRevisions } from "@/db/schema";
+import { contacts, faqItems, quizQuestions, settings, usefulLinks, wikiPages, wikiRevisions } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
 import { geocode } from "@/lib/mobility";
 import { GUIDE_CONTACTS, GUIDE_FAQ, GUIDE_LINKS, GUIDE_PAGES, GUIDE_SETTINGS } from "@/lib/guide-data";
@@ -118,8 +118,25 @@ export async function importCourse(key: string): Promise<FormState> {
       added++;
     }
   }
+  // Banque de quiz : semée une seule fois (au tout premier import), jamais retouchée ensuite — après, c'est la banque
+  // gérée par les admins (Administration → Quiz) qui fait foi, un réimport du cours ne doit pas écraser leurs modifs.
+  let quizAdded = 0;
+  if (course.quiz?.length) {
+    const [{ n }] = await db.select({ n: count() }).from(quizQuestions).where(eq(quizQuestions.courseKey, course.key));
+    if (Number(n) === 0) {
+      await db.insert(quizQuestions).values(course.quiz.map((q) => ({
+        courseKey: course.key, question: q.question, choiceA: q.choices[0], choiceB: q.choices[1], choiceC: q.choices[2], choiceD: q.choices[3], answer: q.answer, createdBy: admin.id,
+      })));
+      quizAdded = course.quiz.length;
+    }
+  }
+
   revalidatePath("/", "layout");
-  const parts = [added > 0 ? `${added} page(s) ajoutée(s)` : "", updated > 0 ? `${updated} page(s) mise(s) à jour` : ""].filter(Boolean);
+  const parts = [
+    added > 0 ? `${added} page(s) ajoutée(s)` : "",
+    updated > 0 ? `${updated} page(s) mise(s) à jour` : "",
+    quizAdded > 0 ? `${quizAdded} question(s) de quiz ajoutée(s)` : "",
+  ].filter(Boolean);
   return { ok: parts.length ? `${parts.join(", ")} (catégorie « Cours »).` : "Tout est déjà à jour." };
 }
 

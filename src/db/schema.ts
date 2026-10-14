@@ -213,6 +213,25 @@ export const updates = mysqlTable("updates", {
   createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
 });
 
+// ---------- Banque de questions des quiz de cours (Réseaux, Mécanique, Électricité, Lumière…) ----------
+
+export const quizQuestions = mysqlTable(
+  "quiz_questions",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    courseKey: varchar("course_key", { length: 40 }).notNull(), // clé du cours (src/lib/course-data.ts), ex. "reseaux"
+    question: varchar("question", { length: 500 }).notNull(),
+    choiceA: varchar("choice_a", { length: 300 }).notNull(),
+    choiceB: varchar("choice_b", { length: 300 }).notNull(),
+    choiceC: varchar("choice_c", { length: 300 }).notNull(),
+    choiceD: varchar("choice_d", { length: 300 }).notNull(),
+    answer: int("answer").notNull(), // 0 = A, 1 = B, 2 = C, 3 = D
+    createdBy: int("created_by").notNull().references(() => users.id),
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [index("qq_course_idx").on(t.courseKey)],
+);
+
 // Paramètres globaux clé/valeur (wifi, plan, webmail, …)
 export const settings = mysqlTable("settings", {
   key: varchar("key", { length: 80 }).primaryKey(),

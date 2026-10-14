@@ -9,7 +9,8 @@
 // sont supprimés automatiquement au prochain import.
 
 export type CoursePage = { title: string; slug: string; parent?: string; body: string };
-export type Course = { key: string; label: string; description: string; replaces?: string[]; pages: CoursePage[] };
+export type QuizSeed = { question: string; choices: [string, string, string, string]; answer: 0 | 1 | 2 | 3 };
+export type Course = { key: string; label: string; description: string; replaces?: string[]; pages: CoursePage[]; quiz?: QuizSeed[] };
 
 export const COURSES: Course[] = [
   {
@@ -119,6 +120,8 @@ Deux protocoles **à connaître par cœur** en régie : les deux remplacent des 
 **4.** Pourquoi toujours câbler Dante en filaire plutôt qu'en Wi-Fi ?
 💡 *Réponse : pour garder une latence stable et très faible, indispensable en audio live.*
 
+🎯 **[Lance le quiz complet](/quiz/reseaux)** pour t'entraîner, questions tirées au hasard à chaque tentative.
+
 *Cours à compléter au fil de l'année. Voir aussi la [[Réseaux — Fiche mémo]] pour réviser vite.*`,
       },
       {
@@ -152,6 +155,23 @@ Deux protocoles **à connaître par cœur** en régie : les deux remplacent des 
 
 1969 ARPANET → 1973 Ethernet → 1982 Minitel → 1983 TCP/IP → 1991 Web public → 1990s modem 56K → 2000s+ ADSL / Wi-Fi / fibre / 4G-5G.`,
       },
+    ],
+    quiz: [
+      { question: "En 1969, quel est le tout premier message envoyé sur ARPANET ?", choices: ["« LOGIN », mais le système plante après « LO »", "« Hello World »", "Un simple test de connexion", "Rien, ARPANET n'a pas commencé en 1969"], answer: 0 },
+      { question: "Qui invente Ethernet, et en quelle année ?", choices: ["Tim Berners-Lee, en 1991", "Robert Metcalfe, en 1973", "Vinton Cerf, en 1983", "Steve Jobs, en 1976"], answer: 1 },
+      { question: "Le Web et Internet, c'est la même chose ?", choices: ["Oui, ce sont des synonymes", "Non : Internet est l'infrastructure, le Web est un service qui tourne dessus", "Non : le Web est plus ancien qu'Internet", "Oui, depuis 1969"], answer: 1 },
+      { question: "1 octet, c'est combien de bits ?", choices: ["4 bits", "8 bits", "16 bits", "2 bits"], answer: 1 },
+      { question: "Une connexion annoncée à 100 Mb/s télécharge au mieux à peu près à…", choices: ["100 Mo/s", "50 Mo/s", "12,5 Mo/s", "800 Mo/s"], answer: 2 },
+      { question: "Quel type de réseau a la plus petite étendue ?", choices: ["LAN", "WAN", "PAN", "MAN"], answer: 2 },
+      { question: "Internet est le plus grand exemple de quel type de réseau ?", choices: ["LAN", "PAN", "MAN", "WAN"], answer: 3 },
+      { question: "Qu'est-ce qui ne change JAMAIS, même en changeant de réseau ?", choices: ["L'adresse IP", "L'adresse MAC", "Le masque de sous-réseau", "La passerelle"], answer: 1 },
+      { question: "Combien d'adresses IPv4 existe-t-il environ ?", choices: ["4,3 millions", "4,3 milliards", "340 undécillions", "Un nombre infini"], answer: 1 },
+      { question: "À quoi sert le NAT ?", choices: ["Attribuer automatiquement une adresse IP", "Traduire les adresses IP privées en adresse IP publique du routeur", "Transporter l'audio sur IP", "Donner un nom de domaine à une IP"], answer: 1 },
+      { question: "Le switch et le routeur, quelle différence ?", choices: ["Aucune, ce sont des synonymes", "Le switch relie des réseaux différents, le routeur reste dans un LAN", "Le switch relie les appareils d'un même LAN, le routeur relie des réseaux différents", "Le routeur est plus ancien que le switch"], answer: 2 },
+      { question: "Dante et Art-Net ont un point commun : lequel ?", choices: ["Les deux transportent de la vidéo", "Les deux remplacent des câbles dédiés par de l'Ethernet standard", "Les deux sont des adresses IP privées", "Les deux datent des années 1980"], answer: 1 },
+      { question: "Pourquoi toujours câbler Dante en filaire plutôt qu'en Wi-Fi ?", choices: ["Parce que le Wi-Fi est interdit par la loi", "Pour garder une latence stable et très faible", "Parce que Dante ne fonctionne qu'avec des câbles USB", "Ce n'est pas vrai, le Wi-Fi est recommandé"], answer: 1 },
+      { question: "Un univers DMX classique contient combien de canaux ?", choices: ["256", "512", "1024", "128"], answer: 1 },
+      { question: "DHCP sert à quoi ?", choices: ["Chiffrer le trafic réseau", "Attribuer automatiquement une adresse IP", "Traduire un nom de domaine en IP", "Transporter l'audio sur IP"], answer: 1 },
     ],
   },
   {
@@ -265,6 +285,8 @@ C'est exactement le calcul (avec un schéma 2D de la poutre, des charges et des 
 **4.** Sur un pont tenu à ses deux bouts, une charge excentrée vers A fait porter plus de poids à…
 💡 *Réponse : A — chaque charge « tire » davantage sur l'appui le plus proche d'elle.*
 
+🎯 **[Lance le quiz complet](/quiz/meca)** pour t'entraîner, questions tirées au hasard à chaque tentative.
+
 *Cours à compléter au fil de l'année. Voir aussi la [[Mécanique — Fiche mémo]] pour réviser vite.*`,
       },
       {
@@ -296,6 +318,22 @@ C'est exactement le calcul (avec un schéma 2D de la poutre, des charges et des 
 
 **Règle du pouce** : angles > 45° confortables, 30-45° à vérifier, < 30° déconseillé.`,
       },
+    ],
+    quiz: [
+      { question: "Le poids d'un objet dépend de quoi, contrairement à sa masse ?", choices: ["De sa couleur", "De la gravité du lieu", "De sa température", "De rien, poids et masse sont identiques"], answer: 1 },
+      { question: "Quel est le raccourci pratique utilisé en régie ?", choices: ["1 kg ≈ 1 N", "1 kg ≈ 1 daN", "1 N ≈ 10 daN", "1 kg ≈ 100 N"], answer: 1 },
+      { question: "Une force se représente par…", choices: ["Un simple nombre", "Un vecteur (direction, sens, intensité)", "Une couleur", "Une température"], answer: 1 },
+      { question: "Dans la formule T = Charge ÷ (brins × sin(angle)), l'angle se mesure…", choices: ["Entre le brin et la verticale", "Entre le brin et l'horizontale (angle au sol)", "Entre les deux brins", "Peu importe, ça ne change rien"], answer: 1 },
+      { question: "200 kg sur 2 brins verticaux (90°) : quelle tension par brin ?", choices: ["200 kg", "150 kg", "100 kg", "50 kg"], answer: 2 },
+      { question: "Plus l'angle au sol d'une élingue se referme (brins plus horizontaux)…", choices: ["Plus la tension par brin diminue", "Plus la tension par brin augmente", "La tension ne change jamais", "Seul le nombre de brins compte"], answer: 1 },
+      { question: "À partir de quel angle au sol la tension dépasse-t-elle le double de l'idéal ?", choices: ["60°", "45°", "30°", "90°"], answer: 2 },
+      { question: "La CMU, c'est…", choices: ["La charge à laquelle le matériel casse", "La charge maximale d'utilisation en usage normal", "Le poids du matériel lui-même", "Une unité de mesure de la vitesse"], answer: 1 },
+      { question: "Le coefficient de sécurité sert à…", choices: ["Rendre le matériel plus lourd", "Absorber l'usure, les chocs et les erreurs d'estimation", "Calculer l'angle d'une élingue", "Remplacer la CMU"], answer: 1 },
+      { question: "Sur un pont tenu à ses deux bouts, une charge excentrée vers A fait porter plus de poids à…", choices: ["B", "A", "Ni l'un ni l'autre, ça se répartit toujours 50/50", "Impossible à savoir"], answer: 1 },
+      { question: "Dans un plan de charges, que compare-t-on à la CMU d'un point de levage ?", choices: ["La charge totale divisée en deux", "La réaction réelle calculée à ce point", "Le poids de la structure uniquement", "Rien, la CMU ne sert à rien ici"], answer: 1 },
+      { question: "Une élingue en V, c'est…", choices: ["Une élingue à un seul brin", "Une élingue à deux brins symétriques depuis un point de levage", "Un type de manille", "Un synonyme de CMU"], answer: 1 },
+      { question: "WLL est l'équivalent anglais de…", choices: ["Newton", "CMU", "Résultante", "daN"], answer: 1 },
+      { question: "La méthode du triangle des forces sert à…", choices: ["Mesurer un angle au sol", "Additionner vectoriellement deux forces de directions différentes", "Calculer une CMU", "Peser une charge"], answer: 1 },
     ],
   },
   {
@@ -365,6 +403,8 @@ Le symbole d'habilitation se lit en 2 à 3 caractères : par exemple **B1V** = b
 **3.** L'habilitation électrique, c'est un diplôme ?
 💡 *Réponse : non, c'est une autorisation donnée par l'employeur, après formation, reconnaissant que la personne a les compétences nécessaires.*
 
+🎯 **[Lance le quiz complet](/quiz/electricite)** pour t'entraîner, questions tirées au hasard à chaque tentative.
+
 *Cours à compléter au fil de l'année. Voir aussi la [[Électricité — Fiche mémo]] et la page [Habilitation électrique](/habilitation).*`,
       },
       {
@@ -397,6 +437,20 @@ Le symbole d'habilitation se lit en 2 à 3 caractères : par exemple **B1V** = b
 - Consignation = **4 étapes** : identification, séparation, condamnation, vérification d'absence de tension (VAT).
 - Détails et quiz complet : page [Habilitation électrique](/habilitation).`,
       },
+    ],
+    quiz: [
+      { question: "La loi d'Ohm s'écrit…", choices: ["U = R × I", "U = R + I", "U = R ÷ I", "U = R² × I"], answer: 0 },
+      { question: "La puissance électrique se calcule par…", choices: ["P = U ÷ I", "P = U × I", "P = U + I", "P = I ÷ U"], answer: 1 },
+      { question: "Tu connais U = 230 V et P = 2000 W. Quelle est l'intensité I ?", choices: ["Environ 8,7 A", "Environ 0,115 A", "230 A", "2000 A"], answer: 0 },
+      { question: "Le monophasé, c'est une tension de…", choices: ["400 V", "230 V", "12 V", "48 V"], answer: 1 },
+      { question: "Pourquoi utiliser du triphasé plutôt que du monophasé pour une grosse installation ?", choices: ["C'est moins cher", "Ça répartit la puissance sur 3 phases au lieu d'une", "Ça n'a aucun avantage", "C'est obligatoire en dessous de 1000 W"], answer: 1 },
+      { question: "La chute de tension admise est généralement de…", choices: ["3 % en éclairage, 5 % pour les autres usages", "10 % partout", "0 % obligatoirement", "50 %"], answer: 0 },
+      { question: "L'habilitation électrique est…", choices: ["Un diplôme national", "Une autorisation donnée par l'employeur après formation", "Une certification à vie, jamais renouvelée", "Obligatoire seulement pour les plus de 30 ans"], answer: 1 },
+      { question: "Le symbole B0 correspond à…", choices: ["Un électricien confirmé en haute tension", "Un non-électricien, travaux d'ordre non électrique", "Une intervention sous tension", "Un chef de chantier"], answer: 1 },
+      { question: "BS correspond à…", choices: ["Intervention élémentaire (fusible, réarmement)", "Basse tension, sous tension", "Un niveau réservé aux ingénieurs", "Une habilitation haute tension"], answer: 0 },
+      { question: "La consignation électrique comporte combien d'étapes ?", choices: ["2", "3", "4", "6"], answer: 2 },
+      { question: "Que mesure un ampèremètre ?", choices: ["La tension", "L'intensité", "La résistance", "La puissance"], answer: 1 },
+      { question: "L'unité de la résistance électrique est…", choices: ["Le volt", "L'ampère", "Le watt", "L'ohm"], answer: 3 },
     ],
   },
   {
@@ -470,6 +524,8 @@ Chaque projecteur a une puissance en **watts** (quelques dizaines de watts pour 
 **3.** Pourquoi passer le DMX sur un réseau Ethernet (Art-Net/sACN) plutôt qu'en câblage XLR classique ?
 💡 *Réponse : pour dépasser la limite de 512 canaux par câble et transporter plusieurs univers sur un seul câble réseau.*
 
+🎯 **[Lance le quiz complet](/quiz/lumiere)** pour t'entraîner, questions tirées au hasard à chaque tentative.
+
 *Cours à compléter au fil de l'année. Voir aussi la [[Lumière — Fiche mémo]].*`,
       },
       {
@@ -503,6 +559,20 @@ Face · Contre · Latérale · Plongée/contre-plongée · Douche — combiner f
 - Température basse (≈ 3 200 K) = chaud. Température haute (≈ 5 600 K+) = froid.
 - Mélange **additif** : Rouge + Vert + Bleu = blanc.`,
       },
+    ],
+    quiz: [
+      { question: "Quel projecteur donne un faisceau net avec des bords francs, réglable par couteaux ?", choices: ["PC", "Fresnel", "Découpe (profile)", "PAR"], answer: 2 },
+      { question: "Le PAR est surtout connu pour…", choices: ["Son faisceau très réglable", "Son faisceau fixe, compact et puissant", "Être motorisé en pan/tilt", "Projeter des gobos uniquement"], answer: 1 },
+      { question: "Une lyre (moving head) se pilote principalement via…", choices: ["Une télécommande infrarouge", "Le DMX", "Un bouton manuel sur le projecteur", "Le Bluetooth"], answer: 1 },
+      { question: "Plus une température de couleur (en kelvins) est basse…", choices: ["Plus la lumière est froide (bleutée)", "Plus la lumière est chaude (orangée)", "Plus la lumière est puissante", "Moins ça a d'importance"], answer: 1 },
+      { question: "En mélange additif (lumière), Rouge + Vert + Bleu à pleine intensité donnent…", choices: ["Du noir", "Du blanc", "Du gris", "Du jaune"], answer: 1 },
+      { question: "Un univers DMX contient combien de canaux ?", choices: ["256", "512", "1024", "64"], answer: 1 },
+      { question: "Le nombre de canaux qu'occupe un projecteur s'appelle son…", choices: ["Adresse", "Univers", "Mode (ou footprint)", "Gobo"], answer: 2 },
+      { question: "Pour dépasser la limite de 512 canaux par câble, on utilise…", choices: ["Un câble XLR plus gros", "Art-Net ou sACN sur un réseau Ethernet", "Deux lyres en série", "Un gel plus clair"], answer: 1 },
+      { question: "La position « contre » (contre-jour) sert surtout à…", choices: ["Aplatir le visage", "Détourer la silhouette et créer de la profondeur", "Isoler une petite zone au sol", "Remplacer la couleur"], answer: 1 },
+      { question: "La « douche » est une position qui…", choices: ["Vient toujours de côté", "Isole une petite zone au sol avec un faisceau vertical serré", "N'existe pas en éclairage de spectacle", "Sert uniquement en extérieur"], answer: 1 },
+      { question: "Un gobo sert à…", choices: ["Filtrer la couleur", "Projeter une forme ou une texture", "Mesurer la puissance d'un projecteur", "Adresser le DMX"], answer: 1 },
+      { question: "Pour calculer l'alimentation nécessaire à tout le parc de projecteurs d'un montage, on utilise…", choices: ["La calculette Patch DMX", "La calculette Bilan de puissance", "La calculette Angle et charge sur élingues", "Le plan de feux uniquement"], answer: 1 },
     ],
   },
 ];

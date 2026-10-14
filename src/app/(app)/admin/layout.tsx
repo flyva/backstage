@@ -9,6 +9,7 @@ const TABS = [
   { slug: "checklists", label: "Checklists" },
   { slug: "faq", label: "FAQ" },
   { slug: "liens", label: "Liens utiles" },
+  { slug: "quiz", label: "Quiz" },
   { slug: "nouveautes", label: "Nouveautés" },
   { slug: "wiki", label: "Wiki" },
   { slug: "sante", label: "Santé" },

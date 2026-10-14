@@ -414,6 +414,13 @@
       "when": 1791883978315,
       "tag": "0058_dizzy_namora",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "5",
+      "when": 1791985929439,
+      "tag": "0059_tiresome_butterfly",
+      "breakpoints": true
     }
   ]
 }
