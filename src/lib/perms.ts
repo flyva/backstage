@@ -26,6 +26,10 @@ export type Section = "savoirs" | "promo" | "vie";
 export const COURSE_PAGES = [
   { key: "cours", label: "Mes cours" },
   { key: "habilitation", label: "Habilitation électrique" },
+  { key: "reseaux", label: "Réseaux" },
+  { key: "mecanique", label: "Mécanique" },
+  { key: "electricite", label: "Électricité" },
+  { key: "lumiere", label: "Lumière" },
 ] as const;
 export type CoursePageKey = (typeof COURSE_PAGES)[number]["key"];
 

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
-  BookOpen, BookUser, Bot, Briefcase, Calculator, Car, ChevronRight, Library, CalendarDays, Camera, CircleHelp, Home, Images, Link2, Newspaper, Package, PartyPopper, School, NotebookPen, ShieldCheck, SquareKanban, TramFront, Users, Contact, Megaphone, CalendarClock, MessageSquare,
+  BookOpen, BookUser, Bot, Briefcase, Calculator, Car, ChevronRight, Library, CalendarDays, Camera, CircleHelp, Cog, Home, Images, Lightbulb, Link2, Network, Newspaper, Package, PartyPopper, School, NotebookPen, ShieldCheck, SquareKanban, TramFront, Users, Contact, Megaphone, CalendarClock, MessageSquare, Zap,
   type LucideIcon,
 } from "lucide-react";
 
@@ -35,6 +35,10 @@ const GROUPS: Group[] = [
       { href: "/calculettes", label: "Calculettes", icon: Calculator },
       { href: "/cours", label: "Mes cours", icon: NotebookPen, module: "cours", heading: "Cours" },
       { href: "/habilitation", label: "Habilitation électrique", icon: ShieldCheck, module: "habilitation" },
+      { href: "/wiki/reseaux", label: "Réseaux", icon: Network, module: "reseaux" },
+      { href: "/wiki/mecanique", label: "Mécanique", icon: Cog, module: "mecanique" },
+      { href: "/wiki/electricite", label: "Électricité", icon: Zap, module: "electricite" },
+      { href: "/wiki/lumiere", label: "Lumière", icon: Lightbulb, module: "lumiere" },
     ],
   },
   {
