@@ -8,7 +8,7 @@ import { requireUser } from "@/lib/auth";
 import { refreshAgenda } from "@/lib/actions";
 import { WeekGrid } from "@/components/WeekGrid";
 import { courseEvents } from "@/lib/courses";
-import { dayKey, rangeOfWeek, weekDays, type AgendaEvent } from "@/lib/ical";
+import { dayKey, eventGroupTag, rangeOfWeek, weekDays, type AgendaEvent } from "@/lib/ical";
 
 export const metadata = { title: "Agenda" };
 
@@ -18,16 +18,23 @@ const nowFmt = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Paris", hour
 const rangeFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "UTC", day: "numeric", month: "short" });
 
 function EventCard({ e }: { e: AgendaEvent }) {
+  const { base, tag } = eventGroupTag(e);
   return (
     <li className="relative rounded-lg border border-line border-l-4 border-l-accent bg-bg p-2.5 text-sm hover:border-accent">
-      <div className="text-xs font-medium tabular-nums text-accent">
-        {e.allDay ? "Toute la journée" : `${timeFmt.format(e.start)} – ${timeFmt.format(e.end)}`}
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-xs font-medium tabular-nums text-accent">
+          {e.allDay ? "Toute la journée" : `${timeFmt.format(e.start)} – ${timeFmt.format(e.end)}`}
+        </div>
+        {tag && <span className="shrink-0 rounded bg-accent/20 px-1.5 py-0.5 text-[10px] font-bold leading-4 text-accent">{tag}</span>}
       </div>
-      <div className="font-medium leading-snug">{/^cd+$/.test(e.id) ? <Link href={`/cours/${e.id.slice(1)}`} className="after:absolute after:inset-0">{e.title}</Link> : e.title}</div>
+      <div className="font-medium leading-snug">{/^cd+$/.test(e.id) ? <Link href={`/cours/${e.id.slice(1)}`} className="after:absolute after:inset-0">{base}</Link> : base}</div>
       {e.location && (
         <div className="mt-0.5 flex items-center gap-1 text-xs text-muted"><MapPin size={12} /> {e.location}</div>
       )}
-      {e.description && <div className="mt-1 line-clamp-2 whitespace-pre-line text-xs text-muted">{e.description}</div>}
+      {/* Pas affiché si c'est juste le code dont le groupe est déjà extrait (ex. « RT1_GROUPE B ») ou un texte générique Ypareo. */}
+      {e.description && !/^[A-Z0-9]+_\s*GROUPE\s+/i.test(e.description.trim()) && e.description.trim() !== "Planning NetYParéo" && (
+        <div className="mt-1 line-clamp-2 whitespace-pre-line text-xs text-muted">{e.description}</div>
+      )}
     </li>
   );
 }

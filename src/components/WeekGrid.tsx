@@ -2,7 +2,7 @@ import Link from "next/link";
 import { MapPin } from "lucide-react";
 import { KIND_CLASS, KIND_LABEL } from "@/lib/alternance";
 import type { WorkKind } from "@/db/schema";
-import type { AgendaEvent } from "@/lib/ical";
+import { eventGroupTag, type AgendaEvent } from "@/lib/ical";
 
 // Planning de la semaine en grille horaire (une colonne par jour, une ligne par heure) : les cours sont placés selon leur heure.
 
@@ -11,16 +11,6 @@ const GRID_HEIGHT = "clamp(420px, calc(100vh - 18.5rem), 860px)";
 const MIN_EVENT_PX = 46; // assez haut pour 2 lignes de titre + l'heure, même sur un évènement court
 /** Page du cours (notes) : les évènements de l'agenda viennent de la copie en base, leur identifiant est « c » + numéro. */
 const courseHref = (id: string) => (/^c\d+$/.test(id) ? `/cours/${id.slice(1)}` : null);
-/**
- * Groupe en fin de titre (ex. « Analyse de spectacles - RT1 », « Anglais - GB1 ») : un code court après le dernier tiret.
- * Affiché à part, dans une pastille toujours visible, pour qu'il ne disparaisse pas quand la colonne est étroite
- * (plusieurs cours au même horaire, ex. groupes en parallèle).
- */
-function splitGroupTag(title: string): { base: string; tag: string | null } {
-  const m = /^(.*)[-–]\s*([A-ZÀ-Ý]{1,4}\d{0,2})\s*$/.exec(title);
-  if (!m || m[1].trim().length < 3) return { base: title, tag: null };
-  return { base: m[1].trim(), tag: m[2] };
-}
 const dayFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "UTC", weekday: "short", day: "numeric" });
 const timeFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit" });
 const partsFmt = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
@@ -124,7 +114,7 @@ export function WeekGrid({ days, byDay, kinds, today, nowMinutes }: {
                 {placed.map(({ e, s, en, lane, lanes }) => {
                   const long = en - s >= 90; // assez haut pour afficher aussi la salle
                   const narrow = lanes > 1; // plusieurs cours en même temps (ex. groupes RT1 / GB) : colonne plus étroite
-                  const { base, tag } = splitGroupTag(e.title);
+                  const { base, tag } = eventGroupTag(e);
                   return (
                     <Link
                       key={e.id}

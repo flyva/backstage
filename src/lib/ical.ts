@@ -127,6 +127,18 @@ export type AgendaEvent = {
   description: string;
 };
 
+/**
+ * Groupe de TD/TP (ex. « RT1 · Gr. B ») : Ypareo le met dans la description (« RT1_GROUPE B »), pas dans le titre — on
+ * essaie d'abord là, puis en repli un éventuel code en fin de titre pour d'autres sources de calendrier.
+ */
+export function eventGroupTag(e: { title: string; description: string }): { base: string; tag: string | null } {
+  const d = /^([A-Z0-9]+)_\s*GROUPE\s+(.+)$/i.exec(e.description.trim());
+  if (d) return { base: e.title, tag: `${d[1].toUpperCase()} · Gr. ${d[2].trim().toUpperCase()}` };
+  const m = /^(.*)[-–]\s*([A-ZÀ-Ý]{1,4}\d{0,2})\s*$/.exec(e.title);
+  if (m && m[1].trim().length >= 3) return { base: m[1].trim(), tag: m[2] };
+  return { base: e.title, tag: null };
+}
+
 export function parseEvents(text: string, from: Date, to: Date): AgendaEvent[] {
   const root = new ICAL.Component(ICAL.parse(text));
   for (const vtz of root.getAllSubcomponents("vtimezone")) {
