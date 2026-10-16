@@ -1,14 +1,13 @@
 import Link from "next/link";
 import { desc, eq } from "drizzle-orm";
-import { ChevronLeft, Trash2 } from "lucide-react";
+import { ChevronLeft, Pencil, Trash2 } from "lucide-react";
 import { db } from "@/db";
 import { timeEntries } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
-import { todayParis } from "@/lib/equipment";
 import { dayLabel, fmtHours, fmtTime } from "@/lib/alternance";
 import { entrySpanMinutes } from "@/lib/pointeuse";
 import { deleteTimeEntry } from "@/lib/time-actions";
-import { TimeEntryForm } from "@/components/time-forms";
+import { ConfirmButton } from "@/components/ConfirmButton";
 
 export const metadata = { title: "Toutes les lignes de pointage" };
 
@@ -16,7 +15,6 @@ export const metadata = { title: "Toutes les lignes de pointage" };
 // d'œil sans naviguer mois par mois. La saisie au jour le jour reste sur la page Pointeuse.
 export default async function PointeuseLinesPage() {
   const user = await requireUser();
-  const today = todayParis();
   const entries = await db.select().from(timeEntries).where(eq(timeEntries.userId, user.id)).orderBy(desc(timeEntries.day), desc(timeEntries.startMinutes));
 
   return (
@@ -56,16 +54,15 @@ export default async function PointeuseLinesPage() {
                     <td className="py-1.5 pr-3 tabular-nums font-medium">{fmtHours(effective)}</td>
                     <td className="max-w-56 truncate py-1.5 pr-3 text-muted" title={e.comment ?? ""}>{e.comment ?? ""}</td>
                     <td className="py-1.5 pr-3">
-                      <details>
-                        <summary className="cursor-pointer list-none text-xs text-muted hover:text-fg marker:hidden">Modifier</summary>
-                        <div className="mt-2 space-y-3 rounded-xl border border-line bg-bg p-3">
-                          <TimeEntryForm today={today} id={e.id} day={e.day} endDay={e.endDay} start={fmtTime(e.startMinutes)} end={fmtTime(e.endMinutes)} pause={e.pauseMinutes} comment={e.comment ?? ""} />
-                          <form action={deleteTimeEntry} className="border-t border-line pt-3">
-                            <input type="hidden" name="id" value={e.id} />
-                            <button className="flex items-center gap-1 text-xs text-muted hover:text-danger"><Trash2 size={14} /> Supprimer</button>
-                          </form>
-                        </div>
-                      </details>
+                      <div className="flex items-center gap-3">
+                        <Link href={`/alternance/pointeuse/lignes/${e.id}`} className="flex items-center gap-1 text-xs text-muted hover:text-fg"><Pencil size={13} /> Modifier</Link>
+                        <form action={deleteTimeEntry}>
+                          <input type="hidden" name="id" value={e.id} />
+                          <ConfirmButton message={`Supprimer la ligne du ${dayLabel(e.day)} (${fmtTime(e.startMinutes)} – ${fmtTime(e.endMinutes)}) ?`} className="flex items-center gap-1 text-xs text-muted hover:text-danger">
+                            <Trash2 size={13} /> Supprimer
+                          </ConfirmButton>
+                        </form>
+                      </div>
                     </td>
                   </tr>
                 );

@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import type { FormState } from "@/lib/actions";
 import type { WorkKind } from "@/db/schema";
 import { saveTimeEntry, saveTimeSettings, setDayStatus } from "@/lib/time-actions";
+import { DateRangeField } from "@/components/DateRangeField";
 
 function Feedback({ state }: { state: FormState }) {
   if (state?.error) return <p className="text-sm text-danger" role="alert">{state.error}</p>;
@@ -19,15 +20,14 @@ export function TimeEntryForm({
   return (
     <form action={action} className="flex flex-wrap items-end gap-3" key={id ? `e${id}` : state?.ok ? "done" : "new"}>
       {id && <input type="hidden" name="id" value={id} />}
-      <div className="w-40"><label className="label" htmlFor={`td${k}`}>Date</label><input id={`td${k}`} name="day" type="date" defaultValue={day} max={today} required className="input" /></div>
+      <div className="w-56"><label className="label" htmlFor={`td${k}`}>Jour(s)</label><DateRangeField id={`td${k}`} today={today} day={day} endDay={endDay ?? day} /></div>
       <div className="w-32"><label className="label" htmlFor={`ts${k}`}>Début</label><input id={`ts${k}`} name="start" type="time" defaultValue={start} required className="input" /></div>
       <div className="w-32"><label className="label" htmlFor={`te${k}`}>Fin</label><input id={`te${k}`} name="end" type="time" defaultValue={end} required className="input" /></div>
-      <div className="w-40"><label className="label" htmlFor={`ted${k}`}>Date de fin</label><input id={`ted${k}`} name="endDay" type="date" defaultValue={endDay ?? day} max={today} required className="input" /></div>
       <div className="w-28"><label className="label" htmlFor={`tp${k}`}>Pause (min)</label><input id={`tp${k}`} name="pause" type="number" min={0} max={600} step={5} defaultValue={pause} className="input" /></div>
       <div className="min-w-48 flex-1"><label className="label" htmlFor={`tc${k}`}>Commentaire (facultatif)</label><input id={`tc${k}`} name="comment" defaultValue={comment} maxLength={300} placeholder="Astreinte, déplacement…" className="input" /></div>
       <button className="btn" disabled={pending}>{pending ? "…" : id ? "Enregistrer" : "Ajouter la ligne"}</button>
       <div className="basis-full"><Feedback state={state} /></div>
-      <p className="basis-full text-xs text-muted">Si le travail finit après minuit, mets la date de fin au lendemain (ex. 21h → 3h du matin).</p>
+      <p className="basis-full text-xs text-muted">Choisis un seul jour, ou deux jours qui se suivent si le travail finit après minuit (ex. 21h → 3h du matin).</p>
     </form>
   );
 }
