@@ -1,0 +1,2 @@
+ALTER TABLE `power_items` ADD `requires_tetra` boolean DEFAULT false NOT NULL;--> statement-breakpoint
+ALTER TABLE `power_items` ADD `priority` enum('essentiel','normal','optionnel') DEFAULT 'normal' NOT NULL;

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { buildSlotAssignees, buildSlots, powerCircuits, powerItems, projectMembers, techLights, fixtureModels } from "@/db/schema";
+import { buildSlotAssignees, buildSlots, ITEM_PRIORITIES, powerCircuits, powerItems, projectMembers, techLights, fixtureModels } from "@/db/schema";
 import { requireProject } from "@/lib/projects";
 import { isDay } from "@/lib/alternance";
 import type { FormState } from "@/lib/actions";
@@ -100,12 +100,17 @@ const itemSchema = z.object({
   name: z.string().trim().min(1, "Nom requis").max(120),
   watts: z.coerce.number().int().min(0, "Puissance : 0 minimum").max(100000, "Puissance trop grande"),
   qty: z.coerce.number().int().min(1, "Quantité : 1 minimum").max(999),
+  requiresTetra: z.boolean(),
+  priority: z.enum(ITEM_PRIORITIES),
 });
 
 export async function saveItem(_: FormState, fd: FormData): Promise<FormState> {
   const pid = id.parse(fd.get("projectId"));
   await requireProject(pid, "editor");
-  const p = itemSchema.safeParse({ name: fd.get("name"), watts: fd.get("watts"), qty: fd.get("qty") || 1 });
+  const p = itemSchema.safeParse({
+    name: fd.get("name"), watts: fd.get("watts"), qty: fd.get("qty") || 1,
+    requiresTetra: fd.get("requiresTetra") === "on", priority: fd.get("priority") || "normal",
+  });
   if (!p.success) return { error: p.error.issues[0].message };
 
   // Le circuit choisi doit appartenir à ce projet.

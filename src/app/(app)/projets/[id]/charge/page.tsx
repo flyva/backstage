@@ -5,9 +5,10 @@ import { db } from "@/db";
 import { powerCircuits, powerItems } from "@/db/schema";
 import { can, requireProject } from "@/lib/projects";
 import { deleteCircuit, deleteItem, importLightsToPower } from "@/lib/build-actions";
-import { OUTLET_FILL, VOLTS, fmtNum, fmtWatts, lineResult, type LineResult } from "@/lib/power";
+import { OUTLET_FILL, PRIORITY_LABEL, VOLTS, fmtNum, fmtWatts, lineResult, type LineResult } from "@/lib/power";
 import { ItemForm, LineForm } from "@/components/build-forms";
 import { OhmCalc, OutletsCalc } from "@/components/Calculettes";
+import { SingleLineDiagram } from "@/components/SingleLineDiagram";
 
 export const metadata = { title: "Charge électrique" };
 
@@ -199,6 +200,14 @@ export default async function PowerPage({ params }: PageProps<"/projets/[id]/cha
         <div className="card"><div className="text-sm text-muted">Non affecté</div><div className="text-3xl font-bold tabular-nums">{fmtWatts(unassigned.reduce((s, i) => s + i.watts * i.qty, 0))}</div><div className="text-sm text-muted">{unassigned.length} appareil(s) sans ligne</div></div>
       </section>
 
+      {lines.length > 0 && (
+        <section className="card space-y-2">
+          <h2 className="font-semibold">Schéma unifilaire (2D)</h2>
+          <p className="text-xs text-muted">Du tableau général à chaque départ, avec le disjoncteur et le nombre de prises. Le différentiel 30 mA et l&apos;interrupteur général sont des hypothèses standard pour une installation de spectacle : vérifie-les sur l&apos;installation réelle.</p>
+          <SingleLineDiagram lines={lines} />
+        </section>
+      )}
+
       <section className="space-y-3">
         <h2 className="font-semibold">Lignes</h2>
         {lines.length === 0 && <p className="text-sm text-muted">Crée une ligne (par exemple « Ligne scène », 32 A tétraphasé), puis mets-y tes appareils.</p>}
@@ -213,6 +222,13 @@ export default async function PowerPage({ params }: PageProps<"/projets/[id]/cha
                   <span className="ml-auto text-sm tabular-nums">{fmtWatts(r.watts)} sur {fmtWatts(r.capacityWatts)}</span>
                 </div>
 
+                {r.excluded.length > 0 && (
+                  <div className="rounded-xl border border-amber-500/50 bg-amber-500/10 p-2.5 text-xs text-amber-700 dark:text-amber-400">
+                    <p className="flex items-center gap-1 font-medium"><AlertTriangle size={12} /> Exclu automatiquement du calcul (nécessite du triphasé, cette ligne est en monophasé) :</p>
+                    <p className="mt-0.5">{r.excluded.map((e) => `${e.qty} × ${e.name}`).join(" + ")} — soit {fmtWatts(r.excluded.reduce((s, e) => s + e.watts * e.qty, 0))} non comptés.</p>
+                  </div>
+                )}
+
                 <ul className="space-y-2">
                   {r.phases.map((p) => (
                     <li key={p.phase} className="space-y-1">
@@ -222,6 +238,14 @@ export default async function PowerPage({ params }: PageProps<"/projets/[id]/cha
                       </div>
                       <Bar pct={p.pct} label={`Charge de ${r.circuit.name}${tetra ? ` L${p.phase}` : ""}`} />
                       {p.groups.length > 0 && <p className="text-xs text-muted">{groupsText(p)}</p>}
+                      {p.shed.length > 0 && (
+                        <div className="rounded-xl border border-danger/50 bg-danger/10 p-2.5 text-xs text-danger">
+                          <p className="font-medium">Pour repasser sous la limite, retire :</p>
+                          <ul className="mt-0.5 space-y-0.5">
+                            {p.shed.map((s) => <li key={s.itemId}>{s.qty} × {s.name} ({PRIORITY_LABEL[s.priority].toLowerCase()}, {fmtWatts(s.watts * s.qty)})</li>)}
+                          </ul>
+                        </div>
+                      )}
                       {p.outlets.length > 0 && r.feeders.length === 0 && (
                         <div className="space-y-1 pt-0.5">
                           <p className="text-xs font-medium text-fg">{p.outlets.length} prise{p.outlets.length > 1 ? "s" : ""} de {outletAmps(r)} A{tetra ? ` sur L${p.phase}` : ""}</p>
@@ -320,6 +344,8 @@ export default async function PowerPage({ params }: PageProps<"/projets/[id]/cha
             <li key={i.id} className="card p-0">
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 p-3 text-sm">
                 <span className="min-w-0 flex-1 font-medium">{i.name}</span>
+                {i.priority !== "normal" && <span className="rounded-full border border-line px-1.5 py-0.5 text-[11px] text-muted">{PRIORITY_LABEL[i.priority]}</span>}
+                {i.requiresTetra && <span className="rounded-full border border-line px-1.5 py-0.5 text-[11px] text-muted">Triphasé requis</span>}
                 <span className="tabular-nums text-muted">{i.qty} × {i.watts} W = {fmtWatts(i.qty * i.watts)}</span>
                 <span className="text-xs text-muted">{circuits.find((c) => c.id === i.circuitId)?.name ?? "Sans ligne"}</span>
               </div>
@@ -327,7 +353,7 @@ export default async function PowerPage({ params }: PageProps<"/projets/[id]/cha
                 <details className="border-t border-line">
                   <summary className="cursor-pointer list-none px-3 py-1.5 text-xs text-muted hover:text-fg marker:hidden">Modifier</summary>
                   <div className="space-y-3 p-3 pt-1">
-                    <ItemForm projectId={project.id} circuits={circuits} id={i.id} name={i.name} watts={i.watts} qty={i.qty} circuitId={i.circuitId} />
+                    <ItemForm projectId={project.id} circuits={circuits} id={i.id} name={i.name} watts={i.watts} qty={i.qty} circuitId={i.circuitId} requiresTetra={i.requiresTetra} priority={i.priority} />
                     <form action={deleteItem} className="border-t border-line pt-3">
                       <input type="hidden" name="projectId" value={project.id} />
                       <input type="hidden" name="id" value={i.id} />

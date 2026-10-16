@@ -2,7 +2,12 @@
 export const VOLTS = 230;
 export const amps = (watts: number) => watts / VOLTS;
 
-export type PowerItem = { id: number; circuitId: number | null; name: string; watts: number; qty: number };
+export type ItemPriority = "essentiel" | "normal" | "optionnel";
+export const PRIORITY_LABEL: Record<ItemPriority, string> = { essentiel: "Essentiel", normal: "Normal", optionnel: "Optionnel" };
+/** Ordre de délestage : on retire d'abord l'optionnel, puis le normal, jamais l'essentiel. */
+const SHED_ORDER: ItemPriority[] = ["optionnel", "normal"];
+
+export type PowerItem = { id: number; circuitId: number | null; name: string; watts: number; qty: number; requiresTetra?: boolean; priority?: ItemPriority };
 export type SupplyMode = "mono" | "tetra";
 export type PowerCircuit = { id: number; name: string; breakerAmps: number; phase: number; mode?: SupplyMode; outletAmps?: number; feederAmps?: number | null; outletCount?: number | null };
 
@@ -47,11 +52,13 @@ export const OUTLET_AMPS = [16, 32, 63] as const;
 /** On remplit une prise jusqu'à 80 % de son calibre (marge de sécurité). */
 export const OUTLET_FILL = 0.8;
 
-export type PhaseGroup = { itemId: number; name: string; watts: number; qty: number };
+export type PhaseGroup = { itemId: number; name: string; watts: number; qty: number; priority: ItemPriority };
 export type OutletResult = { index: number; groups: PhaseGroup[]; watts: number; amps: number; pct: number };
 export type FeederPhase = { phase: number; groups: PhaseGroup[]; watts: number; amps: number; pct: number; outlets: OutletResult[] };
 export type FeederResult = { index: number; phases: FeederPhase[]; watts: number; maxPct: number };
-export type PhaseResult = { phase: number; groups: PhaseGroup[]; watts: number; amps: number; pct: number; outlets: OutletResult[]; outletsMin: number };
+export type ShedItem = { itemId: number; name: string; watts: number; qty: number; priority: ItemPriority; critical: boolean };
+export type PhaseResult = { phase: number; groups: PhaseGroup[]; watts: number; amps: number; pct: number; outlets: OutletResult[]; outletsMin: number; shed: ShedItem[] };
+export type ExcludedItem = { itemId: number; name: string; watts: number; qty: number };
 export type LineResult = {
   circuit: PowerCircuit;
   mode: SupplyMode;
@@ -66,7 +73,36 @@ export type LineResult = {
   feedersMin: number; // nombre minimum de départs
   outletCount: number | null; // nombre de prises voulu (null = le minimum calculé)
   feeders: FeederResult[];
+  excluded: ExcludedItem[]; // appareils triphasés exclus car la ligne est monophasée
+  outletsTotal: number; // nombre de prises réel, toute la ligne confondue (phases ou départs)
 };
+
+/**
+ * Suggestion de délestage pour repasser une phase sous son calibre : on retire d'abord les appareils « optionnel »
+ * (du plus gros au plus petit), puis « normal » si ça ne suffit toujours pas, jamais les « essentiel ». Les items
+ * retournés sont seulement ceux nécessaires pour repasser sous 100 % (pas plus).
+ */
+export function suggestShedding(groups: PhaseGroup[], currentWatts: number, capWatts: number): ShedItem[] {
+  if (currentWatts <= capWatts) return [];
+  const units = SHED_ORDER.flatMap((priority) =>
+    groups.filter((g) => g.priority === priority).flatMap((g) => Array.from({ length: g.qty }, () => g)),
+  ).sort((a, b) => b.watts - a.watts);
+  const out: ShedItem[] = [];
+  let remaining = currentWatts;
+  const byItem = new Map<number, ShedItem>();
+  for (const u of units) {
+    if (remaining <= capWatts) break;
+    remaining -= u.watts;
+    const existing = byItem.get(u.itemId);
+    if (existing) existing.qty += 1;
+    else {
+      const item: ShedItem = { itemId: u.itemId, name: u.name, watts: u.watts, qty: 1, priority: u.priority, critical: true };
+      byItem.set(u.itemId, item);
+      out.push(item);
+    }
+  }
+  return out;
+}
 
 /**
  * Répartition des appareils d'une phase sur des prises de courant : du plus gros au plus petit, chacun dans la première prise
@@ -179,27 +215,42 @@ export function lineResult(circuit: PowerCircuit, items: PowerItem[]): LineResul
   const n = mode === "tetra" ? 3 : 1;
   const sums = Array.from({ length: n }, () => 0);
   const groups: Map<number, PhaseGroup>[] = Array.from({ length: n }, () => new Map());
-  const mine = items.filter((i) => i.circuitId === circuit.id).sort((a, b) => b.watts - a.watts || a.id - b.id);
+  const all = items.filter((i) => i.circuitId === circuit.id).sort((a, b) => b.watts - a.watts || a.id - b.id);
+  // Un appareil qui a besoin de triphasé n'a rien à faire sur une ligne monophasée : on l'exclut du calcul plutôt que
+  // de fausser silencieusement la charge, et on le signale pour que ce soit visible.
+  const mine = mode === "mono" ? all.filter((i) => !i.requiresTetra) : all;
+  const excluded: ExcludedItem[] = mode === "mono"
+    ? all.filter((i) => i.requiresTetra).map((i) => ({ itemId: i.id, name: i.name, watts: i.watts, qty: i.qty }))
+    : [];
   for (const it of mine) {
     for (let k = 0; k < it.qty; k++) {
       const p = sums.indexOf(Math.min(...sums));
       sums[p] += it.watts;
       const g = groups[p].get(it.id);
       if (g) g.qty += 1;
-      else groups[p].set(it.id, { itemId: it.id, name: it.name, watts: it.watts, qty: 1 });
+      else groups[p].set(it.id, { itemId: it.id, name: it.name, watts: it.watts, qty: 1, priority: it.priority ?? "normal" });
     }
   }
   const wantedCount = circuit.outletCount ?? null;
   const counts = wantedCount ? allocateOutlets(sums, wantedCount) : null;
+  const capWatts = circuit.breakerAmps * VOLTS;
   const phases = sums.map((watts, p) => {
     const a = amps(watts);
     const list = [...groups[p].values()];
     const outletAmps = circuit.outletAmps ?? 16;
-    return { phase: p + 1, groups: list, watts, amps: a, pct: (a / circuit.breakerAmps) * 100, outlets: counts ? spreadOutlets(list, outletAmps, counts[p]) : packOutlets(list, outletAmps), outletsMin: Math.ceil(a / (outletAmps * OUTLET_FILL) - 1e-9) };
+    return {
+      phase: p + 1, groups: list, watts, amps: a, pct: (a / circuit.breakerAmps) * 100,
+      outlets: counts ? spreadOutlets(list, outletAmps, counts[p]) : packOutlets(list, outletAmps),
+      outletsMin: Math.ceil(a / (outletAmps * OUTLET_FILL) - 1e-9),
+      shed: suggestShedding(list, watts, capWatts),
+    };
   });
   const worstPct = Math.max(...phases.map((p) => p.pct));
   const feederAmps = circuit.feederAmps ?? null;
   const split = feederAmps ? splitFeeders(phases, feederAmps, circuit.outletAmps ?? 16, wantedCount) : { feeders: [], min: 0 };
+  const outletsTotal = split.feeders.length > 0
+    ? split.feeders.reduce((s, fd) => s + fd.phases.reduce((s2, ph) => s2 + ph.outlets.length, 0), 0)
+    : phases.reduce((s, p) => s + p.outlets.length, 0);
   return {
     circuit,
     mode,
@@ -214,5 +265,7 @@ export function lineResult(circuit: PowerCircuit, items: PowerItem[]): LineResul
     outletCount: wantedCount,
     feedersMin: split.min,
     feeders: split.feeders,
+    excluded,
+    outletsTotal,
   };
 }

@@ -768,6 +768,9 @@ export const powerCircuits = mysqlTable(
   (t) => [index("pc_project_idx").on(t.projectId)],
 );
 
+export const ITEM_PRIORITIES = ["essentiel", "normal", "optionnel"] as const;
+export type ItemPriority = (typeof ITEM_PRIORITIES)[number];
+
 export const powerItems = mysqlTable(
   "power_items",
   {
@@ -777,6 +780,12 @@ export const powerItems = mysqlTable(
     name: varchar("name", { length: 120 }).notNull(),
     watts: int("watts").notNull(),
     qty: int("qty").notNull().default(1),
+    // Nécessite une alimentation triphasée (moteur, gradateur tri…) : exclu automatiquement du calcul si sa ligne est
+    // monophasée, plutôt que de fausser silencieusement la charge.
+    requiresTetra: boolean("requires_tetra").notNull().default(false),
+    // Sert au délestage automatique quand une ligne est en surcharge : on retire d'abord les appareils « optionnel »,
+    // puis « normal », jamais les « essentiel ».
+    priority: mysqlEnum("priority", ITEM_PRIORITIES).notNull().default("normal"),
   },
   (t) => [index("pi_project_idx").on(t.projectId)],
 );

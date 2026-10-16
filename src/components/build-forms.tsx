@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import type { FormState } from "@/lib/actions";
-import { LINE_AMPS, OUTLET_AMPS } from "@/lib/power";
+import { LINE_AMPS, OUTLET_AMPS, PRIORITY_LABEL, type ItemPriority } from "@/lib/power";
 import { saveCircuit, saveItem, saveSlot } from "@/lib/build-actions";
 import { TagPicker } from "@/components/TagPicker";
 
@@ -77,7 +77,11 @@ export function LineForm({ projectId, id, name = "", breakerAmps = 32, mode = "t
   );
 }
 
-export function ItemForm({ projectId, circuits, id, name = "", watts = "", qty = 1, circuitId = null }: { projectId: number; circuits: { id: number; name: string }[]; id?: number; name?: string; watts?: number | string; qty?: number; circuitId?: number | null }) {
+export function ItemForm({
+  projectId, circuits, id, name = "", watts = "", qty = 1, circuitId = null, requiresTetra = false, priority = "normal",
+}: {
+  projectId: number; circuits: { id: number; name: string }[]; id?: number; name?: string; watts?: number | string; qty?: number; circuitId?: number | null; requiresTetra?: boolean; priority?: ItemPriority;
+}) {
   const [state, action, pending] = useActionState(saveItem, undefined);
   const k = id ?? "new";
   return (
@@ -91,8 +95,19 @@ export function ItemForm({ projectId, circuits, id, name = "", watts = "", qty =
         <label className="label" htmlFor={`ic${k}`}>Ligne</label>
         <select id={`ic${k}`} name="circuitId" defaultValue={circuitId ?? ""} className="input"><option value="">Non affecté</option>{circuits.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
       </div>
+      <div className="w-36">
+        <label className="label" htmlFor={`ip${k}`}>Priorité</label>
+        <select id={`ip${k}`} name="priority" defaultValue={priority} className="input">
+          {(Object.keys(PRIORITY_LABEL) as ItemPriority[]).map((p) => <option key={p} value={p}>{PRIORITY_LABEL[p]}</option>)}
+        </select>
+      </div>
+      <label className="flex items-center gap-2 pb-2 text-sm">
+        <input type="checkbox" name="requiresTetra" defaultChecked={requiresTetra} className="size-4 accent-[var(--accent)]" />
+        Nécessite du triphasé
+      </label>
       <button className="btn" disabled={pending}>{pending ? "…" : id ? "Enregistrer" : "Ajouter"}</button>
       <div className="basis-full"><Feedback state={state} /></div>
+      <p className="basis-full text-xs text-muted">Priorité : utilisée pour suggérer quoi retirer en cas de surcharge (jamais « Essentiel »). Triphasé : l&apos;appareil est exclu automatiquement du calcul si tu le mets sur une ligne monophasée.</p>
     </form>
   );
 }
