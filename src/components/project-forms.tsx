@@ -4,6 +4,7 @@ import { useActionState, useOptimistic, useTransition } from "react";
 import { Trash2 } from "lucide-react";
 import type { FormState } from "@/lib/actions";
 import { MarkdownField } from "@/components/MarkdownField";
+import { PersonPicker } from "@/components/PersonPicker";
 import { createProject, updateProject, addMember, toggleItem, deleteItem } from "@/lib/project-actions";
 
 function Feedback({ state }: { state: FormState }) {
@@ -60,19 +61,21 @@ export function EditProjectForm({ project }: { project: ProjectDefaults & { id: 
 
 export function AddMemberForm({ projectId }: { projectId: number }) {
   const [state, action, pending] = useActionState(addMember, undefined);
+  const k = state?.ok ? "done" : "new"; // après un ajout réussi, la personne choisie doit disparaître du champ
   return (
-    <form action={action} className="space-y-3">
+    <form action={action} className="flex flex-wrap items-end gap-2" key={k}>
       <input type="hidden" name="projectId" value={projectId} />
-      <div className="flex flex-wrap gap-2">
-        <input name="email" type="email" required placeholder="email@exemple.fr" aria-label="Email" className="input min-w-56 flex-1" />
-        <select name="role" defaultValue="editor" aria-label="Rôle" className="input w-auto">
-          <option value="editor">Éditeur</option>
-          <option value="viewer">Lecteur</option>
-          <option value="owner">Propriétaire</option>
-        </select>
-        <button className="btn" disabled={pending}>{pending ? "Ajout…" : "Ajouter"}</button>
+      <div className="min-w-56 flex-1">
+        <label className="label" htmlFor="am-person">Personne (dans l&apos;annuaire)</label>
+        <PersonPicker id="am-person" name="userId" />
       </div>
-      <Feedback state={state} />
+      <select name="role" defaultValue="editor" aria-label="Rôle" className="input w-auto">
+        <option value="editor">Éditeur</option>
+        <option value="viewer">Lecteur</option>
+        <option value="owner">Propriétaire</option>
+      </select>
+      <button className="btn" disabled={pending}>{pending ? "Ajout…" : "Ajouter"}</button>
+      <div className="basis-full"><Feedback state={state} /></div>
     </form>
   );
 }

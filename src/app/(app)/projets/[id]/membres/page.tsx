@@ -77,7 +77,7 @@ export default async function ProjectMembersPage({ params }: PageProps<"/projets
           <h2 className="font-semibold">Ajouter une personne</h2>
           <AddMemberForm projectId={project.id} />
           <p className="text-xs text-muted">
-            La personne doit déjà avoir un compte Backstage. <strong className="text-fg">Éditeur</strong> : modifie le contenu.{" "}
+            La personne doit être visible dans l&apos;annuaire (compte actif, &laquo; dans l&apos;annuaire &raquo; activé). <strong className="text-fg">Éditeur</strong> : modifie le contenu.{" "}
             <strong className="text-fg">Lecteur</strong> : consulte seulement. <strong className="text-fg">Propriétaire</strong> : gère l&apos;équipe et le projet.
           </p>
         </section>

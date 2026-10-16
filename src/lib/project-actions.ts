@@ -81,12 +81,12 @@ async function ownerCount(projectId: number) {
 export async function addMember(_: FormState, fd: FormData): Promise<FormState> {
   const pid = id.parse(fd.get("projectId"));
   await requireProject(pid, "owner");
-  const email = z.string().trim().toLowerCase().email().safeParse(fd.get("email"));
+  const userId = id.safeParse(fd.get("userId"));
   const r = role.safeParse(fd.get("role"));
-  if (!email.success || !r.success) return { error: "Email ou rôle invalide" };
+  if (!userId.success || !r.success) return { error: "Choisis une personne dans l'annuaire" };
 
-  const [target] = await db.select({ id: users.id, name: users.name }).from(users).where(eq(users.email, email.data)).limit(1);
-  if (!target) return { error: "Aucun compte avec cet email : la personne doit d'abord s'inscrire sur Backstage." };
+  const [target] = await db.select({ id: users.id, name: users.name }).from(users).where(eq(users.id, userId.data)).limit(1);
+  if (!target) return { error: "Personne introuvable" };
 
   const [already] = await db
     .select({ userId: projectMembers.userId })
