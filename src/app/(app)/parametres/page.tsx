@@ -9,7 +9,7 @@ export default async function PersonalizationPage() {
   await requireUser();
   const jar = await cookies();
   // Le skin affiché est celui des cookies (comme <html>) : le réglage montre exactement ce qui est appliqué.
-  const skin = skinFrom({ theme: jar.get("theme")?.value, accent: jar.get("accent")?.value, sidebar: jar.get("sidebar")?.value });
+  const skin = skinFrom({ theme: jar.get("theme")?.value, accent: jar.get("accent")?.value, sidebar: jar.get("sidebar")?.value, background: jar.get("background")?.value });
 
   return (
     <div className="space-y-5">

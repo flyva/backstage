@@ -15,10 +15,21 @@ export const ACCENT_INFO: Record<Accent, { label: string; light: string; dark: s
 export type SidebarSkin = "dark" | "light";
 export type ThemeMode = "light" | "dark";
 
+export const BACKGROUNDS = ["defaut", "chaud", "froid", "vert"] as const;
+export type Background = (typeof BACKGROUNDS)[number];
+export const BACKGROUND_INFO: Record<Background, { label: string; swatch: string }> = {
+  defaut: { label: "Défaut", swatch: "#9aa3ad" },
+  chaud: { label: "Chaud", swatch: "#d8c9b4" },
+  froid: { label: "Froid", swatch: "#b7c4d6" },
+  vert: { label: "Sauge", swatch: "#b9c9ae" },
+};
+
 export const isAccent = (v: unknown): v is Accent => typeof v === "string" && (ACCENTS as readonly string[]).includes(v);
-export const skinFrom = (v: { theme?: string; accent?: string; sidebar?: string }) => ({
+export const isBackground = (v: unknown): v is Background => typeof v === "string" && (BACKGROUNDS as readonly string[]).includes(v);
+export const skinFrom = (v: { theme?: string; accent?: string; sidebar?: string; background?: string }) => ({
   // Sombre par défaut (aussi pour l'ancien réglage « system » et pour un visiteur sans préférence enregistrée).
   theme: (v.theme === "light" ? "light" : "dark") as ThemeMode,
   accent: (isAccent(v.accent) ? v.accent : "blanc") as Accent,
   sidebar: (v.sidebar === "light" ? "light" : "dark") as SidebarSkin,
+  background: (isBackground(v.background) ? v.background : "defaut") as Background,
 });

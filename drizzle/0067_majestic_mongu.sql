@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD `background` enum('defaut','chaud','froid','vert') DEFAULT 'defaut' NOT NULL;

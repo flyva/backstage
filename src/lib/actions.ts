@@ -137,9 +137,9 @@ export async function logout() {
 }
 
 /** Enregistre le skin de la personne (cookie pour l'affichage immédiat, base pour le retrouver sur un autre appareil). */
-export async function setSkin(patch: { theme?: string; accent?: string; sidebar?: string }) {
+export async function setSkin(patch: { theme?: string; accent?: string; sidebar?: string; background?: string }) {
   const user = await requireUser();
-  const next = skinFrom({ theme: patch.theme ?? user.theme, accent: patch.accent ?? user.accent, sidebar: patch.sidebar ?? user.sidebar });
+  const next = skinFrom({ theme: patch.theme ?? user.theme, accent: patch.accent ?? user.accent, sidebar: patch.sidebar ?? user.sidebar, background: patch.background ?? user.background });
   await db.update(users).set(next).where(eq(users.id, user.id));
   await writeSkinCookies(next);
 }

@@ -28,6 +28,11 @@
 :root[data-accent="blanc"] { --accent: #111111; --accent-fg: #ffffff; }
 :root[data-accent="noir"] { --accent: #e5e7eb; --accent-fg: #111111; }
 
+/* Teinte de fond (option du panneau de personnalisation) */
+:root[data-bg="chaud"] { --bg: #f7f3ee; --surface: #fffdfa; }
+:root[data-bg="froid"] { --bg: #eef2f7; --surface: #ffffff; }
+:root[data-bg="vert"] { --bg: #f1f5ee; --surface: #fcfefb; }
+
 :root.dark {
   --bg: #1f2428;
   --surface: #2b3035;
@@ -46,6 +51,10 @@
 :root.dark[data-accent="rose"] { --accent: #f472b6; --accent-fg: #1f0511; }
 :root.dark[data-accent="blanc"] { --accent: #ffffff; --accent-fg: #111111; }
 :root.dark[data-accent="noir"] { --accent: #000000; --accent-fg: #ffffff; }
+
+:root.dark[data-bg="chaud"] { --bg: #221f1a; --surface: #2d2a24; }
+:root.dark[data-bg="froid"] { --bg: #1b2027; --surface: #252b33; }
+:root.dark[data-bg="vert"] { --bg: #1d211c; --surface: #272d24; }
 
 /* Menu blanc (option « Blanc » du panneau de personnalisation) */
 :root[data-sidebar="light"] {

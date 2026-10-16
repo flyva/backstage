@@ -3,32 +3,33 @@
 import { useSyncExternalStore, useTransition } from "react";
 import { Check, Moon, Sun } from "lucide-react";
 import { setSkin } from "@/lib/actions";
-import { ACCENTS, ACCENT_INFO, type Accent, type SidebarSkin, type ThemeMode } from "@/lib/skin";
+import { ACCENTS, ACCENT_INFO, BACKGROUNDS, BACKGROUND_INFO, type Accent, type Background, type SidebarSkin, type ThemeMode } from "@/lib/skin";
 
 // Applique tout de suite le skin sur <html> (pas d'attente du serveur), puis l'enregistre.
-function apply(patch: { theme?: ThemeMode; accent?: Accent; sidebar?: SidebarSkin }) {
+function apply(patch: { theme?: ThemeMode; accent?: Accent; sidebar?: SidebarSkin; background?: Background }) {
   const el = document.documentElement;
   if (patch.theme) el.classList.toggle("dark", patch.theme === "dark");
   if (patch.accent) el.dataset.accent = patch.accent;
   if (patch.sidebar) el.dataset.sidebar = patch.sidebar;
+  if (patch.background) el.dataset.bg = patch.background;
 }
 
-type Skin = { theme: ThemeMode; accent: Accent; sidebar: SidebarSkin };
+type Skin = { theme: ThemeMode; accent: Accent; sidebar: SidebarSkin; background: Background };
 
 // Le skin « vivant » est celui de <html> : les deux composants (bascule rapide et panneau) restent synchronisés.
 function subscribeHtml(cb: () => void) {
   const obs = new MutationObserver(cb);
-  obs.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "data-accent", "data-sidebar"] });
+  obs.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "data-accent", "data-sidebar", "data-bg"] });
   return () => obs.disconnect();
 }
 const readHtml = () => {
   const el = document.documentElement;
-  return `${el.classList.contains("dark") ? "dark" : "light"}|${el.dataset.accent ?? "blanc"}|${el.dataset.sidebar ?? "dark"}`;
+  return `${el.classList.contains("dark") ? "dark" : "light"}|${el.dataset.accent ?? "blanc"}|${el.dataset.sidebar ?? "dark"}|${el.dataset.bg ?? "defaut"}`;
 };
 function useSkin(initial: Skin): Skin {
-  const snap = useSyncExternalStore(subscribeHtml, readHtml, () => `${initial.theme}|${initial.accent}|${initial.sidebar}`);
-  const [theme, accent, sidebar] = snap.split("|");
-  return { theme, accent, sidebar } as Skin;
+  const snap = useSyncExternalStore(subscribeHtml, readHtml, () => `${initial.theme}|${initial.accent}|${initial.sidebar}|${initial.background}`);
+  const [theme, accent, sidebar, background] = snap.split("|");
+  return { theme, accent, sidebar, background } as Skin;
 }
 
 export function QuickTheme({ initial }: { initial: Skin }) {
@@ -53,7 +54,7 @@ export function SkinControls({ initial }: { initial: Skin }) {
   const [pending, start] = useTransition();
   const current = useSkin(initial);
 
-  const change = (patch: { theme?: ThemeMode; accent?: Accent; sidebar?: SidebarSkin }) => {
+  const change = (patch: { theme?: ThemeMode; accent?: Accent; sidebar?: SidebarSkin; background?: Background }) => {
     apply(patch);
     start(() => { void setSkin(patch); });
   };
@@ -93,6 +94,26 @@ export function SkinControls({ initial }: { initial: Skin }) {
         <div className="flex gap-2">
           <button className={seg(current.sidebar === "dark")} onClick={() => change({ sidebar: "dark" })}>Sombre</button>
           <button className={seg(current.sidebar === "light")} onClick={() => change({ sidebar: "light" })}>Blanc</button>
+        </div>
+      </div>
+
+      <div>
+        <div className="mb-1 text-xs text-muted">Couleur de fond</div>
+        <div className="flex gap-2.5" role="radiogroup" aria-label="Couleur de fond">
+          {BACKGROUNDS.map((b) => (
+            <button
+              key={b}
+              role="radio"
+              aria-checked={current.background === b}
+              aria-label={BACKGROUND_INFO[b].label}
+              title={BACKGROUND_INFO[b].label}
+              onClick={() => change({ background: b })}
+              className="grid size-7 place-items-center rounded-full outline-offset-2"
+              style={{ background: BACKGROUND_INFO[b].swatch, boxShadow: "inset 0 0 0 1px rgba(128,128,128,.55)", outline: current.background === b ? `2px solid ${BACKGROUND_INFO[b].swatch}` : undefined }}
+            >
+              {current.background === b && <Check size={14} className="text-black" />}
+            </button>
+          ))}
         </div>
       </div>
     </div>

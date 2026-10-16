@@ -470,6 +470,13 @@
       "when": 1792188924898,
       "tag": "0066_lethal_nocturne",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "5",
+      "when": 1792189209433,
+      "tag": "0067_majestic_mongu",
+      "breakpoints": true
     }
   ]
 }
