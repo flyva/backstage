@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { desc, eq } from "drizzle-orm";
+import { asc, desc, eq } from "drizzle-orm";
 import { ChevronLeft, Pencil, Trash2 } from "lucide-react";
 import { db } from "@/db";
 import { timeEntries } from "@/db/schema";
@@ -15,7 +15,7 @@ export const metadata = { title: "Toutes les lignes de pointage" };
 // d'œil sans naviguer mois par mois. La saisie au jour le jour reste sur la page Pointeuse.
 export default async function PointeuseLinesPage() {
   const user = await requireUser();
-  const entries = await db.select().from(timeEntries).where(eq(timeEntries.userId, user.id)).orderBy(desc(timeEntries.day), desc(timeEntries.startMinutes));
+  const entries = await db.select().from(timeEntries).where(eq(timeEntries.userId, user.id)).orderBy(desc(timeEntries.day), asc(timeEntries.startMinutes));
 
   return (
     <div className="space-y-4">

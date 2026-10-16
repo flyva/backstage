@@ -99,7 +99,7 @@ function DayRow({ d, showDate = true }: { d: DaySummary; showDate?: boolean }) {
       <td className="py-1.5 pr-3 tabular-nums text-muted">{d.entries.length > 0 ? d.entries.map((e) => `${Math.floor(e.startMinutes / 60)}h${String(e.startMinutes % 60).padStart(2, "0")}–${Math.floor(e.endMinutes / 60)}h${String(e.endMinutes % 60).padStart(2, "0")}${e.endDay > d.day ? " (+1j)" : ""}`).join(", ") : "—"}</td>
       <td className="py-1.5 pr-3 tabular-nums">{d.pauseMinutes > 0 ? fmtHours(d.pauseMinutes) : "—"}</td>
       <td className="py-1.5 pr-3 tabular-nums font-medium">{d.effectiveMinutes > 0 ? fmtHours(d.effectiveMinutes) : "—"}</td>
-      <td className="py-1.5 tabular-nums text-muted">—</td>
+      <td className="py-1.5" aria-hidden />
     </tr>
   );
 }
@@ -116,7 +116,7 @@ function WeekTable({ weeks, byDay, inPeriod, standardWorkMinutes, workDaysPerWee
         return (
           <div key={i} className="overflow-x-auto rounded-xl border border-line">
             <table className="w-full text-sm">
-              <thead><tr className="border-b border-line bg-bg text-left text-xs text-muted"><th className="py-1.5 pl-3 pr-3 font-medium">Semaine du {dayLabel(week[0])}</th><th className="py-1.5 pr-3 font-medium">Statut</th><th className="py-1.5 pr-3 font-medium">Horaires</th><th className="py-1.5 pr-3 font-medium">Pause</th><th className="py-1.5 pr-3 font-medium">Effectif</th><th className="py-1.5 pr-3 font-medium">Sup</th></tr></thead>
+              <thead><tr className="border-b border-line bg-bg text-left text-xs text-muted"><th className="py-1.5 pl-3 pr-3 font-medium">Semaine du {dayLabel(week[0])}</th><th className="py-1.5 pr-3 font-medium">Statut</th><th className="py-1.5 pr-3 font-medium">Horaires</th><th className="py-1.5 pr-3 font-medium">Pause</th><th className="py-1.5 pr-3 font-medium">Effectif</th><th className="py-1.5 pr-3 font-medium">Sup (semaine)</th></tr></thead>
               <tbody className="divide-y divide-line px-3">
                 {week.map((d) => { const s = byDay.get(d); return s ? <DayRow key={d} d={{ ...s, source: inPeriod(d) ? s.source : "futur" }} /> : null; })}
               </tbody>
