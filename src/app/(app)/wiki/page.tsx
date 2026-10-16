@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { asc, or, sql } from "drizzle-orm";
+import { and, asc, ne, or, sql } from "drizzle-orm";
 import { FilePlus2, Search } from "lucide-react";
 import { db } from "@/db";
 import { wikiPages } from "@/db/schema";
@@ -25,9 +25,10 @@ export default async function WikiIndexPage({ searchParams }: PageProps<"/wiki">
 
   // Échappe % et _ pour que la recherche soit littérale.
   const like = `%${q.replace(/[\\%_]/g, "\\$&")}%`;
+  // Les cours ont leur propre page (/cours) : pas de doublon dans le wiki classique.
   const pages = q
-    ? await db.select().from(wikiPages).where(or(sql`${wikiPages.title} like ${like}`, sql`${wikiPages.body} like ${like}`)).orderBy(asc(wikiPages.title)).limit(50)
-    : await db.select().from(wikiPages).orderBy(asc(wikiPages.category), asc(wikiPages.title));
+    ? await db.select().from(wikiPages).where(and(ne(wikiPages.category, "Cours"), or(sql`${wikiPages.title} like ${like}`, sql`${wikiPages.body} like ${like}`))).orderBy(asc(wikiPages.title)).limit(50)
+    : await db.select().from(wikiPages).where(ne(wikiPages.category, "Cours")).orderBy(asc(wikiPages.category), asc(wikiPages.title));
   const recent = q ? [] : [...pages].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()).slice(0, 5);
   const kids = childrenMap(pages);
   const ids = new Set(pages.map((p) => p.id));

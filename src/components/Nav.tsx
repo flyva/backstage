@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
-  BookOpen, BookUser, Bot, Briefcase, Calculator, Car, ChevronRight, Library, CalendarDays, Camera, CircleHelp, Clock, Cog, Home, Images, Lightbulb, Link2, Network, Newspaper, Package, PartyPopper, School, NotebookPen, ShieldCheck, SquareKanban, TramFront, Users, Contact, Megaphone, CalendarClock, MessageSquare, Zap, BarChart3,
+  BookOpen, BookUser, Bot, Briefcase, Calculator, Car, ChevronRight, CalendarDays, Camera, CircleHelp, Clock, Cog, Home, Images, Lightbulb, Link2, Network, Newspaper, PartyPopper, School, NotebookPen, ShieldCheck, SquareKanban, TramFront, Users, Contact, Megaphone, CalendarClock, MessageSquare, Zap, BarChart3,
   type LucideIcon,
 } from "lucide-react";
 
@@ -38,7 +38,6 @@ const GROUPS: Group[] = [
     items: [
       { href: "/projets", label: "Projets", icon: Briefcase },
       { href: "/kanban", label: "Mon kanban", icon: SquareKanban },
-      { href: "/materiel", label: "Matériel", icon: Package, badge: "loans", module: "materiel" },
       { href: "/reseau", label: "Carnet de réseau", icon: Contact },
       { href: "/calculettes", label: "Calculettes", icon: Calculator },
       { href: "/cours", label: "Mes cours", icon: NotebookPen, module: "cours", heading: "Cours" },
@@ -53,7 +52,6 @@ const GROUPS: Group[] = [
     id: "savoirs", title: "Savoirs",
     items: [
       { href: "/wiki", label: "Wiki", icon: BookOpen },
-      { href: "/bibliotheque", label: "Bibliothèque", icon: Library },
       { href: "/assistant", label: "Assistant", icon: Bot },
       { href: "/faq", label: "FAQ", icon: CircleHelp },
     ],

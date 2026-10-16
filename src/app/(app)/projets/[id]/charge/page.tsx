@@ -60,7 +60,7 @@ function Detail({ r }: { r: LineResult }) {
     ? r.feeders.flatMap((fd) => fd.phases.filter((ph) => ph.groups.length > 0).map((ph) => ({ key: `${fd.index}-${ph.phase}`, label: `${fd.name}${tetra ? ` · L${ph.phase}` : ""}`, amps: ph.amps, outlets: ph.outlets, min: Math.ceil(ph.amps / (outletAmps(r) * OUTLET_FILL) - 1e-9) })))
     : r.phases.map((p) => ({ key: String(p.phase), label: tetra ? `L${p.phase}` : "", amps: p.amps, outlets: p.outlets, min: p.outletsMin }));
   return (
-    <details open className="rounded-xl border border-line bg-bg p-3 text-xs">
+    <details className="rounded-xl border border-line bg-bg p-3 text-xs">
       <summary className="cursor-pointer font-medium text-muted">Voir le détail du calcul</summary>
       <ol className="mt-2 list-decimal space-y-2.5 pl-4 leading-relaxed text-muted tabular-nums">
         <li>
