@@ -6,7 +6,7 @@ import { timeEntries, workDays } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { todayParis } from "@/lib/equipment";
 import { KIND_LABEL, addMonths, dayLabel, fmtHours, fmtTime, isMonth, monthLabel } from "@/lib/alternance";
-import { FIXED_KINDS, daySummary } from "@/lib/pointeuse";
+import { FIXED_KINDS, daySummary, entrySpanMinutes } from "@/lib/pointeuse";
 import { deleteTimeEntry } from "@/lib/time-actions";
 import { TimeEntryForm, DayStatusForm } from "@/components/time-forms";
 
@@ -73,13 +73,14 @@ export default async function PointeusePage({ searchParams }: PageProps<"/altern
         {entries.length === 0 && <p className="text-sm text-muted">Aucune ligne ce mois-ci.</p>}
         <ul className="space-y-2">
           {entries.map((e) => {
-            const gross = e.endMinutes - e.startMinutes;
+            const crosses = e.endDay > e.day;
+            const gross = entrySpanMinutes(e, e.day);
             const effective = Math.max(0, gross - e.pauseMinutes);
             return (
               <li key={e.id} className="card p-0">
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 p-3 text-sm">
                   <span className="min-w-0 flex-1 font-medium capitalize">{dayLabel(e.day)}</span>
-                  <span className="tabular-nums text-muted">{fmtTime(e.startMinutes)} – {fmtTime(e.endMinutes)}</span>
+                  <span className="tabular-nums text-muted">{fmtTime(e.startMinutes)} – {fmtTime(e.endMinutes)}{crosses && <span className="ml-1 rounded-full border border-line px-1.5 py-0.5 text-[10px] font-medium">+1 j</span>}</span>
                   <span className="tabular-nums text-muted">Pause {fmtHours(e.pauseMinutes)}</span>
                   <span className="tabular-nums font-medium">{fmtHours(effective)} effectif</span>
                   {e.comment && <span className="text-xs text-muted">« {e.comment} »</span>}
@@ -87,7 +88,7 @@ export default async function PointeusePage({ searchParams }: PageProps<"/altern
                 <details className="border-t border-line">
                   <summary className="cursor-pointer list-none px-3 py-1.5 text-xs text-muted hover:text-fg marker:hidden">Modifier</summary>
                   <div className="space-y-3 p-3 pt-1">
-                    <TimeEntryForm today={today} id={e.id} day={e.day} start={fmtTime(e.startMinutes)} end={fmtTime(e.endMinutes)} pause={e.pauseMinutes} comment={e.comment ?? ""} />
+                    <TimeEntryForm today={today} id={e.id} day={e.day} endDay={e.endDay} start={fmtTime(e.startMinutes)} end={fmtTime(e.endMinutes)} pause={e.pauseMinutes} comment={e.comment ?? ""} />
                     <form action={deleteTimeEntry} className="border-t border-line pt-3">
                       <input type="hidden" name="id" value={e.id} />
                       <button className="flex items-center gap-1 text-xs text-muted hover:text-danger"><Trash2 size={14} /> Supprimer</button>

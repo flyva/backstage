@@ -691,6 +691,8 @@ export const timeEntries = mysqlTable(
     id: int("id").primaryKey().autoincrement(),
     userId: int("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
     day: date("day", { mode: "string" }).notNull(),
+    // Jour de fin : égal à « day » la plupart du temps, ou le lendemain pour une ligne qui passe minuit (ex. 21h à 3h).
+    endDay: date("end_day", { mode: "string" }).notNull(),
     startMinutes: int("start_minutes").notNull(), // minutes depuis minuit (0-1439)
     endMinutes: int("end_minutes").notNull(),
     pauseMinutes: int("pause_minutes").notNull().default(0),

@@ -55,7 +55,7 @@ export default async function StatsPrintPage({ searchParams }: PageProps<"/alter
             <tr key={s.day} className="break-inside-avoid">
               <td className="py-1 pr-3 capitalize">{dayLabel(s.day)}</td>
               <td className="py-1 pr-3">{SOURCE_LABEL[s.source]}</td>
-              <td className="py-1 pr-3 tabular-nums">{s.entries.length > 0 ? s.entries.map((e) => `${String(Math.floor(e.startMinutes / 60)).padStart(2, "0")}:${String(e.startMinutes % 60).padStart(2, "0")}–${String(Math.floor(e.endMinutes / 60)).padStart(2, "0")}:${String(e.endMinutes % 60).padStart(2, "0")}`).join(", ") : "—"}</td>
+              <td className="py-1 pr-3 tabular-nums">{s.entries.length > 0 ? s.entries.map((e) => `${String(Math.floor(e.startMinutes / 60)).padStart(2, "0")}:${String(e.startMinutes % 60).padStart(2, "0")}–${String(Math.floor(e.endMinutes / 60)).padStart(2, "0")}:${String(e.endMinutes % 60).padStart(2, "0")}${e.endDay > s.day ? " (+1j)" : ""}`).join(", ") : "—"}</td>
               <td className="py-1 pr-3 tabular-nums">{s.pauseMinutes > 0 ? fmtHours(s.pauseMinutes) : "—"}</td>
               <td className="py-1 pr-3 tabular-nums">{s.effectiveMinutes > 0 ? fmtHours(s.effectiveMinutes) : "—"}</td>
               <td className="py-1 pr-3 tabular-nums">{s.overtimeMinutes > 0 ? fmtHours(s.overtimeMinutes) : "—"}</td>

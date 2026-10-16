@@ -96,7 +96,7 @@ function DayRow({ d, showDate = true }: { d: DaySummary; showDate?: boolean }) {
     <tr className={d.source === "futur" ? "opacity-40" : ""}>
       {showDate && <td className="py-1.5 pr-3 capitalize">{dayLabel(d.day)}</td>}
       <td className="py-1.5 pr-3"><span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${SOURCE_CLASS[d.source]}`}>{SOURCE_LABEL[d.source]}</span></td>
-      <td className="py-1.5 pr-3 tabular-nums text-muted">{d.entries.length > 0 ? d.entries.map((e) => `${Math.floor(e.startMinutes / 60)}h${String(e.startMinutes % 60).padStart(2, "0")}–${Math.floor(e.endMinutes / 60)}h${String(e.endMinutes % 60).padStart(2, "0")}`).join(", ") : "—"}</td>
+      <td className="py-1.5 pr-3 tabular-nums text-muted">{d.entries.length > 0 ? d.entries.map((e) => `${Math.floor(e.startMinutes / 60)}h${String(e.startMinutes % 60).padStart(2, "0")}–${Math.floor(e.endMinutes / 60)}h${String(e.endMinutes % 60).padStart(2, "0")}${e.endDay > d.day ? " (+1j)" : ""}`).join(", ") : "—"}</td>
       <td className="py-1.5 pr-3 tabular-nums">{d.pauseMinutes > 0 ? fmtHours(d.pauseMinutes) : "—"}</td>
       <td className="py-1.5 pr-3 tabular-nums font-medium">{d.effectiveMinutes > 0 ? fmtHours(d.effectiveMinutes) : "—"}</td>
       <td className="py-1.5 tabular-nums text-amber-600 dark:text-amber-400">{d.overtimeMinutes > 0 ? fmtHours(d.overtimeMinutes) : "—"}</td>

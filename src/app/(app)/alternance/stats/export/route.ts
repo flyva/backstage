@@ -34,16 +34,17 @@ export async function GET(req: Request) {
 
   const summaries = await fetchDaySummaries(subject.userId, from, to, today, subject.standardWorkMinutes);
   const csv = toCsv(
-    ["Date", "Statut", "Début", "Fin", "Pause (min)", "Effectif", "Heures sup", "Commentaire"],
+    ["Date", "Statut", "Début", "Fin", "Date de fin (si après minuit)", "Pause (min)", "Effectif", "Heures sup", "Commentaire"],
     summaries.flatMap((s) => {
       if (s.entries.length === 0) {
         if (s.source === "futur") return [];
-        return [[s.day, SOURCE_LABEL[s.source], "", "", s.pauseMinutes, fmtHours(s.effectiveMinutes), fmtHours(s.overtimeMinutes), ""]];
+        return [[s.day, SOURCE_LABEL[s.source], "", "", "", s.pauseMinutes, fmtHours(s.effectiveMinutes), fmtHours(s.overtimeMinutes), ""]];
       }
       return s.entries.map((e) => [
         s.day, SOURCE_LABEL[s.source],
         `${String(Math.floor(e.startMinutes / 60)).padStart(2, "0")}:${String(e.startMinutes % 60).padStart(2, "0")}`,
         `${String(Math.floor(e.endMinutes / 60)).padStart(2, "0")}:${String(e.endMinutes % 60).padStart(2, "0")}`,
+        e.endDay > s.day ? e.endDay : "",
         e.pauseMinutes, fmtHours(s.effectiveMinutes), fmtHours(s.overtimeMinutes), e.comment ?? "",
       ]);
     }),

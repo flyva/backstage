@@ -7,7 +7,10 @@ export const STANDARD_DAY_MINUTES = 7 * 60;
 /** Pause fixe des jours école (1 h le midi). Congé et maladie n'ont pas de pause (pas de journée réelle à couper). */
 export const SCHOOL_PAUSE_MINUTES = 60;
 
-export type TimeEntry = { id: number; startMinutes: number; endMinutes: number; pauseMinutes: number; comment: string | null };
+export type TimeEntry = { id: number; endDay: string; startMinutes: number; endMinutes: number; pauseMinutes: number; comment: string | null };
+
+/** Durée d'une ligne en minutes, en comptant la nuit si elle finit le lendemain (ex. 21h → 3h = 6h, pas une valeur négative). */
+export const entrySpanMinutes = (e: TimeEntry, day: string) => (e.endDay > day ? 1440 - e.startMinutes + e.endMinutes : e.endMinutes - e.startMinutes);
 export type DaySource = "entries" | "ecole" | "conge" | "maladie" | "non_travaille" | "futur";
 export type DaySummary = {
   day: string;
@@ -35,7 +38,7 @@ export function daySummary(day: string, today: string, kind: WorkKind | undefine
     return { day, source: kind, grossMinutes: STANDARD_DAY_MINUTES, pauseMinutes: 0, effectiveMinutes: STANDARD_DAY_MINUTES, overtimeMinutes: 0, entries: [] };
   }
   if (entries.length === 0) return { day, source: "non_travaille", grossMinutes: 0, pauseMinutes: 0, effectiveMinutes: 0, overtimeMinutes: 0, entries: [] };
-  const grossMinutes = entries.reduce((s, e) => s + Math.max(0, e.endMinutes - e.startMinutes), 0);
+  const grossMinutes = entries.reduce((s, e) => s + Math.max(0, entrySpanMinutes(e, day)), 0);
   const pauseMinutes = entries.reduce((s, e) => s + e.pauseMinutes, 0);
   const effectiveMinutes = Math.max(0, grossMinutes - pauseMinutes);
   return { day, source: "entries", grossMinutes, pauseMinutes, effectiveMinutes, overtimeMinutes: Math.max(0, effectiveMinutes - standardWorkMinutes), entries };

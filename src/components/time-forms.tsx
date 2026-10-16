@@ -11,8 +11,8 @@ function Feedback({ state }: { state: FormState }) {
 }
 
 export function TimeEntryForm({
-  today, id, day = today, start = "09:00", end = "17:00", pause = 60, comment = "",
-}: { today: string; id?: number; day?: string; start?: string; end?: string; pause?: number; comment?: string }) {
+  today, id, day = today, endDay, start = "09:00", end = "17:00", pause = 60, comment = "",
+}: { today: string; id?: number; day?: string; endDay?: string; start?: string; end?: string; pause?: number; comment?: string }) {
   const [state, action, pending] = useActionState(saveTimeEntry, undefined);
   const k = id ?? "new";
   return (
@@ -21,10 +21,12 @@ export function TimeEntryForm({
       <div className="w-40"><label className="label" htmlFor={`td${k}`}>Date</label><input id={`td${k}`} name="day" type="date" defaultValue={day} max={today} required className="input" /></div>
       <div className="w-32"><label className="label" htmlFor={`ts${k}`}>Début</label><input id={`ts${k}`} name="start" type="time" defaultValue={start} required className="input" /></div>
       <div className="w-32"><label className="label" htmlFor={`te${k}`}>Fin</label><input id={`te${k}`} name="end" type="time" defaultValue={end} required className="input" /></div>
+      <div className="w-40"><label className="label" htmlFor={`ted${k}`}>Date de fin</label><input id={`ted${k}`} name="endDay" type="date" defaultValue={endDay ?? day} max={today} required className="input" /></div>
       <div className="w-28"><label className="label" htmlFor={`tp${k}`}>Pause (min)</label><input id={`tp${k}`} name="pause" type="number" min={0} max={600} step={5} defaultValue={pause} className="input" /></div>
       <div className="min-w-48 flex-1"><label className="label" htmlFor={`tc${k}`}>Commentaire (facultatif)</label><input id={`tc${k}`} name="comment" defaultValue={comment} maxLength={300} placeholder="Astreinte, déplacement…" className="input" /></div>
       <button className="btn" disabled={pending}>{pending ? "…" : id ? "Enregistrer" : "Ajouter la ligne"}</button>
       <div className="basis-full"><Feedback state={state} /></div>
+      <p className="basis-full text-xs text-muted">Si le travail finit après minuit, mets la date de fin au lendemain (ex. 21h → 3h du matin).</p>
     </form>
   );
 }

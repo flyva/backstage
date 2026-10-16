@@ -7,7 +7,7 @@ import { db } from "@/db";
 import { timeEntries, users, workDays } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { todayParis } from "@/lib/equipment";
-import { isDay, parseTime } from "@/lib/alternance";
+import { addDays, isDay, parseTime } from "@/lib/alternance";
 import { FIXED_KINDS } from "@/lib/pointeuse";
 import type { FormState } from "@/lib/actions";
 
@@ -20,6 +20,7 @@ const refresh = () => {
 
 const entrySchema = z.object({
   day: z.string().refine(isDay, "Date invalide"),
+  endDay: z.string().refine(isDay, "Date de fin invalide"),
   start: z.string().refine((v) => parseTime(v) !== null, "Heure de début invalide"),
   end: z.string().refine((v) => parseTime(v) !== null, "Heure de fin invalide"),
   pause: z.coerce.number().int().min(0, "Pause : 0 minimum").max(600, "Pause trop longue"),
@@ -30,14 +31,19 @@ export async function saveTimeEntry(_: FormState, fd: FormData): Promise<FormSta
   const user = await requireUser();
   const today = todayParis();
   const p = entrySchema.safeParse({
-    day: fd.get("day"), start: fd.get("start"), end: fd.get("end"), pause: fd.get("pause") || 0, comment: fd.get("comment") ?? "",
+    day: fd.get("day"), endDay: fd.get("endDay") || fd.get("day"), start: fd.get("start"), end: fd.get("end"), pause: fd.get("pause") || 0, comment: fd.get("comment") ?? "",
   });
   if (!p.success) return { error: p.error.issues[0].message };
   if (p.data.day > today) return { error: "Impossible d'ajouter une ligne dans le futur" };
+  if (p.data.endDay > today) return { error: "La fin ne peut pas être dans le futur" };
+  if (p.data.endDay < p.data.day) return { error: "La fin ne peut pas être avant le début" };
+  if (p.data.endDay > addDays(p.data.day, 1)) return { error: "Une ligne ne peut pas passer plus d'une nuit (24 h max)" };
   const startMinutes = parseTime(p.data.start)!;
   const endMinutes = parseTime(p.data.end)!;
-  if (endMinutes <= startMinutes) return { error: "L'heure de fin doit être après le début" };
-  if (p.data.pause > endMinutes - startMinutes) return { error: "La pause ne peut pas dépasser la durée totale" };
+  const crossesMidnight = p.data.endDay > p.data.day;
+  if (!crossesMidnight && endMinutes <= startMinutes) return { error: "L'heure de fin doit être après le début (ou choisis le lendemain si ça passe minuit)" };
+  const span = crossesMidnight ? 1440 - startMinutes + endMinutes : endMinutes - startMinutes;
+  if (p.data.pause > span) return { error: "La pause ne peut pas dépasser la durée totale" };
 
   // Un jour école / congé / maladie est déjà compté automatiquement (7 h fixes) : pas de ligne à ajouter dessus.
   const [wd] = await db.select({ kind: workDays.kind }).from(workDays).where(and(eq(workDays.userId, user.id), eq(workDays.day, p.data.day))).limit(1);
@@ -45,7 +51,7 @@ export async function saveTimeEntry(_: FormState, fd: FormData): Promise<FormSta
     return { error: "Ce jour est marqué école, congé ou maladie : il est déjà compté, retire d'abord ce marquage sur le planning ou la pointeuse si tu veux saisir des heures." };
   }
 
-  const values = { day: p.data.day, startMinutes, endMinutes, pauseMinutes: p.data.pause, comment: p.data.comment || null };
+  const values = { day: p.data.day, endDay: p.data.endDay, startMinutes, endMinutes, pauseMinutes: p.data.pause, comment: p.data.comment || null };
   const raw = Number(fd.get("id") || 0);
   if (raw) await db.update(timeEntries).set(values).where(and(eq(timeEntries.id, raw), eq(timeEntries.userId, user.id)));
   else await db.insert(timeEntries).values({ ...values, userId: user.id });
