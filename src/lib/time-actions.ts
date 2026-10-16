@@ -84,6 +84,16 @@ export async function setDayStatus(_: FormState, fd: FormData): Promise<FormStat
   return { ok: "Jour mis à jour" };
 }
 
+/** Retire le marquage congé/maladie d'un jour (bouton Supprimer du tableau). */
+export async function deleteDayStatus(fd: FormData) {
+  const user = await requireUser();
+  const day = String(fd.get("day") ?? "");
+  if (!isDay(day)) return;
+  await db.delete(workDays).where(and(eq(workDays.userId, user.id), eq(workDays.day, day)));
+  refresh();
+  revalidatePath("/alternance");
+}
+
 // ---------- Réglages pointeuse (durée standard, référent) ----------
 
 const settingsSchema = z.object({

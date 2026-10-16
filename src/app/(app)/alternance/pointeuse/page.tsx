@@ -5,10 +5,10 @@ import { db } from "@/db";
 import { timeEntries, workDays } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { todayParis } from "@/lib/equipment";
-import { KIND_LABEL, addMonths, dayLabel, fmtHours, fmtTime, isMonth, monthLabel } from "@/lib/alternance";
+import { KIND_CLASS, KIND_LABEL, addMonths, dayLabel, fmtHours, fmtTime, isMonth, monthLabel } from "@/lib/alternance";
 import { FIXED_KINDS, daySummary, entrySpanMinutes } from "@/lib/pointeuse";
-import { deleteTimeEntry } from "@/lib/time-actions";
-import { TimeEntryForm, DayStatusForm } from "@/components/time-forms";
+import { deleteDayStatus, deleteTimeEntry } from "@/lib/time-actions";
+import { TimeEntryForm, DayStatusForm, DayStatusEditForm } from "@/components/time-forms";
 
 export const metadata = { title: "Pointeuse" };
 
@@ -24,6 +24,7 @@ export default async function PointeusePage({ searchParams }: PageProps<"/altern
     db.select().from(workDays).where(and(eq(workDays.userId, user.id), like(workDays.day, `${month}-%`))).orderBy(asc(workDays.day)),
   ]);
   const fixedDays = wdRows.filter((r) => (FIXED_KINDS as readonly string[]).includes(r.kind));
+  const markedDays = fixedDays.filter((d): d is typeof d & { kind: "conge" | "maladie" } => d.kind === "conge" || d.kind === "maladie");
   const entriesByDay = new Map<string, typeof entries>();
   for (const e of entries) entriesByDay.set(e.day, [...(entriesByDay.get(e.day) ?? []), e]);
 
@@ -59,12 +60,39 @@ export default async function PointeusePage({ searchParams }: PageProps<"/altern
       <section className="card space-y-3">
         <h2 className="font-semibold">Marquer congé ou maladie</h2>
         <DayStatusForm today={today} />
-        {fixedDays.length > 0 && (
-          <ul className="flex flex-wrap gap-2 text-xs">
-            {fixedDays.map((d) => (
-              <li key={d.day} className="rounded-full border border-line px-2.5 py-1">{dayLabel(d.day)} · {KIND_LABEL[d.kind]}</li>
-            ))}
-          </ul>
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="font-semibold">Jours marqués congé ou maladie ({markedDays.length})</h2>
+        {markedDays.length === 0 && <p className="text-sm text-muted">Aucun jour marqué ce mois-ci.</p>}
+        {markedDays.length > 0 && (
+          <div className="overflow-x-auto rounded-xl border border-line">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-line bg-bg text-left text-xs text-muted">
+                  <th className="py-1.5 pl-3 pr-3 font-medium">Date</th>
+                  <th className="py-1.5 pr-3 font-medium">Statut</th>
+                  <th className="py-1.5 pr-3 font-medium">Changer en</th>
+                  <th className="py-1.5 pr-3 font-medium" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {markedDays.map((d) => (
+                  <tr key={d.day}>
+                    <td className="py-1.5 pl-3 pr-3 capitalize">{dayLabel(d.day)}</td>
+                    <td className="py-1.5 pr-3"><span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${KIND_CLASS[d.kind]}`}>{KIND_LABEL[d.kind]}</span></td>
+                    <td className="py-1.5 pr-3"><DayStatusEditForm day={d.day} kind={d.kind} /></td>
+                    <td className="py-1.5 pr-3">
+                      <form action={deleteDayStatus}>
+                        <input type="hidden" name="day" value={d.day} />
+                        <button className="flex items-center gap-1 text-xs text-muted hover:text-danger"><Trash2 size={14} /> Supprimer</button>
+                      </form>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
 
