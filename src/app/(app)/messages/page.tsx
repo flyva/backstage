@@ -22,9 +22,10 @@ export default async function MessagesPage() {
     .limit(100);
   const ids = convs.map((c) => c.id);
   const others = [...new Set(convs.map((c) => (c.buyerId === user.id ? c.sellerId : c.buyerId)))];
+  const listingIds = [...new Set(convs.map((c) => c.listingId).filter((id) => id !== null))];
   const [people, lots, last] = await Promise.all([
     others.length ? db.select({ id: users.id, name: users.name, avatar: users.avatarFile }).from(users).where(inArray(users.id, others)) : [],
-    convs.length ? db.select({ id: listings.id, title: listings.title, photo: listings.photoFile }).from(listings).where(inArray(listings.id, convs.map((c) => c.listingId))) : [],
+    listingIds.length ? db.select({ id: listings.id, title: listings.title, photo: listings.photoFile }).from(listings).where(inArray(listings.id, listingIds)) : [],
     ids.length ? db.select({ conversationId: messages.conversationId, body: messages.body, senderId: messages.senderId }).from(messages).where(inArray(messages.conversationId, ids)).orderBy(desc(messages.createdAt)).limit(500) : [],
   ]);
   const person = new Map(people.map((p) => [p.id, p]));
@@ -38,10 +39,10 @@ export default async function MessagesPage() {
       <AutoRefresh seconds={10} />
       <header>
         <h1 className="flex items-center gap-2 text-2xl font-bold"><MessageSquare size={24} className="text-accent" /> Messages</h1>
-        <p className="text-sm text-muted">Tes conversations à propos des annonces. Seules les deux personnes concernées les voient.</p>
+        <p className="text-sm text-muted">Tes messages directs et tes conversations à propos des annonces. Seules les deux personnes concernées les voient.</p>
       </header>
       {convs.length === 0 && (
-        <div className="card text-sm text-muted">Aucune conversation pour le moment. Ouvre une <Link href="/annonces" className="text-accent underline">annonce</Link> et écris à son auteur.</div>
+        <div className="card text-sm text-muted">Aucune conversation pour le moment. Écris à quelqu&apos;un depuis sa <Link href="/annuaire" className="text-accent underline">fiche annuaire</Link>, ou depuis une <Link href="/annonces" className="text-accent underline">annonce</Link>.</div>
       )}
       <ul className="space-y-2">
         {convs.map((c) => {
@@ -51,6 +52,7 @@ export default async function MessagesPage() {
           const readAt = mine ? c.buyerReadAt : c.sellerReadAt;
           const unread = !readAt || readAt.getTime() < c.lastMessageAt.getTime();
           const m = lastOf.get(c.id);
+          const isListing = c.listingId !== null;
           return (
             <li key={c.id}>
               <Link href={`/messages/${c.id}`} className={`card flex items-center gap-3 p-4 hover:border-accent ${unread ? "border-accent" : ""}`}>
@@ -58,15 +60,15 @@ export default async function MessagesPage() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline gap-2">
                     <span className={`truncate ${unread ? "font-bold" : "font-semibold"}`}>{p?.name ?? "Personne supprimée"}</span>
-                    <span className="shrink-0 text-xs text-muted">· {mine ? "tu achètes" : "tu vends"}</span>
+                    {isListing && <span className="shrink-0 text-xs text-muted">· {mine ? "tu achètes" : "tu vends"}</span>}
                     <span className="ml-auto shrink-0 text-xs text-muted">{ago(c.lastMessageAt)}</span>
                   </div>
-                  <div className="truncate text-sm text-muted">{title.get(c.listingId) ?? "Annonce"}</div>
+                  <div className="truncate text-sm text-muted">{isListing ? (title.get(c.listingId!) ?? "Annonce") : "Message direct"}</div>
                   {m && <div className={`truncate text-sm ${unread ? "font-medium" : "text-muted"}`}>{m.senderId === user.id ? "Toi : " : ""}{m.body}</div>}
                 </div>
-                {photo.get(c.listingId) && (
+                {isListing && photo.get(c.listingId!) && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={`${LISTING_PHOTO_PREFIX}${photo.get(c.listingId)}`} alt="" className="size-12 shrink-0 rounded-lg border border-line object-cover" loading="lazy" />
+                  <img src={`${LISTING_PHOTO_PREFIX}${photo.get(c.listingId!)}`} alt="" className="size-12 shrink-0 rounded-lg border border-line object-cover" loading="lazy" />
                 )}
                 {unread && <span className="size-2.5 shrink-0 rounded-full bg-accent" aria-label="Non lu" />}
               </Link>

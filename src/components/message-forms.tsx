@@ -1,9 +1,10 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
-import { Send } from "lucide-react";
+import { useActionState, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { MessageCircle, Send } from "lucide-react";
 import type { FormState } from "@/lib/actions";
-import { saveReview, sendMessage, startConversation } from "@/lib/message-actions";
+import { saveReview, sendMessage, startConversation, startDirectConversation } from "@/lib/message-actions";
 
 function Feedback({ state }: { state: FormState }) {
   if (state?.error) return <p className="text-sm text-danger" role="alert">{state.error}</p>;
@@ -31,6 +32,30 @@ export function StartConversationForm({ listingId, sellerName }: { listingId: nu
       <Feedback state={state} />
       <button className="btn" disabled={pending}><Send size={15} /> {pending ? "Envoi…" : "Envoyer le message"}</button>
     </form>
+  );
+}
+
+/** Bouton « Envoyer un message » sur une fiche annuaire : ouvre (ou reprend) la conversation directe avec cette personne. */
+export function MessageButton({ otherUserId }: { otherUserId: number }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [error, setError] = useState("");
+  return (
+    <div>
+      <button
+        type="button"
+        disabled={pending}
+        className="btn w-full"
+        onClick={() => start(async () => {
+          const res = await startDirectConversation(otherUserId);
+          if ("error" in res) setError(res.error);
+          else router.push(`/messages/${res.conversationId}`);
+        })}
+      >
+        <MessageCircle size={16} aria-hidden /> {pending ? "Ouverture…" : "Envoyer un message"}
+      </button>
+      {error && <p className="mt-1 text-sm text-danger" role="alert">{error}</p>}
+    </div>
   );
 }
 

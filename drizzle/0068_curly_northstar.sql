@@ -1,0 +1,1 @@
+ALTER TABLE `conversations` MODIFY COLUMN `listing_id` int;

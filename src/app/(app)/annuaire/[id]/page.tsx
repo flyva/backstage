@@ -8,6 +8,7 @@ import { requireUser } from "@/lib/auth";
 import { avatarUrl } from "@/lib/avatar-files";
 import { LISTING_LABEL, LISTING_PHOTO_PREFIX, formatPrice } from "@/lib/listing-shared";
 import { ratingSummary } from "@/lib/messaging";
+import { MessageButton } from "@/components/message-forms";
 import { LINK_LABEL, school3isEmail } from "@/lib/people-shared";
 import { ago } from "@/lib/relative-time";
 import { Avatar, CopyChip } from "@/components/people-forms";
@@ -63,6 +64,7 @@ export default async function MemberPage({ params }: PageProps<"/annuaire/[id]">
             {rating && <div><RatingBadge avg={rating.avg} n={rating.n} /></div>}
           </div>
           <div className="space-y-2">
+            {!isSelf && <MessageButton otherUserId={u.id} />}
             {email3is && <a href={`mailto:${email3is}`} className="btn w-full"><Mail size={16} aria-hidden /> {email3is}</a>}
             {u.phone && u.showPhone && <a href={`tel:${u.phone.replace(/[^\d+]/g, "")}`} className="btn-ghost w-full"><Phone size={16} aria-hidden /> {u.phone}</a>}
             {u.discord && <div className="flex justify-center"><CopyChip value={u.discord} prefix="Discord : " className="px-3 py-1.5 text-sm" /></div>}

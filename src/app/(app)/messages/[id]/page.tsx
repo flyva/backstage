@@ -32,10 +32,10 @@ export default async function ConversationPage({ params }: PageProps<"/messages/
   const [thread, [other], [listing], counts, ratings, [myReview]] = await Promise.all([
     db.select().from(messages).where(eq(messages.conversationId, id)).orderBy(asc(messages.id)),
     db.select({ id: users.id, name: users.name, avatar: users.avatarFile, visible: users.showInDirectory }).from(users).where(eq(users.id, otherId)).limit(1),
-    db.select().from(listings).where(eq(listings.id, conv.listingId)).limit(1),
+    conv.listingId ? db.select().from(listings).where(eq(listings.id, conv.listingId)).limit(1) : Promise.resolve([]),
     messageCountsBySender(id),
     ratingSummary([otherId]),
-    db.select().from(reviews).where(and(eq(reviews.authorId, user.id), eq(reviews.listingId, conv.listingId), eq(reviews.subjectId, otherId))).limit(1),
+    conv.listingId ? db.select().from(reviews).where(and(eq(reviews.authorId, user.id), eq(reviews.listingId, conv.listingId), eq(reviews.subjectId, otherId))).limit(1) : Promise.resolve([]),
   ]);
 
   // Lu à l'ouverture : la date de lecture dépasse celle du dernier message, et l'autre personne voit « Vu ».
@@ -66,7 +66,7 @@ export default async function ConversationPage({ params }: PageProps<"/messages/
         </div>
       </header>
 
-      <div className="grid items-start gap-5 lg:grid-cols-[1fr_20rem]">
+      <div className={`grid items-start gap-5 ${conv.listingId ? "lg:grid-cols-[1fr_20rem]" : "max-w-2xl"}`}>
         {/* Discussion + avis */}
         <div className="min-w-0 space-y-5">
           <section className="card space-y-3" aria-label="Messages">
@@ -77,7 +77,7 @@ export default async function ConversationPage({ params }: PageProps<"/messages/
             <div className="border-t border-line pt-3"><MessageComposer conversationId={id} /></div>
           </section>
 
-          {other && (
+          {other && conv.listingId && (
             <section className="card space-y-3">
               <h2 className="font-semibold">Ton avis sur {other.name}</h2>
               {dealWithBuyer && bothWrote ? (
@@ -100,7 +100,8 @@ export default async function ConversationPage({ params }: PageProps<"/messages/
           )}
         </div>
 
-        {/* Panneau de l'offre, à droite : l'annonce et les actions de vente */}
+        {/* Panneau de l'offre, à droite : l'annonce et les actions de vente (seulement pour une conversation d'annonce) */}
+        {conv.listingId && (
         <aside className="card space-y-4 lg:sticky lg:top-20" aria-label="L'offre">
           <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted"><Store size={15} aria-hidden /> L&apos;offre</h2>
           {listing ? (
@@ -155,6 +156,7 @@ export default async function ConversationPage({ params }: PageProps<"/messages/
             <p className="text-sm text-muted">L&apos;annonce a été supprimée.</p>
           )}
         </aside>
+        )}
       </div>
     </div>
   );

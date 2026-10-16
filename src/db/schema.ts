@@ -1017,14 +1017,15 @@ export const pollInvites = mysqlTable(
   (t) => [primaryKey({ columns: [t.pollId, t.userId] }), index("pi_user_idx").on(t.userId)],
 );
 
-// ---------- Messagerie des annonces et avis ----------
+// ---------- Messagerie (annonces et messages directs) et avis ----------
 
 // Une conversation par annonce et par personne intéressée (acheteur) avec l'auteur de l'annonce (vendeur).
+// listingId vaut null pour un message direct (depuis l'annuaire, hors annonce) : buyerId est alors la personne qui a écrit en premier.
 export const conversations = mysqlTable(
   "conversations",
   {
     id: int("id").primaryKey().autoincrement(),
-    listingId: int("listing_id").notNull().references(() => listings.id, { onDelete: "cascade" }),
+    listingId: int("listing_id").references(() => listings.id, { onDelete: "cascade" }),
     buyerId: int("buyer_id").notNull().references(() => users.id, { onDelete: "cascade" }),
     sellerId: int("seller_id").notNull().references(() => users.id, { onDelete: "cascade" }),
     buyerReadAt: datetime("buyer_read_at"),

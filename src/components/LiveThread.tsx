@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Check, CheckCheck } from "lucide-react";
-import { markConversationRead } from "@/lib/message-actions";
+import { markConversationRead, setConversationPresence } from "@/lib/message-actions";
 import type { LiveMessage } from "@/lib/message-bus";
 
 const dayFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -38,6 +38,14 @@ export function LiveThread({ conversationId, meId, otherName, otherReadAt, initi
       return next;
     });
   });
+
+  // « Présente » dans la conversation (onglet visible) : le serveur ne pousse pas de notification tant que c'est le cas.
+  useEffect(() => {
+    const sync = () => { void setConversationPresence(conversationId, document.visibilityState === "visible"); };
+    sync();
+    document.addEventListener("visibilitychange", sync);
+    return () => { document.removeEventListener("visibilitychange", sync); void setConversationPresence(conversationId, false); };
+  }, [conversationId]);
 
   useEffect(() => {
     const read = () => { if (document.visibilityState === "visible") void markConversationRead(conversationId); };

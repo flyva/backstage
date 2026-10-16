@@ -2,20 +2,49 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { and, eq, gt } from "drizzle-orm";
+import { and, eq, gt, isNull, or } from "drizzle-orm";
 import { db } from "@/db";
-import { conversations, listings, messages, reviews } from "@/db/schema";
+import { conversations, listings, messages, reviews, users } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { messageCountsBySender } from "@/lib/messaging";
-import { emitEvent, emitMessage } from "@/lib/message-bus";
+import { emitEvent, emitMessage, isPresent, setPresent } from "@/lib/message-bus";
 import { notifyUser } from "@/lib/push";
 import { allow } from "@/lib/rate-limit";
 import type { FormState } from "@/lib/actions";
 
 const body = (fd: FormData) => String(fd.get("body") ?? "").trim().slice(0, 2000);
 
-async function pushNew(toUserId: number, fromName: string, listingTitle: string, conversationId: number, text: string) {
-  await notifyUser(toUserId, { title: `${fromName} · ${listingTitle}`, body: text.length > 120 ? `${text.slice(0, 117)}…` : text, url: `/messages/${conversationId}`, tag: `conv-${conversationId}` }, "messages").catch(() => 0);
+// Pas de notification push si la personne a déjà la conversation ouverte sous les yeux (flux en direct connecté et onglet visible).
+async function pushNew(toUserId: number, fromName: string, subtitle: string, conversationId: number, text: string) {
+  if (isPresent(conversationId, toUserId)) return;
+  await notifyUser(toUserId, { title: subtitle ? `${fromName} · ${subtitle}` : fromName, body: text.length > 120 ? `${text.slice(0, 117)}…` : text, url: `/messages/${conversationId}`, tag: `conv-${conversationId}` }, "messages").catch(() => 0);
+}
+
+/** Déclaré présent (ou absent) par le fil en direct d'une conversation : voir message-bus.ts. */
+export async function setConversationPresence(conversationId: number, present: boolean) {
+  const user = await requireUser();
+  const [conv] = await db.select({ buyerId: conversations.buyerId, sellerId: conversations.sellerId }).from(conversations).where(eq(conversations.id, conversationId)).limit(1);
+  if (!conv || (conv.buyerId !== user.id && conv.sellerId !== user.id)) return;
+  setPresent(conversationId, user.id, present);
+}
+
+/** Premier message à une personne de l'annuaire, hors annonce : crée la conversation (ou reprend celle qui existe). */
+export async function startDirectConversation(otherUserId: number): Promise<{ error: string } | { conversationId: number }> {
+  const user = await requireUser();
+  if (otherUserId === user.id) return { error: "Tu ne peux pas t'écrire à toi-même" };
+  const [other] = await db.select({ id: users.id, status: users.status }).from(users).where(eq(users.id, otherUserId)).limit(1);
+  if (!other || other.status !== "active") return { error: "Personne introuvable" };
+
+  const now = new Date();
+  const [existing] = await db
+    .select({ id: conversations.id })
+    .from(conversations)
+    .where(and(isNull(conversations.listingId), or(and(eq(conversations.buyerId, user.id), eq(conversations.sellerId, otherUserId)), and(eq(conversations.buyerId, otherUserId), eq(conversations.sellerId, user.id)))))
+    .limit(1);
+  if (existing) return { conversationId: existing.id };
+
+  const [res] = await db.insert(conversations).values({ listingId: null, buyerId: user.id, sellerId: otherUserId, buyerReadAt: now, lastMessageAt: now });
+  return { conversationId: res.insertId };
 }
 
 /** Premier message d'une personne intéressée par une annonce : crée la conversation (ou reprend celle qui existe). */
@@ -57,8 +86,8 @@ export async function sendMessage(_: FormState, fd: FormData): Promise<FormState
   const [ins] = await db.insert(messages).values({ conversationId: conv.id, senderId: user.id, body: text, createdAt: now });
   await db.update(conversations).set({ lastMessageAt: now, ...(mine ? { buyerReadAt: now } : { sellerReadAt: now }) }).where(eq(conversations.id, conv.id));
   emitMessage(conv.id, { id: ins.insertId, senderId: user.id, body: text, createdAt: now.toISOString() });
-  const [l] = await db.select({ title: listings.title }).from(listings).where(eq(listings.id, conv.listingId)).limit(1);
-  await pushNew(mine ? conv.sellerId : conv.buyerId, user.name, l?.title ?? "Annonce", conv.id, text);
+  const [l] = conv.listingId ? await db.select({ title: listings.title }).from(listings).where(eq(listings.id, conv.listingId)).limit(1) : [];
+  await pushNew(mine ? conv.sellerId : conv.buyerId, user.name, l?.title ?? "", conv.id, text);
   revalidatePath(`/messages/${conv.id}`);
   revalidatePath("/messages");
   return { ok: "Envoyé" };
@@ -83,8 +112,10 @@ export async function saveReview(_: FormState, fd: FormData): Promise<FormState>
   const comment = String(fd.get("comment") ?? "").trim().slice(0, 500);
   const [conv] = await db.select().from(conversations).where(eq(conversations.id, id)).limit(1);
   if (!conv || (conv.buyerId !== user.id && conv.sellerId !== user.id)) return { error: "Conversation introuvable" };
+  if (!conv.listingId) return { error: "Les avis ne sont possibles que pour une conversation d'annonce." };
+  const listingId = conv.listingId;
   // Les avis ne suivent qu'une vente réelle : l'annonce doit avoir été conclue avec l'acheteur de cette conversation.
-  const [deal] = await db.select({ status: listings.status, soldToId: listings.soldToId }).from(listings).where(eq(listings.id, conv.listingId)).limit(1);
+  const [deal] = await db.select({ status: listings.status, soldToId: listings.soldToId }).from(listings).where(eq(listings.id, listingId)).limit(1);
   if (!deal || deal.status !== "closed" || deal.soldToId !== conv.buyerId) return { error: "Les avis sont possibles une fois l'annonce conclue avec l'acheteur." };
   const counts = await messageCountsBySender(conv.id);
   if ((counts.get(conv.buyerId) ?? 0) < 1 || (counts.get(conv.sellerId) ?? 0) < 1) return { error: "Vous devez chacun avoir écrit au moins un message avant de laisser un avis." };
@@ -92,9 +123,9 @@ export async function saveReview(_: FormState, fd: FormData): Promise<FormState>
 
   const iAmBuyer = conv.buyerId === user.id;
   const subjectId = iAmBuyer ? conv.sellerId : conv.buyerId;
-  const [l] = await db.select({ title: listings.title }).from(listings).where(eq(listings.id, conv.listingId)).limit(1);
-  const values = { listingId: conv.listingId, listingTitle: l?.title ?? "Annonce", authorId: user.id, subjectId, subjectRole: (iAmBuyer ? "seller" : "buyer") as "seller" | "buyer", rating, comment: comment || null };
-  const [existing] = await db.select({ id: reviews.id }).from(reviews).where(and(eq(reviews.authorId, user.id), eq(reviews.listingId, conv.listingId), eq(reviews.subjectId, subjectId))).limit(1);
+  const [l] = await db.select({ title: listings.title }).from(listings).where(eq(listings.id, listingId)).limit(1);
+  const values = { listingId, listingTitle: l?.title ?? "Annonce", authorId: user.id, subjectId, subjectRole: (iAmBuyer ? "seller" : "buyer") as "seller" | "buyer", rating, comment: comment || null };
+  const [existing] = await db.select({ id: reviews.id }).from(reviews).where(and(eq(reviews.authorId, user.id), eq(reviews.listingId, listingId), eq(reviews.subjectId, subjectId))).limit(1);
   if (existing) await db.update(reviews).set({ rating, comment: values.comment }).where(eq(reviews.id, existing.id));
   else await db.insert(reviews).values(values);
   if (!existing) {
@@ -102,7 +133,7 @@ export async function saveReview(_: FormState, fd: FormData): Promise<FormState>
   }
   revalidatePath(`/messages/${conv.id}`);
   revalidatePath("/annonces");
-  revalidatePath(`/annonces/${conv.listingId}`);
+  revalidatePath(`/annonces/${listingId}`);
   return { ok: existing ? "Avis mis à jour" : "Merci, ton avis est publié" };
 }
 
