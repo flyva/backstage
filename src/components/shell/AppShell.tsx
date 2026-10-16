@@ -8,7 +8,7 @@ import { AssistantFab } from "@/components/AssistantFab";
 type Person = { id: number; name: string; avatar: string | null; email3is: string | null; phone: string | null };
 
 // Coquille de l'application : menu de gauche (tiroir sur mobile), barre du haut (recherche, cloche, paramètres) et contenu.
-export function AppShell({ sidebar, bell, menu, children }: { sidebar: ReactNode; bell: ReactNode; menu: ReactNode; children: ReactNode }) {
+export function AppShell({ sidebar, messages, bell, menu, children }: { sidebar: ReactNode; messages: ReactNode; bell: ReactNode; menu: ReactNode; children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [menuFor, setMenuFor] = useState<string | null>(null); // menu mobile ouvert pour cette page (se ferme tout seul à la navigation)
@@ -143,6 +143,7 @@ export function AppShell({ sidebar, bell, menu, children }: { sidebar: ReactNode
               </ul>
             )}
           </form>
+          {messages}
           <div className="ml-auto flex items-center gap-2">
             {bell}
             {menu}

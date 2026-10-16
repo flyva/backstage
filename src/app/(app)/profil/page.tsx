@@ -1,22 +1,24 @@
 import { requireUser } from "@/lib/auth";
 import Link from "next/link";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, ne } from "drizzle-orm";
 import QRCode from "qrcode";
 import { db } from "@/db";
-import { tracks, userLinks } from "@/db/schema";
+import { tracks, userLinks, users } from "@/db/schema";
 import { ProfileForm } from "@/components/forms";
 import { AvatarForm, CardPanel, FeedPanel, FicheForm, LinksEditor } from "@/components/people-forms";
+import { TimeSettingsForm } from "@/components/time-forms";
 import { avatarUrl } from "@/lib/avatar-files";
 import { absoluteUrl } from "@/lib/base-url";
 
 export const metadata = { title: "Profil" };
 
-// Quatre onglets : la page était une longue suite de cartes. L'onglet se choisit par l'adresse (?onglet=…), sans JavaScript.
-// « short » : libellé court pour les téléphones, afin que les quatre onglets tiennent sans faire défiler la barre.
+// Cinq onglets : la page était une longue suite de cartes. L'onglet se choisit par l'adresse (?onglet=…), sans JavaScript.
+// « short » : libellé court pour les téléphones, afin que les onglets tiennent sans faire défiler la barre.
 const TABS = [
   { id: "general", label: "Général", short: "Général" },
   { id: "fiche", label: "Photo et fiche", short: "Fiche" },
   { id: "reseaux", label: "Réseaux", short: "Réseaux" },
+  { id: "alternance", label: "Alternance", short: "Alt." },
   { id: "partage", label: "Carte et calendrier", short: "Carte" },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
@@ -78,6 +80,7 @@ export default async function ProfilPage({ searchParams }: PageProps<"/profil">)
 
       {tab === "fiche" && <FicheTab user={user} />}
       {tab === "reseaux" && <NetworksTab userId={user.id} />}
+      {tab === "alternance" && <AlternanceTab user={user} />}
       {tab === "partage" && <ShareTab user={user} />}
     </div>
   );
@@ -114,6 +117,19 @@ async function NetworksTab({ userId }: { userId: number }) {
       <h2 className="font-semibold">Mes réseaux et mon portfolio</h2>
       <p className="text-sm text-muted">Ces liens apparaissent dans l&apos;annuaire et sur ta carte de visite.</p>
       <LinksEditor links={links.map((l) => ({ id: l.id, kind: l.kind, url: l.url, label: l.label }))} />
+    </div>
+  );
+}
+
+async function AlternanceTab({ user }: { user: User }) {
+  const colleagues = await db.select({ id: users.id, name: users.name }).from(users).where(and(ne(users.id, user.id), eq(users.status, "active"))).orderBy(users.name);
+  return (
+    <div className="card space-y-4">
+      <div>
+        <h2 className="font-semibold">Pointeuse</h2>
+        <p className="text-sm text-muted">La durée standard sert à calculer tes heures sup. Le référent voit ta pointeuse et tes statistiques en lecture seule.</p>
+      </div>
+      <TimeSettingsForm standardHours={user.standardWorkMinutes / 60} workDaysPerWeek={user.workDaysPerWeek} tutorUserId={user.tutorUserId} colleagues={colleagues} />
     </div>
   );
 }

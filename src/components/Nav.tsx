@@ -4,11 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
-  BookOpen, BookUser, Bot, Briefcase, Calculator, Car, ChevronRight, CalendarDays, Camera, CircleHelp, Clock, Cog, Home, Images, Lightbulb, Link2, Network, Newspaper, PartyPopper, School, NotebookPen, ShieldCheck, SquareKanban, TramFront, Users, Contact, Megaphone, CalendarClock, MessageSquare, Zap, BarChart3,
+  BookOpen, BookUser, Bot, Briefcase, Calculator, Car, ChevronRight, CalendarDays, Camera, CircleHelp, Clock, Cog, Home, Images, Lightbulb, Link2, Network, Newspaper, PartyPopper, School, NotebookPen, ShieldCheck, SquareKanban, TramFront, Users, Contact, Megaphone, CalendarClock, Zap, BarChart3,
   type LucideIcon,
 } from "lucide-react";
 
-type Badge = "loans" | "messages";
+type Badge = "loans";
 type Item = { href?: string; label: string; icon: LucideIcon; badge?: Badge; adminOnly?: boolean; module?: string; children?: Item[] };
 type Group = { id: string; title: string; items: Item[] };
 
@@ -21,7 +21,6 @@ const GROUPS: Group[] = [
       { href: "/", label: "Accueil", icon: Home },
       { href: "/agenda", label: "Agenda", icon: CalendarDays },
       { href: "/mobilite", label: "Mobilité", icon: TramFront },
-      { href: "/messages", label: "Messages", icon: MessageSquare, badge: "messages" },
     ],
   },
   {
@@ -94,7 +93,7 @@ const isActive = (pathname: string, href: string) => (href === "/" || href === "
 const itemActive = (pathname: string, i: Item): boolean => (i.href ? isActive(pathname, i.href) : false) || !!i.children?.some((c) => itemActive(pathname, c));
 const visibleChildren = (i: Item, isAdmin: boolean, views: Record<string, boolean>) => (i.children ?? []).filter((c) => (!c.adminOnly || isAdmin) && (!c.module || views[c.module]));
 
-export function Nav({ isAdmin, loanBadge, messageBadge = 0, views }: { isAdmin: boolean; loanBadge: number; messageBadge?: number; views: Record<string, boolean> }) {
+export function Nav({ isAdmin, loanBadge, views }: { isAdmin: boolean; loanBadge: number; views: Record<string, boolean> }) {
   const pathname = usePathname();
   // Groupe ouvert : celui de la page en cours, sauf si la personne en a choisi un autre (ou tout refermé) sur cette page.
   // Changer de page revient au groupe de la nouvelle page. Même principe, un cran plus bas, pour un sous-dossier (ex. Cours).
@@ -108,7 +107,7 @@ export function Nav({ isAdmin, loanBadge, messageBadge = 0, views }: { isAdmin: 
     setFolderChoice({ id: current === id ? null : id, path: pathname });
   };
   const folderOpen = (id: string, hasActiveChild: boolean) => (folderChoice && folderChoice.path === pathname ? folderChoice.id === id : hasActiveChild);
-  const countOf = (badge?: Badge) => (badge === "loans" ? loanBadge : badge === "messages" ? messageBadge : 0);
+  const countOf = (badge?: Badge) => (badge === "loans" ? loanBadge : 0);
 
   const renderLink = (i: Item, count: number) => {
     const active = i.href ? isActive(pathname, i.href) : false;
@@ -123,7 +122,7 @@ export function Nav({ isAdmin, loanBadge, messageBadge = 0, views }: { isAdmin: 
         <i.icon size={18} />
         <span className="flex-1">{i.label}</span>
         {count > 0 && (
-          <span className="rounded-full bg-[#dc3545] px-1.5 text-[10px] font-semibold text-white" aria-label={i.badge === "messages" ? `${count} non lu(s)` : `${count} à traiter`}>{count}</span>
+          <span className="rounded-full bg-[#dc3545] px-1.5 text-[10px] font-semibold text-white" aria-label={`${count} à traiter`}>{count}</span>
         )}
       </Link>
     );

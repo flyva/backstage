@@ -14,7 +14,6 @@ export default async function SettingsLayout({ children }: LayoutProps<"/paramet
         tabs={[
           { slug: "", label: "Personnalisation" },
           { slug: "notifications", label: "Notifications" },
-          { slug: "alternance", label: "Alternance" },
           { slug: "securite", label: "Sécurité" },
         ]}
       />
