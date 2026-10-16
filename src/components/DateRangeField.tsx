@@ -7,13 +7,14 @@ import { addDays, addMonths, dayLabel, monthGrid, monthLabel } from "@/lib/alter
 const WEEK = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 
 /**
- * Un seul champ pour choisir un jour, ou un jour + le lendemain (ligne qui passe minuit) : calendrier avec les jours de
- * la période mis en couleur, comme un sélecteur de dates de voyage. Pose deux champs cachés (day / endDay) pour le formulaire.
+ * Un seul champ pour choisir un jour, ou une période (du jour au jour), avec les jours mis en couleur comme un
+ * sélecteur de dates de voyage. Pose deux champs cachés (day / endDay) pour le formulaire. maxSpanDays limite l'écart
+ * entre day et endDay (ex. 1 pour une ligne de pointeuse qui passe minuit) ; sans limite par défaut (période libre).
  */
 export function DateRangeField({
-  today, day: initialDay, endDay: initialEndDay, dayName = "day", endDayName = "endDay", id,
+  today, day: initialDay, endDay: initialEndDay, dayName = "day", endDayName = "endDay", id, maxSpanDays, hint,
 }: {
-  today: string; day?: string; endDay?: string; dayName?: string; endDayName?: string; id?: string;
+  today: string; day?: string; endDay?: string; dayName?: string; endDayName?: string; id?: string; maxSpanDays?: number; hint?: string;
 }) {
   const [day, setDay] = useState(initialDay ?? today);
   const [endDay, setEndDay] = useState(initialEndDay ?? initialDay ?? today);
@@ -22,9 +23,12 @@ export function DateRangeField({
 
   const pick = (d: string) => {
     if (d > today) return; // jamais dans le futur
-    if (d === day && endDay === day) return; // reclique le jour déjà choisi : rien à faire
-    if (d === addDays(day, 1) && day === endDay) { setEndDay(d); return; } // lendemain du jour choisi : passe minuit
-    setDay(d); setEndDay(d); // sinon, nouvelle sélection simple sur ce jour
+    if (endDay === day) {
+      // un seul jour choisi pour l'instant : ce clic étend la période (si autorisé), ou en commence une nouvelle.
+      if (d > day && (maxSpanDays == null || d <= addDays(day, maxSpanDays))) { setEndDay(d); return; }
+      if (d === day) return;
+    }
+    setDay(d); setEndDay(d); // nouvelle sélection simple sur ce jour
   };
 
   const label = day === endDay ? dayLabel(day) : `${dayLabel(day)} → ${dayLabel(endDay)}`;
@@ -63,7 +67,7 @@ export function DateRangeField({
               );
             })}
           </div>
-          <p className="mt-2 text-[11px] text-muted">Clique un jour, puis le lendemain si ça passe minuit.</p>
+          <p className="mt-2 text-[11px] text-muted">{hint ?? "Clique un jour, puis un autre jour pour une période."}</p>
           <button type="button" onClick={() => setOpen(false)} className="btn mt-1 w-full text-xs">OK</button>
         </div>
       )}

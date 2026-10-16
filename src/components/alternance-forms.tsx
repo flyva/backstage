@@ -5,6 +5,7 @@ import type { FormState } from "@/lib/actions";
 import { applyRhythm, saveLog, setRange } from "@/lib/alternance-actions";
 import { KIND_LABEL } from "@/lib/alternance";
 import { MarkdownField } from "@/components/MarkdownField";
+import { DateRangeField } from "@/components/DateRangeField";
 
 function Feedback({ state }: { state: FormState }) {
   if (state?.error) return <p className="text-sm text-danger" role="alert">{state.error}</p>;
@@ -50,15 +51,17 @@ export function RhythmForm({ today }: { today: string }) {
   );
 }
 
-export function LogForm({ id, day, hours = "7h", place = "entreprise", mission = "", skills = "" }: { id?: number; day: string; hours?: string; place?: string; mission?: string; skills?: string }) {
+export function LogForm({ today, id, day, endDay, place = "entreprise", mission = "", skills = "" }: { today: string; id?: number; day: string; endDay?: string; place?: string; mission?: string; skills?: string }) {
   const [state, action, pending] = useActionState(saveLog, undefined);
   const k = id ?? "new";
   return (
     <form action={action} className="space-y-3" key={id ? `e${id}` : state?.ok ? "done" : "new"}>
       {id && <input type="hidden" name="id" value={id} />}
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div><label className="label" htmlFor={`ld${k}`}>Date</label><input id={`ld${k}`} name="day" type="date" defaultValue={day} required className="input" /></div>
-        <div><label className="label" htmlFor={`lh${k}`}>Durée</label><input id={`lh${k}`} name="hours" defaultValue={hours} required placeholder="7h30" className="input" /></div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <label className="label" htmlFor={`ld${k}`}>Date</label>
+          <DateRangeField id={`ld${k}`} today={today} day={day} endDay={endDay ?? day} hint="Clique un jour, ou un autre jour pour une période (ex. une semaine de montage)." />
+        </div>
         <div>
           <label className="label" htmlFor={`lp${k}`}>Lieu</label>
           <select id={`lp${k}`} name="place" defaultValue={place} className="input"><option value="entreprise">Entreprise</option><option value="ecole">École</option></select>

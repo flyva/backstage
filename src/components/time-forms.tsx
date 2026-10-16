@@ -20,7 +20,7 @@ export function TimeEntryForm({
   return (
     <form action={action} className="flex flex-wrap items-end gap-3" key={id ? `e${id}` : state?.ok ? "done" : "new"}>
       {id && <input type="hidden" name="id" value={id} />}
-      <div className="w-56"><label className="label" htmlFor={`td${k}`}>Jour(s)</label><DateRangeField id={`td${k}`} today={today} day={day} endDay={endDay ?? day} /></div>
+      <div className="w-56"><label className="label" htmlFor={`td${k}`}>Jour(s)</label><DateRangeField id={`td${k}`} today={today} day={day} endDay={endDay ?? day} maxSpanDays={1} hint="Clique un jour, puis le lendemain si ça passe minuit." /></div>
       <div className="w-32"><label className="label" htmlFor={`ts${k}`}>Début</label><input id={`ts${k}`} name="start" type="time" defaultValue={start} required className="input" /></div>
       <div className="w-32"><label className="label" htmlFor={`te${k}`}>Fin</label><input id={`te${k}`} name="end" type="time" defaultValue={end} required className="input" /></div>
       <div className="w-28"><label className="label" htmlFor={`tp${k}`}>Pause (min)</label><input id={`tp${k}`} name="pause" type="number" min={0} max={600} step={5} defaultValue={pause} className="input" /></div>

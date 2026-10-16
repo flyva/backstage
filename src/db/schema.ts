@@ -705,13 +705,14 @@ export const timeEntries = mysqlTable(
   (t) => [index("te_user_day_idx").on(t.userId, t.day)],
 );
 
+// Carnet de compétences : une entrée par mission (un jour, ou une période de plusieurs jours), sans durée chiffrée.
 export const workLogs = mysqlTable(
   "work_logs",
   {
     id: int("id").primaryKey().autoincrement(),
     userId: int("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
     day: date("day", { mode: "string" }).notNull(),
-    minutes: int("minutes").notNull().default(0),
+    endDay: date("end_day", { mode: "string" }).notNull(), // égal à « day » pour une seule journée
     place: mysqlEnum("place", ["entreprise", "ecole"]).notNull().default("entreprise"),
     mission: text("mission").notNull(),
     skills: varchar("skills", { length: 300 }), // compétences travaillées, séparées par des virgules

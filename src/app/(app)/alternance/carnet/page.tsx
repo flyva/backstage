@@ -5,12 +5,12 @@ import { db } from "@/db";
 import { workLogs } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { todayParis } from "@/lib/equipment";
-import { addMonths, dayLabel, fmtHours, isMonth, monthLabel } from "@/lib/alternance";
+import { addMonths, dayLabel, isMonth, monthLabel } from "@/lib/alternance";
 import { deleteLog } from "@/lib/alternance-actions";
 import { LogForm } from "@/components/alternance-forms";
 import { Markdown } from "@/components/Markdown";
 
-export const metadata = { title: "Carnet de liaison" };
+export const metadata = { title: "Carnet de compétences" };
 
 export default async function LogbookPage({ searchParams }: PageProps<"/alternance/carnet">) {
   const user = await requireUser();
@@ -23,11 +23,11 @@ export default async function LogbookPage({ searchParams }: PageProps<"/alternan
     .from(workLogs)
     .where(and(eq(workLogs.userId, user.id), like(workLogs.day, `${month}-%`)))
     .orderBy(desc(workLogs.day), desc(workLogs.id));
-  const total = logs.reduce((s, l) => s + l.minutes, 0);
-  const byPlace = (p: "entreprise" | "ecole") => logs.filter((l) => l.place === p).reduce((s, l) => s + l.minutes, 0);
+  const byPlace = (p: "entreprise" | "ecole") => logs.filter((l) => l.place === p).length;
   const skillCount = new Map<string, number>();
   for (const l of logs) for (const s of l.skills?.split(",") ?? []) skillCount.set(s, (skillCount.get(s) ?? 0) + 1);
   const skills = [...skillCount].sort((a, b) => b[1] - a[1]);
+  const period = (l: { day: string; endDay: string }) => (l.day === l.endDay ? dayLabel(l.day) : `${dayLabel(l.day)} → ${dayLabel(l.endDay)}`);
 
   return (
     <div className="space-y-6">
@@ -45,9 +45,9 @@ export default async function LogbookPage({ searchParams }: PageProps<"/alternan
           </div>
         </div>
         <dl className="grid gap-3 text-sm sm:grid-cols-3">
-          <div className="rounded-xl border border-line bg-bg p-3"><dt className="text-muted">Total du mois</dt><dd className="text-2xl font-bold tabular-nums">{fmtHours(total)}</dd></div>
-          <div className="rounded-xl border border-line bg-bg p-3"><dt className="text-muted">En entreprise</dt><dd className="text-2xl font-bold tabular-nums">{fmtHours(byPlace("entreprise"))}</dd></div>
-          <div className="rounded-xl border border-line bg-bg p-3"><dt className="text-muted">À l&apos;école</dt><dd className="text-2xl font-bold tabular-nums">{fmtHours(byPlace("ecole"))}</dd></div>
+          <div className="rounded-xl border border-line bg-bg p-3"><dt className="text-muted">Entrées du mois</dt><dd className="text-2xl font-bold tabular-nums">{logs.length}</dd></div>
+          <div className="rounded-xl border border-line bg-bg p-3"><dt className="text-muted">En entreprise</dt><dd className="text-2xl font-bold tabular-nums">{byPlace("entreprise")}</dd></div>
+          <div className="rounded-xl border border-line bg-bg p-3"><dt className="text-muted">À l&apos;école</dt><dd className="text-2xl font-bold tabular-nums">{byPlace("ecole")}</dd></div>
         </dl>
         {skills.length > 0 && (
           <p className="flex flex-wrap items-center gap-1.5 text-sm">
@@ -58,8 +58,8 @@ export default async function LogbookPage({ searchParams }: PageProps<"/alternan
       </section>
 
       <section className="card space-y-3">
-        <h2 className="font-semibold">Ajouter une journée</h2>
-        <LogForm day={today.startsWith(month) ? today : `${month}-01`} />
+        <h2 className="font-semibold">Ajouter une entrée</h2>
+        <LogForm today={today} day={today.startsWith(month) ? today : `${month}-01`} />
       </section>
 
       <section className="space-y-2">
@@ -68,13 +68,12 @@ export default async function LogbookPage({ searchParams }: PageProps<"/alternan
         {logs.map((l) => (
           <details key={l.id} className="card p-0">
             <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 marker:hidden">
-              <span className="font-medium capitalize">{dayLabel(l.day)}</span>
+              <span className="font-medium capitalize">{period(l)}</span>
               <span className="rounded-full border border-line px-2 py-0.5 text-xs text-muted">{l.place === "ecole" ? "École" : "Entreprise"}</span>
-              <span className="text-sm tabular-nums text-muted">{fmtHours(l.minutes)}</span>
             </summary>
             <div className="space-y-4 border-t border-line p-4">
               <div className="text-sm"><Markdown breaks>{l.mission}</Markdown></div>
-              <LogForm id={l.id} day={l.day} hours={fmtHours(l.minutes).replace(" ", "")} place={l.place} mission={l.mission} skills={l.skills ?? ""} />
+              <LogForm today={today} id={l.id} day={l.day} endDay={l.endDay} place={l.place} mission={l.mission} skills={l.skills ?? ""} />
               <form action={deleteLog} className="border-t border-line pt-3">
                 <input type="hidden" name="id" value={l.id} />
                 <button className="flex items-center gap-1 text-xs text-muted hover:text-danger"><Trash2 size={14} /> Supprimer l&apos;entrée</button>

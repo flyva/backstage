@@ -28,7 +28,7 @@ const GROUPS: Group[] = [
     id: "alternance", title: "Alternance",
     items: [
       { href: "/alternance", label: "Planning", icon: CalendarDays },
-      { href: "/alternance/carnet", label: "Carnet de liaison", icon: NotebookPen },
+      { href: "/alternance/carnet", label: "Carnet de compétences", icon: NotebookPen },
       { href: "/alternance/pointeuse", label: "Pointeuse", icon: Clock },
       { href: "/alternance/stats", label: "Statistiques", icon: BarChart3 },
     ],

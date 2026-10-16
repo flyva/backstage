@@ -1,0 +1,1 @@
+ALTER TABLE `work_logs` DROP COLUMN `minutes`;

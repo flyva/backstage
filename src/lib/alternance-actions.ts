@@ -6,7 +6,8 @@ import { z } from "zod";
 import { db } from "@/db";
 import { workDays, workLogs, WORK_KINDS } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
-import { KIND_CYCLE, addDays, isDay, isWeekend, parseHours } from "@/lib/alternance";
+import { todayParis } from "@/lib/equipment";
+import { KIND_CYCLE, addDays, isDay, isWeekend } from "@/lib/alternance";
 import type { FormState } from "@/lib/actions";
 
 const refresh = () => {
@@ -91,11 +92,11 @@ export async function applyRhythm(_: FormState, fd: FormData): Promise<FormState
   return { ok: `${school.length + company.length} jour(s) planifiés` };
 }
 
-// ---------- Carnet de liaison ----------
+// ---------- Carnet de compétences ----------
 
 const logSchema = z.object({
   day: z.string().refine(isDay, "Date invalide"),
-  hours: z.string().refine((v) => parseHours(v) !== null, "Durée invalide (ex. 7h30 ou 7,5)"),
+  endDay: z.string().refine(isDay, "Date de fin invalide"),
   place: z.enum(["entreprise", "ecole"]),
   mission: z.string().trim().min(3, "Décris la mission").max(5000),
   skills: z.string().trim().max(300),
@@ -108,9 +109,12 @@ const cleanSkills = (raw: string) => {
 
 export async function saveLog(_: FormState, fd: FormData): Promise<FormState> {
   const user = await requireUser();
-  const p = logSchema.safeParse({ day: fd.get("day"), hours: fd.get("hours"), place: fd.get("place"), mission: fd.get("mission"), skills: fd.get("skills") ?? "" });
+  const today = todayParis();
+  const p = logSchema.safeParse({ day: fd.get("day"), endDay: fd.get("endDay") || fd.get("day"), place: fd.get("place"), mission: fd.get("mission"), skills: fd.get("skills") ?? "" });
   if (!p.success) return { error: p.error.issues[0].message };
-  const values = { day: p.data.day, minutes: parseHours(p.data.hours)!, place: p.data.place, mission: p.data.mission, skills: cleanSkills(p.data.skills) };
+  if (p.data.day > today || p.data.endDay > today) return { error: "Impossible d'ajouter une entrée dans le futur" };
+  if (p.data.endDay < p.data.day) return { error: "La fin ne peut pas être avant le début" };
+  const values = { day: p.data.day, endDay: p.data.endDay, place: p.data.place, mission: p.data.mission, skills: cleanSkills(p.data.skills) };
   const raw = Number(fd.get("id") || 0);
   if (raw) await db.update(workLogs).set(values).where(and(eq(workLogs.id, raw), eq(workLogs.userId, user.id)));
   else await db.insert(workLogs).values({ ...values, userId: user.id });
