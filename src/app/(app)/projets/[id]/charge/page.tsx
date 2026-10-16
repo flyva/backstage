@@ -9,6 +9,7 @@ import { OUTLET_FILL, PRIORITY_LABEL, VOLTS, fmtNum, fmtWatts, lineResult, type 
 import { ItemForm, LineForm } from "@/components/build-forms";
 import { OhmCalc, OutletsCalc } from "@/components/Calculettes";
 import { SingleLineDiagram } from "@/components/SingleLineDiagram";
+import { PowerLive } from "@/components/PowerLive";
 
 export const metadata = { title: "Charge électrique" };
 
@@ -173,6 +174,7 @@ export default async function PowerPage({ params }: PageProps<"/projets/[id]/cha
 
   return (
     <div className="space-y-6">
+      <PowerLive projectId={project.id} />
       <section className="card space-y-2 text-sm">
         <h2 className="flex items-center gap-2 font-semibold"><Zap size={16} className="text-accent" /> Comment ça marche</h2>
         <p className="text-muted">

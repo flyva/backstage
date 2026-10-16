@@ -7,11 +7,12 @@ import { db } from "@/db";
 import { buildSlotAssignees, buildSlots, ITEM_PRIORITIES, powerCircuits, powerItems, projectMembers, techLights, fixtureModels } from "@/db/schema";
 import { requireProject } from "@/lib/projects";
 import { isDay } from "@/lib/alternance";
+import { emitPower } from "@/lib/power-bus";
 import type { FormState } from "@/lib/actions";
 
 const id = z.coerce.number().int().positive();
 const touchPlan = (pid: number) => revalidatePath(`/projets/${pid}/planning`);
-const touchPower = (pid: number) => revalidatePath(`/projets/${pid}/charge`);
+const touchPower = (pid: number) => { revalidatePath(`/projets/${pid}/charge`); emitPower(pid); };
 
 // ---------- Planning de montage ----------
 
