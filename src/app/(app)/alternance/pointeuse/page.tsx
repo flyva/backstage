@@ -43,7 +43,10 @@ export default async function PointeusePage({ searchParams }: PageProps<"/altern
             {month < currentMonth ? <Link href={`?m=${addMonths(month, 1)}`} className="btn-ghost px-2" aria-label="Mois suivant"><ChevronRight size={16} /></Link> : <span className="w-8" />}
             {month !== currentMonth && <Link href="?" className="btn-ghost ml-2 text-xs">Aujourd&apos;hui</Link>}
           </div>
-          <Link href="/alternance/stats" className="btn-ghost text-xs">Voir les statistiques →</Link>
+          <div className="flex gap-2">
+            <Link href="/alternance/pointeuse/lignes" className="btn-ghost text-xs">Toutes les lignes (tableau) →</Link>
+            <Link href="/alternance/stats" className="btn-ghost text-xs">Voir les statistiques →</Link>
+          </div>
         </div>
         <div className="rounded-xl border border-line bg-bg p-3 text-sm">
           <span className="text-muted">Effectif du mois (approximatif, voir les stats pour le détail) : </span>
