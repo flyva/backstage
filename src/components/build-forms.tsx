@@ -1,9 +1,9 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import type { FormState } from "@/lib/actions";
 import { LINE_AMPS, OUTLET_AMPS, PRIORITY_LABEL, type ItemPriority } from "@/lib/power";
-import { saveCircuit, saveItem, saveSlot } from "@/lib/build-actions";
+import { saveCircuit, saveFeeder, saveItem, saveSlot } from "@/lib/build-actions";
 import { TagPicker } from "@/components/TagPicker";
 
 function Feedback({ state }: { state: FormState }) {
@@ -78,12 +78,15 @@ export function LineForm({ projectId, id, name = "", breakerAmps = 32, mode = "t
 }
 
 export function ItemForm({
-  projectId, circuits, id, name = "", watts = "", qty = 1, circuitId = null, requiresTetra = false, priority = "normal",
+  projectId, circuits, feeders, id, name = "", watts = "", qty = 1, circuitId = null, feederId = null, requiresTetra = false, priority = "normal",
 }: {
-  projectId: number; circuits: { id: number; name: string }[]; id?: number; name?: string; watts?: number | string; qty?: number; circuitId?: number | null; requiresTetra?: boolean; priority?: ItemPriority;
+  projectId: number; circuits: { id: number; name: string }[]; feeders?: { id: number; circuitId: number; name: string }[];
+  id?: number; name?: string; watts?: number | string; qty?: number; circuitId?: number | null; feederId?: number | null; requiresTetra?: boolean; priority?: ItemPriority;
 }) {
   const [state, action, pending] = useActionState(saveItem, undefined);
+  const [selCircuit, setSelCircuit] = useState<number | null>(circuitId);
   const k = id ?? "new";
+  const circuitFeeders = (feeders ?? []).filter((f) => f.circuitId === selCircuit);
   return (
     <form action={action} className="flex flex-wrap items-end gap-3" key={id ? `e${id}` : state?.ok ? "done" : "new"}>
       <input type="hidden" name="projectId" value={projectId} />
@@ -93,8 +96,20 @@ export function ItemForm({
       <div className="w-24"><label className="label" htmlFor={`iq${k}`}>Quantité</label><input id={`iq${k}`} name="qty" type="number" min={1} max={999} defaultValue={qty} className="input" /></div>
       <div className="min-w-40">
         <label className="label" htmlFor={`ic${k}`}>Ligne</label>
-        <select id={`ic${k}`} name="circuitId" defaultValue={circuitId ?? ""} className="input"><option value="">Non affecté</option>{circuits.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+        <select id={`ic${k}`} name="circuitId" defaultValue={circuitId ?? ""} className="input" onChange={(e) => setSelCircuit(e.target.value ? Number(e.target.value) : null)}>
+          <option value="">Non affecté</option>
+          {circuits.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
       </div>
+      {circuitFeeders.length > 0 && (
+        <div className="min-w-40" key={`fd-${selCircuit}`}>
+          <label className="label" htmlFor={`ifd${k}`}>Départ</label>
+          <select id={`ifd${k}`} name="feederId" defaultValue={feederId ?? ""} className="input">
+            <option value="">Réparti automatiquement</option>
+            {circuitFeeders.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+          </select>
+        </div>
+      )}
       <div className="w-36">
         <label className="label" htmlFor={`ip${k}`}>Priorité</label>
         <select id={`ip${k}`} name="priority" defaultValue={priority} className="input">
@@ -107,7 +122,26 @@ export function ItemForm({
       </label>
       <button className="btn" disabled={pending}>{pending ? "…" : id ? "Enregistrer" : "Ajouter"}</button>
       <div className="basis-full"><Feedback state={state} /></div>
-      <p className="basis-full text-xs text-muted">Priorité : utilisée pour suggérer quoi retirer en cas de surcharge (jamais « Essentiel »). Triphasé : l&apos;appareil est exclu automatiquement du calcul si tu le mets sur une ligne monophasée.</p>
+      <p className="basis-full text-xs text-muted">Priorité : utilisée pour suggérer quoi retirer en cas de surcharge (jamais « Essentiel »). Triphasé : l&apos;appareil est exclu automatiquement du calcul si tu le mets sur une ligne monophasée. Départ : laisse « Réparti automatiquement » sauf si tu veux cet appareil sur un départ précis.</p>
+    </form>
+  );
+}
+
+export function FeederForm({ projectId, circuitId, id, name = "", outletCount = null }: { projectId: number; circuitId: number; id?: number; name?: string; outletCount?: number | null }) {
+  const [state, action, pending] = useActionState(saveFeeder, undefined);
+  const k = id ?? "new";
+  return (
+    <form action={action} className="flex flex-wrap items-end gap-3" key={id ? `e${id}` : state?.ok ? "done" : "new"}>
+      <input type="hidden" name="projectId" value={projectId} />
+      <input type="hidden" name="circuitId" value={circuitId} />
+      {id && <input type="hidden" name="id" value={id} />}
+      <div className="min-w-40 flex-1"><label className="label" htmlFor={`fn${k}`}>Nom du départ</label><input id={`fn${k}`} name="name" defaultValue={name} required maxLength={60} placeholder="Jardin, Cour, Régie…" className="input" /></div>
+      <div className="w-44">
+        <label className="label" htmlFor={`fo${k}`}>Nombre de prises</label>
+        <input id={`fo${k}`} name="outletCount" type="number" min={1} max={60} defaultValue={outletCount ?? ""} placeholder="Auto (le minimum)" className="input" />
+      </div>
+      <button className="btn" disabled={pending}>{pending ? "…" : id ? "Enregistrer" : "Ajouter"}</button>
+      <div className="basis-full"><Feedback state={state} /></div>
     </form>
   );
 }

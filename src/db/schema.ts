@@ -768,6 +768,20 @@ export const powerCircuits = mysqlTable(
   (t) => [index("pc_project_idx").on(t.projectId)],
 );
 
+// Un départ d'une ligne divisée (feederAmps) : nommé et réglé librement par l'utilisateur. Les appareils qui n'ont pas
+// de départ choisi explicitement sont répartis automatiquement entre les départs existants (toujours sur le moins chargé).
+export const powerFeeders = mysqlTable(
+  "power_feeders",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    circuitId: int("circuit_id").notNull().references(() => powerCircuits.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 60 }).notNull(),
+    outletCount: int("outlet_count"), // nombre de prises voulu pour ce départ ; vide = le minimum calculé
+    position: int("position").notNull().default(0),
+  },
+  (t) => [index("pf_circuit_idx").on(t.circuitId)],
+);
+
 export const ITEM_PRIORITIES = ["essentiel", "normal", "optionnel"] as const;
 export type ItemPriority = (typeof ITEM_PRIORITIES)[number];
 
@@ -777,6 +791,8 @@ export const powerItems = mysqlTable(
     id: int("id").primaryKey().autoincrement(),
     projectId: int("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
     circuitId: int("circuit_id").references(() => powerCircuits.id, { onDelete: "set null" }),
+    // Départ choisi explicitement (doit appartenir à la même ligne) ; vide = réparti automatiquement entre les départs.
+    feederId: int("feeder_id").references(() => powerFeeders.id, { onDelete: "set null" }),
     name: varchar("name", { length: 120 }).notNull(),
     watts: int("watts").notNull(),
     qty: int("qty").notNull().default(1),

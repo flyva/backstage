@@ -2,11 +2,11 @@ import Link from "next/link";
 import { asc, eq } from "drizzle-orm";
 import { AlertTriangle, Trash2, Zap } from "lucide-react";
 import { db } from "@/db";
-import { powerCircuits, powerItems } from "@/db/schema";
+import { powerCircuits, powerFeeders, powerItems } from "@/db/schema";
 import { can, requireProject } from "@/lib/projects";
-import { deleteCircuit, deleteItem, importLightsToPower } from "@/lib/build-actions";
+import { deleteCircuit, deleteFeeder, deleteItem, importLightsToPower } from "@/lib/build-actions";
 import { OUTLET_FILL, PRIORITY_LABEL, VOLTS, fmtNum, fmtWatts, lineResult, type LineResult } from "@/lib/power";
-import { ItemForm, LineForm } from "@/components/build-forms";
+import { FeederForm, ItemForm, LineForm } from "@/components/build-forms";
 import { OhmCalc, OutletsCalc } from "@/components/Calculettes";
 import { SingleLineDiagram } from "@/components/SingleLineDiagram";
 import { PowerLive } from "@/components/PowerLive";
@@ -30,7 +30,7 @@ function Bar({ pct, label }: { pct: number; label: string }) {
 /** Avertit quand le nombre de prises voulu ne suffit pas (une prise au-delà de 100 %, ou une phase sans prise). */
 function OutletWarnings({ r }: { r: LineResult }) {
   const rows = r.feeders.length > 0
-    ? r.feeders.flatMap((fd) => fd.phases.filter((ph) => ph.groups.length > 0).map((ph) => ({ label: `Départ ${fd.index}${r.mode === "tetra" ? ` L${ph.phase}` : ""}`, amps: ph.amps, outlets: ph.outlets })))
+    ? r.feeders.flatMap((fd) => fd.phases.filter((ph) => ph.groups.length > 0).map((ph) => ({ label: `${fd.name}${r.mode === "tetra" ? ` L${ph.phase}` : ""}`, amps: ph.amps, outlets: ph.outlets })))
     : r.phases.filter((p) => p.groups.length > 0).map((p) => ({ label: r.mode === "tetra" ? `L${p.phase}` : "Ligne", amps: p.amps, outlets: p.outlets }));
   const usable = outletAmps(r) * OUTLET_FILL;
   const msgs = rows.flatMap((row) => {
@@ -57,7 +57,7 @@ function Detail({ r }: { r: LineResult }) {
   const avgAmps = r.watts / VOLTS / r.phases.length;
   // Lignes du calcul des prises : par départ et par phase si la ligne est divisée, sinon par phase.
   const outletRows = r.feeders.length > 0
-    ? r.feeders.flatMap((fd) => fd.phases.filter((ph) => ph.groups.length > 0).map((ph) => ({ key: `${fd.index}-${ph.phase}`, label: `Départ ${fd.index}${tetra ? ` · L${ph.phase}` : ""}`, amps: ph.amps, outlets: ph.outlets, min: Math.ceil(ph.amps / (outletAmps(r) * OUTLET_FILL) - 1e-9) })))
+    ? r.feeders.flatMap((fd) => fd.phases.filter((ph) => ph.groups.length > 0).map((ph) => ({ key: `${fd.index}-${ph.phase}`, label: `${fd.name}${tetra ? ` · L${ph.phase}` : ""}`, amps: ph.amps, outlets: ph.outlets, min: Math.ceil(ph.amps / (outletAmps(r) * OUTLET_FILL) - 1e-9) })))
     : r.phases.map((p) => ({ key: String(p.phase), label: tetra ? `L${p.phase}` : "", amps: p.amps, outlets: p.outlets, min: p.outletsMin }));
   return (
     <details open className="rounded-xl border border-line bg-bg p-3 text-xs">
@@ -120,7 +120,7 @@ function Detail({ r }: { r: LineResult }) {
             Sur chaque phase, les appareils sont répartis entre les départs, toujours sur le moins chargé.
             <ul className="mt-1 space-y-0.5">
               {r.feeders.map((fd) => (
-                <li key={fd.index}>Départ {fd.index} : {fd.phases.map((ph) => `${tetra ? `L${ph.phase} ` : ""}${fmtNum(ph.amps, 2)} A`).join(" ; ")} (sur {r.feederAmps} A)</li>
+                <li key={fd.index}>{fd.name} : {fd.phases.map((ph) => `${tetra ? `L${ph.phase} ` : ""}${fmtNum(ph.amps, 2)} A`).join(" ; ")} (sur {r.feederAmps} A)</li>
               ))}
             </ul>
             Contrôle : sur chaque phase, la somme des départs ({fmtNum(Math.max(...r.phases.map((p) => p.amps)), 2)} A au plus) doit rester sous le calibre de la ligne ({r.circuit.breakerAmps} A) : {Math.max(...r.phases.map((p) => p.amps)) <= r.circuit.breakerAmps ? "✓" : "dépassé"}.
@@ -163,11 +163,14 @@ export default async function PowerPage({ params }: PageProps<"/projets/[id]/cha
   const { project, role } = await requireProject(Number(id));
   const canEdit = can(role, "editor");
 
-  const [circuits, items] = await Promise.all([
+  const [circuits, items, feeders] = await Promise.all([
     db.select().from(powerCircuits).where(eq(powerCircuits.projectId, project.id)).orderBy(asc(powerCircuits.position), asc(powerCircuits.id)),
     db.select().from(powerItems).where(eq(powerItems.projectId, project.id)).orderBy(asc(powerItems.name), asc(powerItems.id)),
+    db.select({ id: powerFeeders.id, circuitId: powerFeeders.circuitId, name: powerFeeders.name, position: powerFeeders.position, outletCount: powerFeeders.outletCount })
+      .from(powerFeeders).innerJoin(powerCircuits, eq(powerFeeders.circuitId, powerCircuits.id)).where(eq(powerCircuits.projectId, project.id))
+      .orderBy(asc(powerFeeders.position), asc(powerFeeders.id)),
   ]);
-  const lines = circuits.map((c) => lineResult(c, items));
+  const lines = circuits.map((c) => lineResult(c, items, feeders));
   const totalW = items.reduce((s, i) => s + i.watts * i.qty, 0);
   const unassigned = items.filter((i) => i.circuitId === null);
   const problems = lines.filter((l) => l.level !== "ok").length;
@@ -277,7 +280,7 @@ export default async function PowerPage({ params }: PageProps<"/projets/[id]/cha
                     {r.feeders.map((fd) => (
                       <div key={fd.index} className="space-y-2 rounded-xl border border-line bg-bg p-3">
                         <div className="flex flex-wrap items-baseline justify-between gap-x-3 text-sm">
-                          <span className="font-medium">Départ {fd.index} · {r.feederAmps} A {tetra ? "tétra" : "mono"}</span>
+                          <span className="font-medium">{fd.name} · {r.feederAmps} A {tetra ? "tétra" : "mono"}</span>
                           <span className="tabular-nums text-muted">{fmtWatts(fd.watts)} · phase la plus chargée à <strong className={fd.maxPct > 100 ? "text-danger" : fd.maxPct > 80 ? "text-amber-600 dark:text-amber-400" : "text-fg"}>{fmtNum(fd.maxPct)} %</strong></span>
                         </div>
                         <ul className="space-y-2">
@@ -295,8 +298,28 @@ export default async function PowerPage({ params }: PageProps<"/projets/[id]/cha
                             </li>
                           ))}
                         </ul>
+                        {canEdit && fd.id != null && (
+                          <details className="border-t border-line pt-2">
+                            <summary className="cursor-pointer list-none text-xs text-muted hover:text-fg marker:hidden">Modifier ce départ</summary>
+                            <div className="space-y-3 pt-2">
+                              <FeederForm projectId={project.id} circuitId={r.circuit.id} id={fd.id} name={fd.name} outletCount={feeders.find((f) => f.id === fd.id)?.outletCount ?? null} />
+                              <form action={deleteFeeder} className="border-t border-line pt-3">
+                                <input type="hidden" name="projectId" value={project.id} />
+                                <input type="hidden" name="circuitId" value={r.circuit.id} />
+                                <input type="hidden" name="id" value={fd.id} />
+                                <button className="flex items-center gap-1 text-xs text-muted hover:text-danger"><Trash2 size={14} /> Supprimer ce départ (les appareils restent, répartis automatiquement)</button>
+                              </form>
+                            </div>
+                          </details>
+                        )}
                       </div>
                     ))}
+                    {canEdit && (
+                      <div className="space-y-2 rounded-xl border border-dashed border-line p-3">
+                        <h5 className="text-xs font-semibold text-muted">Ajouter un départ (nommé, avec son propre nombre de prises)</h5>
+                        <FeederForm projectId={project.id} circuitId={r.circuit.id} />
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -349,13 +372,13 @@ export default async function PowerPage({ params }: PageProps<"/projets/[id]/cha
                 {i.priority !== "normal" && <span className="rounded-full border border-line px-1.5 py-0.5 text-[11px] text-muted">{PRIORITY_LABEL[i.priority]}</span>}
                 {i.requiresTetra && <span className="rounded-full border border-line px-1.5 py-0.5 text-[11px] text-muted">Triphasé requis</span>}
                 <span className="tabular-nums text-muted">{i.qty} × {i.watts} W = {fmtWatts(i.qty * i.watts)}</span>
-                <span className="text-xs text-muted">{circuits.find((c) => c.id === i.circuitId)?.name ?? "Sans ligne"}</span>
+                <span className="text-xs text-muted">{circuits.find((c) => c.id === i.circuitId)?.name ?? "Sans ligne"}{i.feederId != null ? ` · ${feeders.find((f) => f.id === i.feederId)?.name ?? "départ"}` : ""}</span>
               </div>
               {canEdit && (
                 <details className="border-t border-line">
                   <summary className="cursor-pointer list-none px-3 py-1.5 text-xs text-muted hover:text-fg marker:hidden">Modifier</summary>
                   <div className="space-y-3 p-3 pt-1">
-                    <ItemForm projectId={project.id} circuits={circuits} id={i.id} name={i.name} watts={i.watts} qty={i.qty} circuitId={i.circuitId} requiresTetra={i.requiresTetra} priority={i.priority} />
+                    <ItemForm projectId={project.id} circuits={circuits} feeders={feeders} id={i.id} name={i.name} watts={i.watts} qty={i.qty} circuitId={i.circuitId} feederId={i.feederId} requiresTetra={i.requiresTetra} priority={i.priority} />
                     <form action={deleteItem} className="border-t border-line pt-3">
                       <input type="hidden" name="projectId" value={project.id} />
                       <input type="hidden" name="id" value={i.id} />
@@ -370,7 +393,7 @@ export default async function PowerPage({ params }: PageProps<"/projets/[id]/cha
         {canEdit && (
           <div className="card space-y-2">
             <h3 className="text-sm font-semibold">Ajouter un appareil</h3>
-            <ItemForm projectId={project.id} circuits={circuits} />
+            <ItemForm projectId={project.id} circuits={circuits} feeders={feeders} />
           </div>
         )}
       </section>

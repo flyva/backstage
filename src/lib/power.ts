@@ -7,9 +7,11 @@ export const PRIORITY_LABEL: Record<ItemPriority, string> = { essentiel: "Essent
 /** Ordre de délestage : on retire d'abord l'optionnel, puis le normal, jamais l'essentiel. */
 const SHED_ORDER: ItemPriority[] = ["optionnel", "normal"];
 
-export type PowerItem = { id: number; circuitId: number | null; name: string; watts: number; qty: number; requiresTetra?: boolean; priority?: ItemPriority };
+export type PowerItem = { id: number; circuitId: number | null; feederId?: number | null; name: string; watts: number; qty: number; requiresTetra?: boolean; priority?: ItemPriority };
 export type SupplyMode = "mono" | "tetra";
 export type PowerCircuit = { id: number; name: string; breakerAmps: number; phase: number; mode?: SupplyMode; outletAmps?: number; feederAmps?: number | null; outletCount?: number | null };
+/** Un départ nommé d'une ligne divisée (feederAmps), avec son propre nombre de prises voulu. */
+export type Feeder = { id: number; circuitId: number; name: string; position: number; outletCount: number | null };
 
 export type CircuitLoad = { circuit: PowerCircuit; watts: number; amps: number; pct: number; level: "ok" | "warn" | "over" };
 
@@ -55,7 +57,7 @@ export const OUTLET_FILL = 0.8;
 export type PhaseGroup = { itemId: number; name: string; watts: number; qty: number; priority: ItemPriority };
 export type OutletResult = { index: number; groups: PhaseGroup[]; watts: number; amps: number; pct: number };
 export type FeederPhase = { phase: number; groups: PhaseGroup[]; watts: number; amps: number; pct: number; outlets: OutletResult[] };
-export type FeederResult = { index: number; phases: FeederPhase[]; watts: number; maxPct: number };
+export type FeederResult = { index: number; id: number | null; name: string; phases: FeederPhase[]; watts: number; maxPct: number };
 export type ShedItem = { itemId: number; name: string; watts: number; qty: number; priority: ItemPriority; critical: boolean };
 export type PhaseResult = { phase: number; groups: PhaseGroup[]; watts: number; amps: number; pct: number; outlets: OutletResult[]; outletsMin: number; shed: ShedItem[] };
 export type ExcludedItem = { itemId: number; name: string; watts: number; qty: number };
@@ -170,21 +172,31 @@ export function spreadOutlets(groups: PhaseGroup[], outletAmps: number, count: n
 }
 
 /**
- * Division d'une ligne en départs (ex. un 63 A tétra divisé en départs de 32 A) : le nombre de départs est celui qu'exige la
- * phase la plus chargée (80 % du calibre du départ). Sur chaque phase, les appareils sont répartis entre les départs (toujours
- * sur le moins chargé), puis rangés sur des prises dans chaque départ.
+ * Division d'une ligne en départs (ex. un 63 A tétra divisé en départs de 32 A). S'il existe des départs créés par
+ * l'utilisateur (nommés, avec leur propre nombre de prises), ce sont eux qui sont utilisés ; sinon le nombre de départs
+ * est calculé automatiquement d'après la phase la plus chargée (80 % du calibre du départ), comme avant. Sur chaque phase,
+ * un appareil assigné explicitement à un départ y reste ; les autres sont répartis entre les départs (toujours sur le moins
+ * chargé), puis rangés sur des prises dans chaque départ.
  */
-function splitFeeders(phases: PhaseResult[], feederAmps: number, outletAmps: number, outletCount: number | null): { feeders: FeederResult[]; min: number } {
+function splitFeeders(
+  phases: PhaseResult[], feederAmps: number, outletAmps: number, outletCount: number | null,
+  storedFeeders: Feeder[], itemFeederMap: Map<number, number>,
+): { feeders: FeederResult[]; min: number } {
   const usable = feederAmps * OUTLET_FILL;
   const min = Math.max(...phases.map((p) => Math.ceil(p.amps / usable - 1e-9)), 0);
-  if (min === 0) return { feeders: [], min: 0 };
-  const feeders: FeederResult[] = Array.from({ length: min }, (_, i) => ({ index: i + 1, phases: [], watts: 0, maxPct: 0 }));
+  if (min === 0 && storedFeeders.length === 0) return { feeders: [], min: 0 };
+  const defs: { id: number | null; name: string; outletCount: number | null }[] = storedFeeders.length > 0
+    ? storedFeeders.map((f) => ({ id: f.id, name: f.name, outletCount: f.outletCount }))
+    : Array.from({ length: min }, (_, i) => ({ id: null, name: `Départ ${i + 1}`, outletCount: null }));
+  const feeders: FeederResult[] = defs.map((d, i) => ({ index: i + 1, id: d.id, name: d.name, phases: [], watts: 0, maxPct: 0 }));
   for (const p of phases) {
-    const sums = Array.from({ length: min }, () => 0);
-    const groups: Map<number, PhaseGroup>[] = Array.from({ length: min }, () => new Map());
+    const sums = Array.from({ length: defs.length }, () => 0);
+    const groups: Map<number, PhaseGroup>[] = Array.from({ length: defs.length }, () => new Map());
     const units = p.groups.flatMap((g) => Array.from({ length: g.qty }, () => g)).sort((a, b) => b.watts - a.watts);
     for (const u of units) {
-      const f = sums.indexOf(Math.min(...sums));
+      const pinned = itemFeederMap.get(u.itemId);
+      let f = pinned != null ? defs.findIndex((d) => d.id === pinned) : -1;
+      if (f < 0) f = sums.indexOf(Math.min(...sums)); // pas de départ choisi (ou départ supprimé entre-temps) : le moins chargé
       sums[f] += u.watts;
       const g = groups[f].get(u.itemId);
       if (g) g.qty += 1;
@@ -196,13 +208,14 @@ function splitFeeders(phases: PhaseResult[], feederAmps: number, outletAmps: num
       fd.phases.push({ phase: p.phase, groups: list, watts: sums[f], amps: a, pct: (a / feederAmps) * 100, outlets: [] });
     });
   }
-  for (const fd of feeders) {
-    // Prises : nombre voulu (réparti entre les phases du départ) ou minimum calculé.
-    const counts = outletCount ? allocateOutlets(fd.phases.map((ph) => ph.watts), outletCount) : null;
-    fd.phases.forEach((ph, i) => { ph.outlets = counts ? spreadOutlets(ph.groups, outletAmps, counts[i]) : packOutlets(ph.groups, outletAmps); });
+  feeders.forEach((fd, i) => {
+    // Prises : nombre propre au départ, sinon celui de la ligne, sinon le minimum calculé.
+    const wanted = defs[i].outletCount ?? outletCount;
+    const counts = wanted ? allocateOutlets(fd.phases.map((ph) => ph.watts), wanted) : null;
+    fd.phases.forEach((ph, k) => { ph.outlets = counts ? spreadOutlets(ph.groups, outletAmps, counts[k]) : packOutlets(ph.groups, outletAmps); });
     fd.watts = fd.phases.reduce((n, p) => n + p.watts, 0);
     fd.maxPct = Math.max(...fd.phases.map((p) => p.pct));
-  }
+  });
   return { feeders, min };
 }
 
@@ -210,7 +223,7 @@ function splitFeeders(phases: PhaseResult[], feederAmps: number, outletAmps: num
  * Calcul d'une ligne : les appareils sont répartis tout seuls sur les phases (un par un, du plus gros au plus petit, sur la
  * phase la moins chargée), puis chaque phase est comparée au calibre. En monophasé, tout est sur une seule phase.
  */
-export function lineResult(circuit: PowerCircuit, items: PowerItem[]): LineResult {
+export function lineResult(circuit: PowerCircuit, items: PowerItem[], feeders: Feeder[] = []): LineResult {
   const mode: SupplyMode = circuit.mode ?? "tetra";
   const n = mode === "tetra" ? 3 : 1;
   const sums = Array.from({ length: n }, () => 0);
@@ -247,7 +260,9 @@ export function lineResult(circuit: PowerCircuit, items: PowerItem[]): LineResul
   });
   const worstPct = Math.max(...phases.map((p) => p.pct));
   const feederAmps = circuit.feederAmps ?? null;
-  const split = feederAmps ? splitFeeders(phases, feederAmps, circuit.outletAmps ?? 16, wantedCount) : { feeders: [], min: 0 };
+  const myFeeders = feeders.filter((f) => f.circuitId === circuit.id).sort((a, b) => a.position - b.position || a.id - b.id);
+  const itemFeederMap = new Map(mine.filter((i) => i.feederId != null).map((i) => [i.id, i.feederId as number]));
+  const split = feederAmps ? splitFeeders(phases, feederAmps, circuit.outletAmps ?? 16, wantedCount, myFeeders, itemFeederMap) : { feeders: [], min: 0 };
   const outletsTotal = split.feeders.length > 0
     ? split.feeders.reduce((s, fd) => s + fd.phases.reduce((s2, ph) => s2 + ph.outlets.length, 0), 0)
     : phases.reduce((s, p) => s + p.outlets.length, 0);

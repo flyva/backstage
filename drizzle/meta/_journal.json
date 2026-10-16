@@ -428,6 +428,13 @@
       "when": 1792132087861,
       "tag": "0060_cynical_jackpot",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "5",
+      "when": 1792139385132,
+      "tag": "0061_warm_multiple_man",
+      "breakpoints": true
     }
   ]
 }

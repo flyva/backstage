@@ -29,7 +29,7 @@ function buildTree(lines: LineResult[]): Node {
       base.children = r.feeders.map((fd): Node => {
         const n = fd.phases.reduce((s, ph) => s + ph.outlets.length, 0);
         return {
-          label: `Départ ${fd.index}`,
+          label: fd.name,
           level: fd.maxPct > 100 ? "over" : fd.maxPct > 80 ? "warn" : "ok",
           meta: [
             `${r.feederAmps} A`,

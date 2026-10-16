@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { buildSlotAssignees, buildSlots, ITEM_PRIORITIES, powerCircuits, powerItems, projectMembers, techLights, fixtureModels } from "@/db/schema";
+import { buildSlotAssignees, buildSlots, ITEM_PRIORITIES, powerCircuits, powerFeeders, powerItems, projectMembers, techLights, fixtureModels } from "@/db/schema";
 import { requireProject } from "@/lib/projects";
 import { isDay } from "@/lib/alternance";
 import { emitPower } from "@/lib/power-bus";
@@ -122,9 +122,16 @@ export async function saveItem(_: FormState, fd: FormData): Promise<FormState> {
     if (!c) return { error: "Ligne introuvable" };
     circuitId = c.i;
   }
+  // Le départ choisi doit appartenir à cette même ligne ; sinon l'appareil reste réparti automatiquement.
+  let feederId: number | null = null;
+  const rawFeeder = Number(fd.get("feederId") || 0);
+  if (rawFeeder && circuitId) {
+    const [f] = await db.select({ i: powerFeeders.id }).from(powerFeeders).where(and(eq(powerFeeders.id, rawFeeder), eq(powerFeeders.circuitId, circuitId))).limit(1);
+    if (f) feederId = f.i;
+  }
   const raw = Number(fd.get("id") || 0);
-  if (raw) await db.update(powerItems).set({ ...p.data, circuitId }).where(and(eq(powerItems.id, raw), eq(powerItems.projectId, pid)));
-  else await db.insert(powerItems).values({ ...p.data, circuitId, projectId: pid });
+  if (raw) await db.update(powerItems).set({ ...p.data, circuitId, feederId }).where(and(eq(powerItems.id, raw), eq(powerItems.projectId, pid)));
+  else await db.insert(powerItems).values({ ...p.data, circuitId, feederId, projectId: pid });
   touchPower(pid);
   return { ok: raw ? "Appareil enregistré" : "Appareil ajouté" };
 }
@@ -134,6 +141,40 @@ export async function deleteItem(fd: FormData) {
   await requireProject(pid, "editor");
   await db.delete(powerItems).where(and(eq(powerItems.id, id.parse(fd.get("id"))), eq(powerItems.projectId, pid)));
   touchPower(pid);
+}
+
+// ---------- Départs ----------
+
+const feederSchema = z.object({
+  name: z.string().trim().min(1, "Nom du départ requis").max(60),
+  outletCount: z.preprocess((v) => (v === "" || v == null ? null : Number(v)), z.number().int().min(1, "Au moins 1 prise").max(60, "60 prises maximum").nullable()),
+});
+
+export async function saveFeeder(_: FormState, fd: FormData): Promise<FormState> {
+  const pid = id.parse(fd.get("projectId"));
+  await requireProject(pid, "editor");
+  const circuitId = id.parse(fd.get("circuitId"));
+  const [c] = await db.select({ i: powerCircuits.id }).from(powerCircuits).where(and(eq(powerCircuits.id, circuitId), eq(powerCircuits.projectId, pid))).limit(1);
+  if (!c) return { error: "Ligne introuvable" };
+  const p = feederSchema.safeParse({ name: fd.get("name"), outletCount: fd.get("outletCount") });
+  if (!p.success) return { error: p.error.issues[0].message };
+  const raw = Number(fd.get("id") || 0);
+  if (raw) {
+    await db.update(powerFeeders).set(p.data).where(and(eq(powerFeeders.id, raw), eq(powerFeeders.circuitId, circuitId)));
+  } else {
+    const rows = await db.select({ i: powerFeeders.id }).from(powerFeeders).where(eq(powerFeeders.circuitId, circuitId));
+    await db.insert(powerFeeders).values({ ...p.data, circuitId, position: rows.length });
+  }
+  touchPower(pid);
+  return { ok: raw ? "Départ enregistré" : "Départ ajouté" };
+}
+
+export async function deleteFeeder(fd: FormData) {
+  const pid = id.parse(fd.get("projectId"));
+  await requireProject(pid, "editor");
+  const circuitId = id.parse(fd.get("circuitId"));
+  await db.delete(powerFeeders).where(and(eq(powerFeeders.id, id.parse(fd.get("id"))), eq(powerFeeders.circuitId, circuitId)));
+  touchPower(pid); // les appareils de ce départ restent, répartis automatiquement (clé « set null »)
 }
 
 /** Importe les projecteurs de la fiche lumière (regroupés par nom) ; la puissance vient de la bibliothèque si le nom y est. */
