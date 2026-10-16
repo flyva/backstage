@@ -48,9 +48,21 @@ export async function importGuide(): Promise<FormState> {
   }
 
   const now = new Date();
-  const idBySlug = new Map((await db.select({ id: wikiPages.id, slug: wikiPages.slug }).from(wikiPages)).map((p) => [p.slug, p.id]));
+  const existingPages = await db.select({ id: wikiPages.id, slug: wikiPages.slug, category: wikiPages.category }).from(wikiPages);
+  const idBySlug = new Map(existingPages.map((p) => [p.slug, p.id]));
+  const categoryBySlug = new Map(existingPages.map((p) => [p.slug, p.category]));
+  let recategorized = 0;
   for (const p of GUIDE_PAGES) {
-    if (idBySlug.has(p.slug)) continue;
+    const existingId = idBySlug.get(p.slug);
+    if (existingId) {
+      // Page déjà importée : son texte reste celui édité depuis (jamais écrasé), mais on corrige sa catégorie si elle a
+      // dérivé (ex. une page du guide de rentrée mal classée dans « Cours »).
+      if (categoryBySlug.get(p.slug) !== p.category) {
+        await db.update(wikiPages).set({ category: p.category }).where(eq(wikiPages.id, existingId));
+        recategorized++;
+      }
+      continue;
+    }
     const parentId = p.parent ? (idBySlug.get(p.parent) ?? null) : null;
     const [res] = await db.insert(wikiPages).values({ slug: p.slug, title: p.title, category: p.category, parentId, body: p.body, createdBy: admin.id, updatedBy: admin.id, createdAt: now, updatedAt: now });
     await db.insert(wikiRevisions).values({ pageId: res.insertId, title: p.title, body: p.body, editorId: admin.id, createdAt: now });
@@ -72,8 +84,8 @@ export async function importGuide(): Promise<FormState> {
   }
 
   revalidatePath("/", "layout");
-  const total = n.contacts + n.faq + n.links + n.pages + n.settings;
-  return { ok: total === 0 ? "Tout est déjà à jour : rien à ajouter." : `Ajouté : ${n.contacts} contact(s), ${n.faq} question(s) FAQ, ${n.links} lien(s), ${n.pages} page(s) du wiki, ${n.settings} réglage(s).` };
+  const total = n.contacts + n.faq + n.links + n.pages + n.settings + recategorized;
+  return { ok: total === 0 ? "Tout est déjà à jour : rien à ajouter." : `Ajouté : ${n.contacts} contact(s), ${n.faq} question(s) FAQ, ${n.links} lien(s), ${n.pages} page(s) du wiki, ${n.settings} réglage(s)${recategorized ? `, ${recategorized} page(s) reclassée(s)` : ""}.` };
 }
 
 /**
