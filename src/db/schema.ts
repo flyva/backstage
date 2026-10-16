@@ -12,6 +12,7 @@ import {
   date,
   mediumtext,
   uniqueIndex,
+  type AnyMySqlColumn,
 } from "drizzle-orm/mysql-core";
 
 // Rôles (comme dans Oasis / Adie) : un nom et des droits par domaine. « admin » donne tout. Les rôles « système »
@@ -111,6 +112,10 @@ export const users = mysqlTable("users", {
   notifyMessages: boolean("notify_messages").notNull().default(true), // messages des annonces, vente validée, nouvel avis
   notifyListings: boolean("notify_listings").notNull().default(false), // nouvelle annonce publiée par la promo (désactivé par défaut : peut être bavard)
   notifyUpdates: boolean("notify_updates").notNull().default(true), // nouveauté marquée importante
+  // Pointeuse : durée d'une journée standard (par défaut 7 h), utilisée pour calculer les heures sup sur les jours pointés.
+  standardWorkMinutes: int("standard_work_minutes").notNull().default(420),
+  // Référent (tuteur, patron…) : voit en lecture seule la pointeuse et les stats de la personne, s'il est lui-même désigné ici.
+  tutorUserId: int("tutor_user_id").references((): AnyMySqlColumn => users.id, { onDelete: "set null" }),
   createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
 });
 
@@ -665,7 +670,7 @@ export const projectFiles = mysqlTable(
 
 // ---------- Alternance : planning école / entreprise et carnet de liaison ----------
 
-export const WORK_KINDS = ["ecole", "entreprise", "conge", "ferie"] as const;
+export const WORK_KINDS = ["ecole", "entreprise", "conge", "ferie", "maladie"] as const;
 export type WorkKind = (typeof WORK_KINDS)[number];
 
 export const workDays = mysqlTable(
@@ -676,6 +681,23 @@ export const workDays = mysqlTable(
     kind: mysqlEnum("kind", WORK_KINDS).notNull(),
   },
   (t) => [primaryKey({ columns: [t.userId, t.day] })],
+);
+
+// Pointeuse : lignes d'heures saisies à la main (un jour peut avoir plusieurs lignes, ex. matin + après-midi).
+// Les jours « école », « congé » et « maladie » (work_days.kind) priment dessus : voir src/lib/pointeuse.ts.
+export const timeEntries = mysqlTable(
+  "time_entries",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    userId: int("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    day: date("day", { mode: "string" }).notNull(),
+    startMinutes: int("start_minutes").notNull(), // minutes depuis minuit (0-1439)
+    endMinutes: int("end_minutes").notNull(),
+    pauseMinutes: int("pause_minutes").notNull().default(0),
+    comment: varchar("comment", { length: 300 }),
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [index("te_user_day_idx").on(t.userId, t.day)],
 );
 
 export const workLogs = mysqlTable(

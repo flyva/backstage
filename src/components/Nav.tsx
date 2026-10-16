@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
-  BookOpen, BookUser, Bot, Briefcase, Calculator, Car, ChevronRight, Library, CalendarDays, Camera, CircleHelp, Cog, Home, Images, Lightbulb, Link2, Network, Newspaper, Package, PartyPopper, School, NotebookPen, ShieldCheck, SquareKanban, TramFront, Users, Contact, Megaphone, CalendarClock, MessageSquare, Zap,
+  BookOpen, BookUser, Bot, Briefcase, Calculator, Car, ChevronRight, Library, CalendarDays, Camera, CircleHelp, Clock, Cog, Home, Images, Lightbulb, Link2, Network, Newspaper, Package, PartyPopper, School, NotebookPen, ShieldCheck, SquareKanban, TramFront, Users, Contact, Megaphone, CalendarClock, MessageSquare, Zap, BarChart3,
   type LucideIcon,
 } from "lucide-react";
 
@@ -21,8 +21,16 @@ const GROUPS: Group[] = [
       { href: "/", label: "Accueil", icon: Home },
       { href: "/agenda", label: "Agenda", icon: CalendarDays },
       { href: "/mobilite", label: "Mobilité", icon: TramFront },
-      { href: "/alternance", label: "Alternance", icon: NotebookPen },
       { href: "/messages", label: "Messages", icon: MessageSquare, badge: "messages" },
+    ],
+  },
+  {
+    id: "alternance", title: "Alternance",
+    items: [
+      { href: "/alternance", label: "Planning", icon: CalendarDays },
+      { href: "/alternance/carnet", label: "Carnet de liaison", icon: NotebookPen },
+      { href: "/alternance/pointeuse", label: "Pointeuse", icon: Clock },
+      { href: "/alternance/stats", label: "Statistiques", icon: BarChart3 },
     ],
   },
   {
@@ -78,7 +86,8 @@ const GROUPS: Group[] = [
   },
 ];
 
-const isActive = (pathname: string, href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
+// « / » et « /alternance » sont aussi le préfixe d'autres items (Planning a des pages sœurs comme /alternance/carnet) : correspondance exacte pour eux.
+const isActive = (pathname: string, href: string) => (href === "/" || href === "/alternance" ? pathname === href : pathname.startsWith(href));
 
 export function Nav({ isAdmin, loanBadge, messageBadge = 0, views }: { isAdmin: boolean; loanBadge: number; messageBadge?: number; views: Record<string, boolean> }) {
   const pathname = usePathname();

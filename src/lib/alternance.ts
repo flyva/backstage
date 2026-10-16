@@ -1,12 +1,13 @@
 // Planning d'alternance : constantes et calendrier (partagé serveur / client, sans dépendance serveur).
 import type { WorkKind } from "@/db/schema";
 
-export const KIND_LABEL: Record<WorkKind, string> = { ecole: "École", entreprise: "Entreprise", conge: "Congé", ferie: "Férié" };
+export const KIND_LABEL: Record<WorkKind, string> = { ecole: "École", entreprise: "Entreprise", conge: "Congé", ferie: "Férié", maladie: "Maladie" };
 export const KIND_CLASS: Record<WorkKind, string> = {
   ecole: "bg-blue-500/20 text-blue-800 dark:text-blue-200",
   entreprise: "bg-emerald-500/20 text-emerald-800 dark:text-emerald-200",
   conge: "bg-amber-500/20 text-amber-800 dark:text-amber-200",
   ferie: "bg-zinc-500/20 text-zinc-700 dark:text-zinc-300",
+  maladie: "bg-rose-500/20 text-rose-800 dark:text-rose-200",
 };
 /** Ordre du clic sur un jour : vide → école → entreprise → congé → férié → vide. */
 export const KIND_CYCLE: (WorkKind | null)[] = [null, "ecole", "entreprise", "conge", "ferie"];
@@ -63,3 +64,11 @@ export function parseHours(input: string): number | null {
   if (m) return Math.round(Number(`${m[1]}.${m[2] ?? 0}`) * 60);
   return null;
 }
+
+/** « 09:30 » (entrée <input type="time">) → minutes depuis minuit ; null si invalide. */
+export function parseTime(v: string): number | null {
+  const m = /^([01]?\d|2[0-3]):([0-5]\d)$/.exec(v.trim());
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+}
+/** Minutes depuis minuit → « 09:30 » (pour <input type="time">). */
+export const fmtTime = (minutes: number) => `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;

@@ -435,6 +435,13 @@
       "when": 1792139385132,
       "tag": "0061_warm_multiple_man",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "5",
+      "when": 1792144384429,
+      "tag": "0062_jittery_husk",
+      "breakpoints": true
     }
   ]
 }
