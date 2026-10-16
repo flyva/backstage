@@ -66,14 +66,22 @@ export function DayStatusEditForm({ day, kind }: { day: string; kind: Extract<Wo
   );
 }
 
-export function TimeSettingsForm({ standardHours, tutorUserId, colleagues }: { standardHours: number; tutorUserId: number | null; colleagues: { id: number; name: string }[] }) {
+export function TimeSettingsForm({ standardHours, workDaysPerWeek, tutorUserId, colleagues }: { standardHours: number; workDaysPerWeek: number; tutorUserId: number | null; colleagues: { id: number; name: string }[] }) {
   const [state, action, pending] = useActionState(saveTimeSettings, undefined);
+  const restDays = 7 - workDaysPerWeek;
   return (
     <form action={action} className="flex flex-wrap items-end gap-3">
       <div className="w-44">
         <label className="label" htmlFor="ts-standard">Journée standard</label>
         <input id="ts-standard" name="standardHours" type="number" min={1} max={16} step={0.25} defaultValue={standardHours} required className="input" />
         <p className="mt-1 text-xs text-muted">En heures (ex. 7). Sert à calculer les heures sup.</p>
+      </div>
+      <div className="w-44">
+        <label className="label" htmlFor="ts-weekdays">Jours travaillés / semaine</label>
+        <select id="ts-weekdays" name="workDaysPerWeek" defaultValue={workDaysPerWeek} className="input">
+          {[1, 2, 3, 4, 5, 6, 7].map((n) => <option key={n} value={n}>{n} jour{n > 1 ? "s" : ""}</option>)}
+        </select>
+        <p className="mt-1 text-xs text-muted">Les heures sup se comptent sur la semaine entière. Les {restDays > 0 ? `${restDays} dernier${restDays > 1 ? "s" : ""} jour${restDays > 1 ? "s" : ""} de la semaine (ex. week-end)` : "jours restants"} sont marqués « Repos » tout seuls.</p>
       </div>
       <div className="min-w-56 flex-1">
         <label className="label" htmlFor="ts-tutor">Référent (tuteur, patron…)</label>

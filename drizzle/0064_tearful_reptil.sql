@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD `work_days_per_week` int DEFAULT 5 NOT NULL;

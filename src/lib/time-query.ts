@@ -5,7 +5,7 @@ import { timeEntries, workDays } from "@/db/schema";
 import { addDays } from "@/lib/alternance";
 import { daySummary, type DaySummary } from "@/lib/pointeuse";
 
-export async function fetchDaySummaries(userId: number, from: string, to: string, today: string, standardWorkMinutes: number): Promise<DaySummary[]> {
+export async function fetchDaySummaries(userId: number, from: string, to: string, today: string, workDaysPerWeek: number): Promise<DaySummary[]> {
   const [wd, te] = await Promise.all([
     db.select().from(workDays).where(and(eq(workDays.userId, userId), gte(workDays.day, from), lte(workDays.day, to))),
     db.select().from(timeEntries).where(and(eq(timeEntries.userId, userId), gte(timeEntries.day, from), lte(timeEntries.day, to))).orderBy(asc(timeEntries.startMinutes)),
@@ -14,6 +14,6 @@ export async function fetchDaySummaries(userId: number, from: string, to: string
   const entriesByDay = new Map<string, typeof te>();
   for (const e of te) entriesByDay.set(e.day, [...(entriesByDay.get(e.day) ?? []), e]);
   const out: DaySummary[] = [];
-  for (let d = from; d <= to; d = addDays(d, 1)) out.push(daySummary(d, today, kindOf.get(d), entriesByDay.get(d) ?? [], standardWorkMinutes));
+  for (let d = from; d <= to; d = addDays(d, 1)) out.push(daySummary(d, today, kindOf.get(d), entriesByDay.get(d) ?? [], workDaysPerWeek));
   return out;
 }

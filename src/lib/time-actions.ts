@@ -98,19 +98,20 @@ export async function deleteDayStatus(fd: FormData) {
 
 const settingsSchema = z.object({
   standardHours: z.coerce.number().min(1, "Durée : 1 h minimum").max(16, "Durée : 16 h maximum"),
+  workDaysPerWeek: z.coerce.number().int().min(1, "Au moins 1 jour par semaine").max(7, "7 jours maximum"),
   tutorUserId: z.preprocess((v) => (v === "" || v == null ? null : Number(v)), z.number().int().positive().nullable()),
 });
 
 export async function saveTimeSettings(_: FormState, fd: FormData): Promise<FormState> {
   const user = await requireUser();
-  const p = settingsSchema.safeParse({ standardHours: fd.get("standardHours"), tutorUserId: fd.get("tutorUserId") });
+  const p = settingsSchema.safeParse({ standardHours: fd.get("standardHours"), workDaysPerWeek: fd.get("workDaysPerWeek"), tutorUserId: fd.get("tutorUserId") });
   if (!p.success) return { error: p.error.issues[0].message };
   if (p.data.tutorUserId === user.id) return { error: "Tu ne peux pas être ton propre référent" };
   if (p.data.tutorUserId) {
     const [t] = await db.select({ i: users.id }).from(users).where(eq(users.id, p.data.tutorUserId)).limit(1);
     if (!t) return { error: "Référent introuvable" };
   }
-  await db.update(users).set({ standardWorkMinutes: Math.round(p.data.standardHours * 60), tutorUserId: p.data.tutorUserId }).where(eq(users.id, user.id));
+  await db.update(users).set({ standardWorkMinutes: Math.round(p.data.standardHours * 60), workDaysPerWeek: p.data.workDaysPerWeek, tutorUserId: p.data.tutorUserId }).where(eq(users.id, user.id));
   revalidatePath("/parametres");
   refresh();
   return { ok: "Réglages enregistrés" };

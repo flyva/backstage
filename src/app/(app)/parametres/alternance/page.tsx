@@ -17,7 +17,7 @@ export default async function AlternanceSettingsPage() {
           <h2 className="font-semibold">Pointeuse</h2>
           <p className="text-sm text-muted">La durée standard sert à calculer tes heures sup. Le référent voit ta pointeuse et tes statistiques en lecture seule.</p>
         </div>
-        <TimeSettingsForm standardHours={user.standardWorkMinutes / 60} tutorUserId={user.tutorUserId} colleagues={colleagues} />
+        <TimeSettingsForm standardHours={user.standardWorkMinutes / 60} workDaysPerWeek={user.workDaysPerWeek} tutorUserId={user.tutorUserId} colleagues={colleagues} />
       </section>
     </div>
   );

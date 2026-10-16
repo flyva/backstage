@@ -112,8 +112,11 @@ export const users = mysqlTable("users", {
   notifyMessages: boolean("notify_messages").notNull().default(true), // messages des annonces, vente validée, nouvel avis
   notifyListings: boolean("notify_listings").notNull().default(false), // nouvelle annonce publiée par la promo (désactivé par défaut : peut être bavard)
   notifyUpdates: boolean("notify_updates").notNull().default(true), // nouveauté marquée importante
-  // Pointeuse : durée d'une journée standard (par défaut 7 h), utilisée pour calculer les heures sup sur les jours pointés.
+  // Pointeuse : durée d'une journée standard (par défaut 7 h) et nombre de jours travaillés par semaine (par défaut 5).
+  // Les heures sup se comptent sur la semaine (effectif au-delà de standardWorkMinutes × workDaysPerWeek) ; les derniers
+  // jours de la semaine au-delà de workDaysPerWeek sont marqués « repos » automatiquement s'il n'y a rien dessus.
   standardWorkMinutes: int("standard_work_minutes").notNull().default(420),
+  workDaysPerWeek: int("work_days_per_week").notNull().default(5),
   // Référent (tuteur, patron…) : voit en lecture seule la pointeuse et les stats de la personne, s'il est lui-même désigné ici.
   tutorUserId: int("tutor_user_id").references((): AnyMySqlColumn => users.id, { onDelete: "set null" }),
   createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),

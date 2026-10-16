@@ -29,7 +29,7 @@ export default async function PointeusePage({ searchParams }: PageProps<"/altern
   for (const e of entries) entriesByDay.set(e.day, [...(entriesByDay.get(e.day) ?? []), e]);
 
   const totalMonth = [...entriesByDay.entries()].reduce((s, [day, list]) => {
-    const sum = daySummary(day, today, undefined, list, user.standardWorkMinutes);
+    const sum = daySummary(day, today, undefined, list, user.workDaysPerWeek);
     return s + sum.effectiveMinutes;
   }, 0) + fixedDays.length * 420;
 
