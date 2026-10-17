@@ -40,6 +40,7 @@ export default async function LogbookPage({ searchParams }: PageProps<"/alternan
           </div>
           <div className="flex flex-wrap gap-2">
             <Link href={`/alternance/carnet/imprimer?m=${month}`} className="btn-ghost text-xs"><Printer size={14} /> Bilan du mois (PDF)</Link>
+            <Link href={`/alternance/dossier?m=${month}`} className="btn-ghost text-xs"><Printer size={14} /> Dossier complet (carnet + pointeuse)</Link>
             <a href={`/alternance/carnet/export?m=${month}`} className="btn-ghost text-xs"><Download size={14} /> Ce mois (CSV)</a>
             <a href="/alternance/carnet/export" className="btn-ghost text-xs"><Download size={14} /> Tout (CSV)</a>
           </div>

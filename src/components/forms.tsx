@@ -141,6 +141,25 @@ export function SettingsForm({ values }: { values: Record<string, string> }) {
   );
 }
 
+/** Texte des CGU et des mentions légales (markdown), affichés sur /cgu et /mentions-legales (public, pas besoin de compte). */
+export function LegalTextsForm({ cguBody, mentionsBody }: { cguBody: string; mentionsBody: string }) {
+  const [state, action, pending] = useActionState(saveSettings, undefined);
+  return (
+    <form action={action} className="space-y-4">
+      <div>
+        <label className="label" htmlFor="cgu_body">CGU (markdown)</label>
+        <textarea id="cgu_body" name="cgu_body" rows={10} defaultValue={cguBody} className="input font-mono text-xs" />
+      </div>
+      <div>
+        <label className="label" htmlFor="mentions_legales_body">Mentions légales (markdown)</label>
+        <textarea id="mentions_legales_body" name="mentions_legales_body" rows={10} defaultValue={mentionsBody} className="input font-mono text-xs" />
+      </div>
+      <Feedback state={state} />
+      <button className="btn" disabled={pending}>{pending ? "Enregistrement…" : "Enregistrer"}</button>
+    </form>
+  );
+}
+
 export function ChangePasswordForm() {
   const [state, action, pending] = useActionState(changePassword, undefined);
   const [pw, setPw] = useState("");

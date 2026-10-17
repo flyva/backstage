@@ -73,6 +73,9 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
           Pas encore de compte ? <Link href="/register" className="font-medium text-fg underline">S&apos;inscrire</Link>
         </p>
       )}
+      <p className="text-center text-xs text-muted">
+        <Link href="/cgu" className="underline">CGU</Link> · <Link href="/mentions-legales" className="underline">Mentions légales</Link>
+      </p>
     </main>
   );
 }

@@ -17,6 +17,8 @@ export const SETTING_KEYS = [
   "school_instagram_url",
   "school_website_url", // site de l'école, proposé sur la carte de visite (https://www.3is.fr par défaut)
   "instagram_feed_url", // flux JSON public (ex. Behold), voir /instagram
+  "cgu_body", // conditions générales d'utilisation (markdown), voir /cgu
+  "mentions_legales_body", // mentions légales (markdown), voir /mentions-legales
 ] as const;
 export type SettingKey = (typeof SETTING_KEYS)[number];
 

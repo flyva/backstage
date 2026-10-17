@@ -19,6 +19,7 @@ export default async function ProjectLayout({ children, params }: LayoutProps<"/
     { slug: "fiches", label: "Fiches" },
     { slug: "planning", label: "Planning" },
     { slug: "charge", label: "Charge" },
+    { slug: "stats", label: "Statistiques" },
     { slug: "membres", label: "Équipe" },
     ...(role === "owner" ? [{ slug: "reglages", label: "Réglages" }] : []),
   ];

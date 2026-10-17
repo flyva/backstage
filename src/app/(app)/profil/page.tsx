@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import Link from "next/link";
 import { and, asc, eq, ne } from "drizzle-orm";
+import { Download } from "lucide-react";
 import QRCode from "qrcode";
 import { db } from "@/db";
 import { tracks, userLinks, users } from "@/db/schema";
@@ -73,6 +74,12 @@ export default async function ProfilPage({ searchParams }: PageProps<"/profil">)
             <p className="mt-3 text-xs text-muted">
               Ce lien donne accès à ton planning : ne le partage pas. Backstage l&apos;utilisera pour ton agenda.
             </p>
+          </div>
+          <div className="card space-y-2">
+            <h2 className="font-semibold">Mes données</h2>
+            <p className="text-sm text-muted">Télécharge un fichier avec tes données personnelles : profil, carnet de compétences, pointeuse, messages envoyés, avis.</p>
+            <a href="/api/rgpd/export" className="btn-ghost w-fit"><Download size={15} aria-hidden /> Exporter mes données</a>
+            <p className="text-xs text-muted"><Link href="/cgu" className="underline">CGU</Link> · <Link href="/mentions-legales" className="underline">Mentions légales</Link></p>
           </div>
           </div>
         </div>

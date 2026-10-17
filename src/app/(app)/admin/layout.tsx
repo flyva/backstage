@@ -14,6 +14,7 @@ const TABS = [
   { slug: "nouveautes", label: "Nouveautés" },
   { slug: "wiki", label: "Wiki" },
   { slug: "sauvegardes", label: "Sauvegardes" },
+  { slug: "rgpd", label: "RGPD" },
   { slug: "sante", label: "Santé" },
 ];
 
