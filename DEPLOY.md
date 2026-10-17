@@ -169,6 +169,17 @@ sudo systemctl restart backstage
 
 > Une migration de base n'est **pas** annulée par un retour arrière. Les migrations de Backstage ajoutent des colonnes/tables sans rien supprimer, l'ancienne version reste donc compatible ; en cas de doute, restaure la sauvegarde.
 
+### Vérifier ce qui tourne sur le Pi
+
+```bash
+cat /opt/backstage/current/VERSION          # commit, message, date d'empaquetage de la version en ligne
+readlink /opt/backstage/current             # dossier de release pointé (horodatage de l'install, pas du commit)
+systemctl status backstage backstage-backup.timer backstage-reminders.timer
+curl -fsS -o /dev/null -w "%{http_code}\n" http://127.0.0.1:3000/login   # 200 = le site répond en local
+```
+
+`VERSION` n'existe que depuis l'ajout de ce fichier à `package.mjs` : une version installée avant ne l'aura pas (réinstalle pour l'obtenir). Pour vérifier que c'est bien la dernière version du dépôt qui est en ligne, compare le `commit:` de `VERSION` à `git log -1 --format=%h` sur le PC.
+
 ## 9. Sauvegardes
 
 Chaque nuit à 3 h : base + dossier `data/uploads` (plan, galerie) dans `/opt/backstage/backups`, 14 jours conservés. **Une sauvegarde sur la même carte SD ne protège pas d'une carte morte** : copie régulièrement ce dossier ailleurs (PC, NAS, cloud), ou configure le miroir distant ci-dessous.

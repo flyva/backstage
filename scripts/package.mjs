@@ -30,6 +30,13 @@ cpSync(path.join(root, "drizzle"), path.join(stage, "drizzle"), { recursive: tru
 cpSync(path.join(root, "deploy"), path.join(stage, "deploy"), { recursive: true });
 cpSync(path.join(root, "deploy", "migrate"), path.join(stage, "migrate"), { recursive: true });
 
+// Traçabilité : quelle version exacte est sur le Pi ? Lisible avec  cat /opt/backstage/current/VERSION
+const gitOut = (args, fallback) => { try { return execFileSync("git", args, { cwd: root }).toString().trim(); } catch { return fallback; } };
+const commit = gitOut(["rev-parse", "--short", "HEAD"], "inconnu");
+const subject = gitOut(["log", "-1", "--format=%s"], "");
+const dirty = gitOut(["status", "--porcelain"], "") !== "";
+writeFileSync(path.join(stage, "VERSION"), `commit: ${commit}${dirty ? " (modifications non commitées)" : ""}\nmessage: ${subject}\nempaqueté le : ${new Date().toISOString()}\n`);
+
 // Garde-fou : des fichiers internes de Next doivent être présents, sinon TOUTES les routes qui lisent la session plantent en production
 // (erreur « cookies was called outside a request scope » : téléchargements, images, API). Cela est arrivé avec outputFileTracingExcludes.
 const appRender = path.join(stage, "app", "node_modules", "next", "dist", "server", "app-render");

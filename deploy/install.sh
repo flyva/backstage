@@ -40,6 +40,7 @@ systemctl restart backstage
 for i in $(seq 1 20); do
   if curl -fsS -o /dev/null "http://127.0.0.1:${PORT:-3000}/login"; then
     echo "✓ Backstage $STAMP est en ligne"
+    [ -f "$REL/VERSION" ] && cat "$REL/VERSION"
     # On garde les 3 dernières versions.
     ls -1dt "$BASE"/releases/* | tail -n +4 | xargs -r rm -rf
     exit 0
