@@ -1,9 +1,39 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, CheckCheck } from "lucide-react";
+import { Check, CheckCheck, File as FileIcon, Reply } from "lucide-react";
 import { markConversationRead, setConversationPresence } from "@/lib/message-actions";
-import type { LiveMessage } from "@/lib/message-bus";
+import { MessageBody } from "@/components/MessageBody";
+import type { LiveAttachment, LiveMessage } from "@/lib/message-bus";
+
+const fileSize = (n: number) => (n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} Ko` : `${(n / (1024 * 1024)).toFixed(1)} Mo`);
+
+function Attachments({ items }: { items: LiveAttachment[] }) {
+  if (items.length === 0) return null;
+  const images = items.filter((a) => a.mime.startsWith("image/"));
+  const files = items.filter((a) => !a.mime.startsWith("image/"));
+  return (
+    <div className="mt-1.5 space-y-1.5">
+      {images.length > 0 && (
+        <div className="grid grid-cols-2 gap-1.5">
+          {images.map((a) => (
+            <a key={a.id} href={a.url} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-lg border border-line">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={a.url} alt={a.name} className="h-28 w-full object-cover" loading="lazy" />
+            </a>
+          ))}
+        </div>
+      )}
+      {files.map((a) => (
+        <a key={a.id} href={a.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs hover:border-accent">
+          <FileIcon size={14} className="shrink-0 text-muted" />
+          <span className="min-w-0 flex-1 truncate">{a.name}</span>
+          <span className="shrink-0 text-muted">{fileSize(a.size)}</span>
+        </a>
+      ))}
+    </div>
+  );
+}
 
 const dayFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 const timeFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit" });
@@ -14,8 +44,8 @@ const TYPING_MS = 4000; // « écrit… » disparaît 4 s après le dernier sign
  * l'indication « est en train d'écrire » et « Vu » sous ton dernier message. Si le flux est coupé (réseau, proxy), on interroge
  * le serveur toutes les 4 s en attendant qu'il revienne.
  */
-export function LiveThread({ conversationId, meId, otherName, otherReadAt, initial }: {
-  conversationId: number; meId: number; otherName: string; otherReadAt: string | null; initial: LiveMessage[];
+export function LiveThread({ conversationId, meId, otherName, otherReadAt, initial, onReply }: {
+  conversationId: number; meId: number; otherName: string; otherReadAt: string | null; initial: LiveMessage[]; onReply?: (m: LiveMessage) => void;
 }) {
   const [items, setItems] = useState<LiveMessage[]>(initial);
   const [live, setLive] = useState(false);
@@ -107,10 +137,27 @@ export function LiveThread({ conversationId, meId, otherName, otherReadAt, initi
           const mine = m.senderId === meId;
           const seen = mine && m.id === lastMineId && !!readAt && new Date(readAt).getTime() >= new Date(m.createdAt).getTime();
           return (
-            <li key={m.id} className={`flex flex-col ${mine ? "items-end" : "items-start"} ${m.id > openedAtId ? "anim-msg-in" : ""}`}>
-              <div className={`max-w-[85%] rounded-2xl px-4 py-2 text-sm ${mine ? "bg-accent text-accent-fg" : "border border-line bg-bg"}`}>
-                <p className="whitespace-pre-line break-words">{m.body}</p>
-                <p className={`mt-1 text-[11px] ${mine ? "opacity-70" : "text-muted"}`}>{dayFmt.format(new Date(m.createdAt))}</p>
+            <li key={m.id} className={`group flex flex-col ${mine ? "items-end" : "items-start"} ${m.id > openedAtId ? "anim-msg-in" : ""}`}>
+              <div className={`flex items-end gap-1.5 ${mine ? "flex-row-reverse" : ""}`}>
+                <div className={`max-w-[85%] rounded-2xl px-4 py-2 text-sm ${mine ? "bg-accent text-accent-fg" : "border border-line bg-bg"}`}>
+                  {m.replyTo && (
+                    <div className={`mb-1.5 rounded-lg border-l-2 px-2 py-1 text-xs ${mine ? "border-accent-fg/40 bg-black/10" : "border-accent bg-surface"}`}>
+                      <p className="font-medium">{m.replyTo.senderId === meId ? "Toi" : otherName}</p>
+                      <p className="truncate opacity-80">{m.replyTo.body || "Pièce jointe"}</p>
+                    </div>
+                  )}
+                  {m.body && <MessageBody>{m.body}</MessageBody>}
+                  <Attachments items={m.attachments} />
+                  <p className={`mt-1 text-[11px] ${mine ? "opacity-70" : "text-muted"}`}>{dayFmt.format(new Date(m.createdAt))}</p>
+                </div>
+                {onReply && (
+                  <button
+                    type="button" onClick={() => onReply(m)} aria-label="Répondre à ce message"
+                    className="shrink-0 rounded-full p-1.5 text-muted opacity-0 transition hover:bg-bg hover:text-fg group-hover:opacity-100"
+                  >
+                    <Reply size={14} />
+                  </button>
+                )}
               </div>
               {mine && m.id === lastMineId && (
                 seen ? (

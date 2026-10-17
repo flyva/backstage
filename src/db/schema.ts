@@ -1043,9 +1043,26 @@ export const messages = mysqlTable(
     conversationId: int("conversation_id").notNull().references(() => conversations.id, { onDelete: "cascade" }),
     senderId: int("sender_id").notNull().references(() => users.id, { onDelete: "cascade" }),
     body: text("body").notNull(),
+    replyToId: int("reply_to_id"), // message cité en réponse (même conversation) ; pas de clé étrangère auto-référencée, vérifié en code
     createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
   },
   (t) => [index("msg_conv_idx").on(t.conversationId, t.createdAt)],
+);
+
+// Photos, GIF et fichiers joints à un message. Les fichiers sont dans data/uploads/messages et servis par
+// /api/messages/[id]/files/[fileId], réservé aux deux participants de la conversation (comme ticketFiles).
+export const messageAttachments = mysqlTable(
+  "message_attachments",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    messageId: int("message_id").notNull().references(() => messages.id, { onDelete: "cascade" }),
+    file: varchar("file", { length: 60 }).notNull(),
+    originalName: varchar("original_name", { length: 200 }).notNull(),
+    mime: varchar("mime", { length: 60 }).notNull(),
+    size: int("size").notNull(),
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [index("ma_message_idx").on(t.messageId)],
 );
 
 // Avis sur une personne à la suite d'une vente (ou d'un échange) : note de 1 à 5 et commentaire.

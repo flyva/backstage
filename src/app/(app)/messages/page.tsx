@@ -64,7 +64,7 @@ export default async function MessagesPage() {
                     <span className="ml-auto shrink-0 text-xs text-muted">{ago(c.lastMessageAt)}</span>
                   </div>
                   <div className="truncate text-sm text-muted">{isListing ? (title.get(c.listingId!) ?? "Annonce") : "Message direct"}</div>
-                  {m && <div className={`truncate text-sm ${unread ? "font-medium" : "text-muted"}`}>{m.senderId === user.id ? "Toi : " : ""}{m.body}</div>}
+                  {m && <div className={`truncate text-sm ${unread ? "font-medium" : "text-muted"}`}>{m.senderId === user.id ? "Toi : " : ""}{m.body || "📎 Pièce jointe"}</div>}
                 </div>
                 {isListing && photo.get(c.listingId!) && (
                   // eslint-disable-next-line @next/next/no-img-element

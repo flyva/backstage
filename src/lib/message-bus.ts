@@ -4,7 +4,12 @@ import { EventEmitter } from "node:events";
 // ouverte le reçoivent tout de suite (flux SSE, voir /api/messages/[id]/stream). Le site tourne dans un seul processus Node :
 // un simple EventEmitter suffit. Il est rattaché à globalThis pour survivre au rechargement à chaud en développement.
 
-export type LiveMessage = { id: number; senderId: number; body: string; createdAt: string };
+export type LiveAttachment = { id: number; name: string; mime: string; size: number; url: string };
+export type LiveMessage = {
+  id: number; senderId: number; body: string; createdAt: string;
+  replyTo: { id: number; senderId: number; body: string } | null;
+  attachments: LiveAttachment[];
+};
 
 export type LiveEvent =
   | { kind: "message"; message: LiveMessage }
@@ -39,6 +44,10 @@ export function setPresent(conversationId: number, userId: number, present: bool
 
 export const isPresent = (conversationId: number, userId: number) => !!presence.get(conversationId)?.has(userId);
 
-export const toLive = (m: { id: number; senderId: number; body: string; createdAt: Date }): LiveMessage => ({
-  id: m.id, senderId: m.senderId, body: m.body, createdAt: m.createdAt.toISOString(),
+export const toLive = (
+  m: { id: number; senderId: number; body: string; createdAt: Date },
+  replyTo: { id: number; senderId: number; body: string } | null = null,
+  attachments: LiveAttachment[] = [],
+): LiveMessage => ({
+  id: m.id, senderId: m.senderId, body: m.body, createdAt: m.createdAt.toISOString(), replyTo, attachments,
 });

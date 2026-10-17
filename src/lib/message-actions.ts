@@ -1,13 +1,16 @@
 "use server";
 
+import { writeFile } from "node:fs/promises";
+import path from "node:path";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { and, eq, gt, isNull, or } from "drizzle-orm";
 import { db } from "@/db";
-import { conversations, listings, messages, reviews, users } from "@/db/schema";
+import { conversations, listings, messageAttachments, messages, reviews, users } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
-import { messageCountsBySender } from "@/lib/messaging";
+import { hydrateMessages, messageCountsBySender } from "@/lib/messaging";
 import { emitEvent, emitMessage, isPresent, setPresent } from "@/lib/message-bus";
+import { MAX_MESSAGE_FILES, MAX_MESSAGE_FILE_BYTES, ensureMessageFilesDir, messageFilesDir, newMessageFileName, sniffMessageFile } from "@/lib/message-files";
 import { notifyUser } from "@/lib/push";
 import { allow } from "@/lib/rate-limit";
 import type { FormState } from "@/lib/actions";
@@ -66,7 +69,7 @@ export async function startConversation(_: FormState, fd: FormData): Promise<For
   }
   const [ins] = await db.insert(messages).values({ conversationId: conv.id, senderId: user.id, body: text, createdAt: now });
   await db.update(conversations).set({ lastMessageAt: now, buyerReadAt: now }).where(eq(conversations.id, conv.id));
-  emitMessage(conv.id, { id: ins.insertId, senderId: user.id, body: text, createdAt: now.toISOString() }); // arrive tout de suite chez l'autre personne
+  emitMessage(conv.id, { id: ins.insertId, senderId: user.id, body: text, createdAt: now.toISOString(), replyTo: null, attachments: [] }); // arrive tout de suite chez l'autre personne
   await pushNew(l.userId, user.name, l.title, conv.id, text);
   revalidatePath("/messages");
   redirect(`/messages/${conv.id}`);
@@ -75,19 +78,49 @@ export async function startConversation(_: FormState, fd: FormData): Promise<For
 export async function sendMessage(_: FormState, fd: FormData): Promise<FormState> {
   const user = await requireUser();
   const text = body(fd);
-  if (!text) return { error: "Écris ton message" };
+  const files = fd.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
+  if (!text && files.length === 0) return { error: "Écris un message ou joins un fichier" };
+  if (files.length > MAX_MESSAGE_FILES) return { error: `${MAX_MESSAGE_FILES} fichiers maximum` };
+  for (const f of files) {
+    if (f.size > MAX_MESSAGE_FILE_BYTES) return { error: `« ${f.name} » dépasse 15 Mo` };
+  }
   const id = Number(fd.get("conversationId"));
   const [conv] = await db.select().from(conversations).where(eq(conversations.id, id)).limit(1);
   if (!conv || (conv.buyerId !== user.id && conv.sellerId !== user.id)) return { error: "Conversation introuvable" };
   if (!allow(`msg:${user.id}`, 40, 10 * 60e3)) return { error: "Trop de messages : réessaie dans quelques minutes." };
 
+  // Réponse à un message : doit appartenir à la même conversation (sinon ignorée plutôt que de bloquer l'envoi).
+  const replyToRaw = Number(fd.get("replyToId"));
+  let replyToId: number | null = null;
+  if (Number.isInteger(replyToRaw) && replyToRaw > 0) {
+    const [target] = await db.select({ id: messages.id }).from(messages).where(and(eq(messages.id, replyToRaw), eq(messages.conversationId, conv.id))).limit(1);
+    if (target) replyToId = target.id;
+  }
+
   const now = new Date();
   const mine = conv.buyerId === user.id;
-  const [ins] = await db.insert(messages).values({ conversationId: conv.id, senderId: user.id, body: text, createdAt: now });
+  const [ins] = await db.insert(messages).values({ conversationId: conv.id, senderId: user.id, body: text, replyToId, createdAt: now });
+
+  if (files.length > 0) {
+    await ensureMessageFilesDir();
+    for (const f of files) {
+      const bytes = new Uint8Array(await f.arrayBuffer());
+      const kind = sniffMessageFile(bytes);
+      if (!kind) continue; // format non reconnu : ignoré plutôt que de bloquer tout le message
+      const name = newMessageFileName(kind.ext);
+      await writeFile(path.join(messageFilesDir(), name), bytes);
+      const original = f.name.replace(/[\u0000-\u001f\\/]/g, "_").slice(0, 200) || `fichier.${kind.ext}`;
+      await db.insert(messageAttachments).values({ messageId: ins.insertId, file: name, originalName: original, mime: kind.mime, size: bytes.length });
+    }
+  }
+
   await db.update(conversations).set({ lastMessageAt: now, ...(mine ? { buyerReadAt: now } : { sellerReadAt: now }) }).where(eq(conversations.id, conv.id));
-  emitMessage(conv.id, { id: ins.insertId, senderId: user.id, body: text, createdAt: now.toISOString() });
+  const [[live]] = await Promise.all([
+    hydrateMessages(conv.id, [{ id: ins.insertId, senderId: user.id, body: text, replyToId, createdAt: now }]),
+  ]);
+  emitMessage(conv.id, live);
   const [l] = conv.listingId ? await db.select({ title: listings.title }).from(listings).where(eq(listings.id, conv.listingId)).limit(1) : [];
-  await pushNew(mine ? conv.sellerId : conv.buyerId, user.name, l?.title ?? "", conv.id, text);
+  await pushNew(mine ? conv.sellerId : conv.buyerId, user.name, l?.title ?? "", conv.id, text || "📎 Pièce jointe");
   revalidatePath(`/messages/${conv.id}`);
   revalidatePath("/messages");
   return { ok: "Envoyé" };

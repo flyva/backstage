@@ -8,13 +8,13 @@ import { requireUser } from "@/lib/auth";
 import { avatarUrl } from "@/lib/avatar-files";
 import { LISTING_LABEL, LISTING_PHOTO_PREFIX, formatPrice } from "@/lib/listing-shared";
 import { concludeListing, setListingStatus } from "@/lib/listing-actions";
-import { messageCountsBySender, ratingSummary } from "@/lib/messaging";
-import { emitEvent, toLive } from "@/lib/message-bus";
+import { hydrateMessages, messageCountsBySender, ratingSummary } from "@/lib/messaging";
+import { emitEvent } from "@/lib/message-bus";
 import { Avatar } from "@/components/people-forms";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { ConfirmButton } from "@/components/ConfirmButton";
-import { LiveThread } from "@/components/LiveThread";
-import { MessageComposer, ReviewForm } from "@/components/message-forms";
+import { ConversationPanel } from "@/components/ConversationPanel";
+import { ReviewForm } from "@/components/message-forms";
 import { RatingBadge, Stars } from "@/components/Stars";
 
 export const metadata = { title: "Conversation" };
@@ -44,6 +44,8 @@ export default async function ConversationPage({ params }: PageProps<"/messages/
   await db.update(conversations).set(iAmBuyer ? { buyerReadAt: now } : { sellerReadAt: now }).where(eq(conversations.id, id));
   emitEvent(id, { kind: "read", userId: user.id, at: now.toISOString() });
 
+  const liveThread = await hydrateMessages(id, thread);
+
   // Les avis ne suivent qu'une vente réelle : l'annonce doit avoir été conclue avec l'acheteur de cette conversation.
   const concluded = listing?.status === "closed";
   const dealWithBuyer = concluded && listing.soldToId === conv.buyerId;
@@ -70,11 +72,10 @@ export default async function ConversationPage({ params }: PageProps<"/messages/
         {/* Discussion + avis */}
         <div className="min-w-0 space-y-5">
           <section className="card space-y-3" aria-label="Messages">
-            <LiveThread
+            <ConversationPanel
               conversationId={id} meId={user.id} otherName={other?.name ?? "L'autre personne"}
-              otherReadAt={otherReadAt ? otherReadAt.toISOString() : null} initial={thread.map(toLive)}
+              otherReadAt={otherReadAt ? otherReadAt.toISOString() : null} initial={liveThread}
             />
-            <div className="border-t border-line pt-3"><MessageComposer conversationId={id} /></div>
           </section>
 
           {other && conv.listingId && (

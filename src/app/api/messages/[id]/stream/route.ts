@@ -2,7 +2,8 @@ import { and, asc, eq, gt } from "drizzle-orm";
 import { db } from "@/db";
 import { conversations, messages } from "@/db/schema";
 import { getUser } from "@/lib/auth";
-import { onEvent, toLive, type LiveEvent } from "@/lib/message-bus";
+import { onEvent, type LiveEvent } from "@/lib/message-bus";
+import { hydrateMessages } from "@/lib/messaging";
 
 // Flux en direct (Server-Sent Events) d'une conversation : nouveaux messages, « est en train d'écrire », « vu ».
 // Réservé à ses deux participants.
@@ -42,7 +43,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         try { controller.close(); } catch { /* déjà fermé */ }
       };
       req.signal.addEventListener("abort", cleanup);
-      for (const m of await db.select().from(messages).where(and(eq(messages.conversationId, id), gt(messages.id, last))).orderBy(asc(messages.id))) send({ kind: "message", message: toLive(m) });
+      const missed = await db.select().from(messages).where(and(eq(messages.conversationId, id), gt(messages.id, last))).orderBy(asc(messages.id));
+      for (const m of await hydrateMessages(id, missed)) send({ kind: "message", message: m });
     },
     cancel() { cleanup(); },
   });
