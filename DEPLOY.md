@@ -191,6 +191,25 @@ En plus de la sauvegarde locale, `backup.sh` peut rejouer le même dump chaque n
 
 Si la base distante est injoignable un soir (réseau, maintenance OVH…), la sauvegarde locale a quand même lieu normalement ; seul le miroir distant est sauté, avec un avertissement dans `journalctl -u backstage-backup`.
 
+### Copie sur un stockage distant (ex. Google Drive, via rclone)
+
+En plus (ou à la place) du miroir MySQL, `backup.sh` peut copier les deux fichiers du jour (`db-*.sql.gz`, `uploads-*.tar.gz`) sur un stockage distant avec [rclone](https://rclone.org) — Google Drive, mais aussi Dropbox, OneDrive, un espace S3, etc. Contrairement au miroir MySQL qui n'a que le dernier état, cette copie garde un historique de fichiers datés, comme en local.
+
+1. Installe rclone sur le Pi : `sudo apt install rclone` (ou `curl https://rclone.org/install.sh | sudo bash` pour une version plus récente).
+2. Configure le remote Google Drive, **en root** (le service de sauvegarde tourne en root) : `sudo rclone config`, puis `n` (nouveau remote), un nom (ex. `gdrive`), type `drive` (Google Drive), laisse les champs client id/secret vides (valeurs par défaut de rclone), portée `drive` (accès complet). Le Pi étant sans navigateur, à l'étape « Use auto config? » réponds `n` : rclone affiche une commande à relancer sur ton PC (`rclone authorize "drive"`, avec le navigateur qui s'ouvre pour te connecter à Google) — colle le jeton obtenu sur le PC dans le prompt du Pi.
+3. Crée le dossier de destination et vérifie l'accès :
+   ```bash
+   sudo rclone mkdir gdrive:backstage-backups
+   sudo rclone ls gdrive:backstage-backups
+   ```
+4. Sur le Pi, ajoute dans `/opt/backstage/.env` :
+   ```
+   RCLONE_REMOTE="gdrive:backstage-backups"
+   ```
+5. Teste tout de suite : `sudo /opt/backstage/backup.sh`. Le dernier message doit être `✓ Copié sur gdrive:backstage-backups`.
+
+Comme pour le miroir MySQL, un échec (rclone non configuré, réseau coupé, quota Drive dépassé…) n'empêche jamais la sauvegarde locale de réussir : seul un avertissement apparaît.
+
 Restauration :
 
 ```bash

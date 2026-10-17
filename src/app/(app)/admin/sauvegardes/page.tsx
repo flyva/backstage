@@ -1,6 +1,6 @@
 import path from "node:path";
 import { readdir, stat } from "node:fs/promises";
-import { Archive, Database, FolderArchive, HardDrive, Server, ShieldCheck } from "lucide-react";
+import { Archive, Cloud, Database, FolderArchive, HardDrive, Server, ShieldCheck } from "lucide-react";
 import { requireAdmin } from "@/lib/auth";
 
 export const metadata = { title: "Sauvegardes" };
@@ -26,6 +26,7 @@ export default async function BackupsPage() {
   await requireAdmin();
   const backupDir = process.env.BACKUP_DIR || "/opt/backstage/backups";
   const remoteConfigured = !!process.env.REMOTE_DB_URL?.trim();
+  const rcloneConfigured = !!process.env.RCLONE_REMOTE?.trim();
 
   let pairs: Pair[] = [];
   let dirError: string | null = null;
@@ -71,7 +72,7 @@ export default async function BackupsPage() {
         <p className="text-sm text-muted">Conservées <strong className="text-fg">14 jours</strong> sur la carte SD du Pi (<code className="text-xs">/opt/backstage/backups</code>), puis supprimées automatiquement.</p>
       </section>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-3">
         <div className="card flex items-center gap-3">
           <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent/10 text-accent"><HardDrive size={18} aria-hidden /></span>
           <div>
@@ -84,6 +85,13 @@ export default async function BackupsPage() {
           <div>
             <div className="text-sm font-semibold">{remoteConfigured ? "Activé" : "Non configuré"}</div>
             <div className="text-xs text-muted">Miroir distant (base MySQL externe, ex. OVH)</div>
+          </div>
+        </div>
+        <div className="card flex items-center gap-3">
+          <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${rcloneConfigured ? "bg-accent/10 text-accent" : "bg-bg text-muted"}`}><Cloud size={18} aria-hidden /></span>
+          <div>
+            <div className="text-sm font-semibold">{rcloneConfigured ? "Activé" : "Non configuré"}</div>
+            <div className="text-xs text-muted">Copie distante (ex. Google Drive, via rclone)</div>
           </div>
         </div>
       </div>
@@ -110,7 +118,7 @@ export default async function BackupsPage() {
         <p className="text-sm text-muted">Depuis un PC, après avoir récupéré les fichiers (<code className="text-xs">scp pi@raspberrypi.local:/opt/backstage/backups/* ./</code>) :</p>
         <pre className="overflow-x-auto rounded-lg bg-bg p-3 text-xs"><code>{`gunzip -c db-AAAAMMJJ-HHMM.sql.gz | mysql -u backstage -p backstage
 sudo tar -xzf uploads-AAAAMMJJ-HHMM.tar.gz -C /opt/backstage/data`}</code></pre>
-        <p className="text-xs text-muted">Détails complets dans DEPLOY.md, section 9 (y compris la mise en place du miroir distant).</p>
+        <p className="text-xs text-muted">Détails complets dans DEPLOY.md, section 9 (y compris la mise en place du miroir MySQL distant et de la copie Google Drive).</p>
       </section>
     </div>
   );

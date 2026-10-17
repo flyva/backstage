@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Sauvegarde quotidienne : base de données + envois (photos, plan). Conserve 14 jours en local.
-# Si REMOTE_DB_URL est renseignée dans .env (base MySQL externe, ex. OVH), le même dump y est aussi
-# rejoué (DROP + CREATE + données) : une copie hors du Pi, qui survit même à une carte SD morte.
+# Deux copies hors du Pi, facultatives (voir DEPLOY.md section 9) :
+#  - REMOTE_DB_URL : le dump est rejoué (DROP + CREATE + données) sur une base MySQL externe (ex. OVH).
+#  - RCLONE_REMOTE : les deux fichiers du jour sont copiés sur un stockage distant (ex. Google Drive) via rclone.
 #   sudo /opt/backstage/backup.sh        (lancé chaque nuit par backstage-backup.timer)
 set -euo pipefail
 
@@ -37,6 +38,16 @@ if [ -n "${REMOTE_DB_URL:-}" ]; then
     echo "✓ Miroir distant à jour sur $R_HOST"
   else
     echo "⚠ Échec du miroir distant ($R_HOST) : la sauvegarde locale est quand même faite" >&2
+  fi
+fi
+
+# Copie distante optionnelle (ex. Google Drive) via rclone, déjà configuré (sudo rclone config). N'empêche
+# jamais la sauvegarde locale de réussir si rclone n'est pas installé/configuré ou si le réseau coupe.
+if [ -n "${RCLONE_REMOTE:-}" ] && command -v rclone >/dev/null 2>&1; then
+  if rclone copy "$DEST/db-$STAMP.sql.gz" "$RCLONE_REMOTE" && rclone copy "$DEST/uploads-$STAMP.tar.gz" "$RCLONE_REMOTE"; then
+    echo "✓ Copié sur $RCLONE_REMOTE"
+  else
+    echo "⚠ Échec de la copie vers $RCLONE_REMOTE : la sauvegarde locale est quand même faite" >&2
   fi
 fi
 
