@@ -171,11 +171,25 @@ sudo systemctl restart backstage
 
 ## 9. Sauvegardes
 
-Chaque nuit à 3 h : base + dossier `data/uploads` (plan, galerie) dans `/opt/backstage/backups`, 14 jours conservés. **Une sauvegarde sur la même carte SD ne protège pas d'une carte morte** : copie régulièrement ce dossier ailleurs (PC, NAS, cloud).
+Chaque nuit à 3 h : base + dossier `data/uploads` (plan, galerie) dans `/opt/backstage/backups`, 14 jours conservés. **Une sauvegarde sur la même carte SD ne protège pas d'une carte morte** : copie régulièrement ce dossier ailleurs (PC, NAS, cloud), ou configure le miroir distant ci-dessous.
 
 ```bash
 scp pi@raspberrypi.local:/opt/backstage/backups/* ./sauvegardes-backstage/
 ```
+
+### Miroir distant (base MySQL externe, ex. OVH)
+
+En plus de la sauvegarde locale, `backup.sh` peut rejouer le même dump chaque nuit sur une base MySQL externe — une vraie copie à jour, hors du Pi, interrogeable directement si besoin.
+
+1. Chez OVH (ou un autre hébergeur) : crée une base **MySQL 8.4**, note l'hôte, le port, le nom de la base, un utilisateur et son mot de passe. Autorise l'IP publique du Pi dans les règles d'accès de la base (OVH : onglet « Utilisateurs »/« Restrictions IP » de la base).
+2. Sur le Pi, ajoute dans `/opt/backstage/.env` :
+   ```
+   REMOTE_DB_URL="mysql://utilisateur:mdp@xxxxxxxxxx.mysql.db:3306/nom_base"
+   ```
+   (mot de passe sans `@`, `:` ni `/` : ces caractères casseraient la lecture de l'URL par `backup.sh`.)
+3. Teste tout de suite, sans attendre 3 h : `sudo /opt/backstage/backup.sh`. Le dernier message doit être `✓ Miroir distant à jour sur xxxxxxxxxx.mysql.db` (sinon l'erreur mysql apparaît juste avant — le plus souvent une IP non autorisée).
+
+Si la base distante est injoignable un soir (réseau, maintenance OVH…), la sauvegarde locale a quand même lieu normalement ; seul le miroir distant est sauté, avec un avertissement dans `journalctl -u backstage-backup`.
 
 Restauration :
 
