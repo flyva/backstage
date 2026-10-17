@@ -1,13 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, count, eq, inArray } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { contacts, faqItems, quizQuestions, settings, usefulLinks, wikiPages, wikiRevisions } from "@/db/schema";
+import { contacts, faqItems, settings, usefulLinks, wikiPages, wikiRevisions } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
 import { geocode } from "@/lib/mobility";
 import { GUIDE_CONTACTS, GUIDE_FAQ, GUIDE_LINKS, GUIDE_PAGES, GUIDE_SETTINGS } from "@/lib/guide-data";
-import { COURSES } from "@/lib/course-data";
 import type { FormState } from "@/lib/actions";
 
 /**
@@ -86,70 +85,6 @@ export async function importGuide(): Promise<FormState> {
   revalidatePath("/", "layout");
   const total = n.contacts + n.faq + n.links + n.pages + n.settings + recategorized;
   return { ok: total === 0 ? "Tout est déjà à jour : rien à ajouter." : `Ajouté : ${n.contacts} contact(s), ${n.faq} question(s) FAQ, ${n.links} lien(s), ${n.pages} page(s) du wiki, ${n.settings} réglage(s)${recategorized ? `, ${recategorized} page(s) reclassée(s)` : ""}.` };
-}
-
-/**
- * Importe un cours (src/lib/course-data.ts) comme des pages du wiki, catégorie « Cours » : une page parente et ses
- * sous-pages. Relançable à volonté pour récupérer les mises à jour de contenu : le texte des pages du cours est
- * resynchronisé à chaque import (la dernière version de src/lib/course-data.ts remplace l'ancienne) — une page créée
- * à part par un admin (autre slug) n'est elle jamais touchée. Les anciennes pages qu'une restructuration remplace
- * (`course.replaces`) sont supprimées automatiquement.
- */
-export async function importCourse(key: string): Promise<FormState> {
-  const admin = await requireAdmin();
-  const course = COURSES.find((c) => c.key === key);
-  if (!course) return { error: "Cours introuvable" };
-  const now = new Date();
-
-  if (course.replaces?.length) {
-    const keep = new Set(course.pages.map((p) => p.slug));
-    const toDrop = course.replaces.filter((s) => !keep.has(s));
-    if (toDrop.length) {
-      const old = await db.select({ id: wikiPages.id }).from(wikiPages).where(inArray(wikiPages.slug, toDrop));
-      if (old.length) {
-        const ids = old.map((o) => o.id);
-        await db.delete(wikiRevisions).where(inArray(wikiRevisions.pageId, ids));
-        await db.delete(wikiPages).where(inArray(wikiPages.id, ids));
-      }
-    }
-  }
-
-  const idBySlug = new Map((await db.select({ id: wikiPages.id, slug: wikiPages.slug }).from(wikiPages)).map((p) => [p.slug, p.id]));
-  let added = 0, updated = 0;
-  for (const p of course.pages) {
-    const parentId = p.parent ? (idBySlug.get(p.parent) ?? null) : null;
-    const existing = idBySlug.get(p.slug);
-    if (existing) {
-      await db.update(wikiPages).set({ title: p.title, parentId, body: p.body, updatedBy: admin.id, updatedAt: now }).where(eq(wikiPages.id, existing));
-      await db.insert(wikiRevisions).values({ pageId: existing, title: p.title, body: p.body, editorId: admin.id, createdAt: now });
-      updated++;
-    } else {
-      const [res] = await db.insert(wikiPages).values({ slug: p.slug, title: p.title, category: "Cours", parentId, body: p.body, createdBy: admin.id, updatedBy: admin.id, createdAt: now, updatedAt: now });
-      await db.insert(wikiRevisions).values({ pageId: res.insertId, title: p.title, body: p.body, editorId: admin.id, createdAt: now });
-      idBySlug.set(p.slug, res.insertId);
-      added++;
-    }
-  }
-  // Banque de quiz : semée une seule fois (au tout premier import), jamais retouchée ensuite — après, c'est la banque
-  // gérée par les admins (Administration → Quiz) qui fait foi, un réimport du cours ne doit pas écraser leurs modifs.
-  let quizAdded = 0;
-  if (course.quiz?.length) {
-    const [{ n }] = await db.select({ n: count() }).from(quizQuestions).where(eq(quizQuestions.courseKey, course.key));
-    if (Number(n) === 0) {
-      await db.insert(quizQuestions).values(course.quiz.map((q) => ({
-        courseKey: course.key, question: q.question, choiceA: q.choices[0], choiceB: q.choices[1], choiceC: q.choices[2], choiceD: q.choices[3], answer: q.answer, createdBy: admin.id,
-      })));
-      quizAdded = course.quiz.length;
-    }
-  }
-
-  revalidatePath("/", "layout");
-  const parts = [
-    added > 0 ? `${added} page(s) ajoutée(s)` : "",
-    updated > 0 ? `${updated} page(s) mise(s) à jour` : "",
-    quizAdded > 0 ? `${quizAdded} question(s) de quiz ajoutée(s)` : "",
-  ].filter(Boolean);
-  return { ok: parts.length ? `${parts.join(", ")} (catégorie « Cours »).` : "Tout est déjà à jour." };
 }
 
 // ---------- Annuaire ----------

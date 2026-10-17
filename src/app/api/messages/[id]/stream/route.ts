@@ -3,7 +3,7 @@ import { db } from "@/db";
 import { conversations, messages } from "@/db/schema";
 import { getUser } from "@/lib/auth";
 import { onEvent, type LiveEvent } from "@/lib/message-bus";
-import { hydrateMessages } from "@/lib/messaging";
+import { hydrateMessages, isParticipant } from "@/lib/messaging";
 
 // Flux en direct (Server-Sent Events) d'une conversation : nouveaux messages, « est en train d'écrire », « vu ».
 // Réservé à ses deux participants.
@@ -15,7 +15,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const id = Number((await params).id);
   if (!Number.isInteger(id)) return new Response("Introuvable", { status: 404 });
   const [conv] = await db.select().from(conversations).where(eq(conversations.id, id)).limit(1);
-  if (!conv || (conv.buyerId !== user.id && conv.sellerId !== user.id)) return new Response("Introuvable", { status: 404 });
+  if (!conv || !(await isParticipant(conv, user.id))) return new Response("Introuvable", { status: 404 });
 
   // Reprise après une coupure : le navigateur renvoie le dernier identifiant reçu.
   const last = Number(req.headers.get("last-event-id") ?? new URL(req.url).searchParams.get("after") ?? 0) || 0;

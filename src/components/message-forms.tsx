@@ -2,10 +2,12 @@
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Bold, File as FileIcon, Image as ImageIcon, Italic, Link2, List, MessageCircle, Paperclip, Send, Strikethrough, X } from "lucide-react";
+import { Bold, DoorOpen, File as FileIcon, Image as ImageIcon, Italic, Link2, List, MessageCircle, Paperclip, Send, Strikethrough, Users, X } from "lucide-react";
 import type { FormState } from "@/lib/actions";
-import { saveReview, sendMessage, startConversation, startDirectConversation } from "@/lib/message-actions";
+import { createGroupConversation, leaveGroup, saveReview, sendMessage, startConversation, startDirectConversation } from "@/lib/message-actions";
+import { ConfirmButton } from "@/components/ConfirmButton";
 import { EmojiPicker } from "@/components/EmojiPicker";
+import { PeoplePicker } from "@/components/PeoplePicker";
 import type { LiveMessage } from "@/lib/message-bus";
 
 const MAX_MESSAGE_FILES = 6; // doit rester égal à MAX_MESSAGE_FILES dans message-files.ts (module serveur, non importable ici)
@@ -89,6 +91,37 @@ function prefixLine(ref: React.RefObject<HTMLTextAreaElement | null>, prefix: st
   el.value = value.slice(0, lineStart) + prefix + value.slice(lineStart);
   el.focus();
   el.setSelectionRange(s + prefix.length, s + prefix.length);
+}
+
+/** Formulaire de création d'un groupe de discussion (nom + au moins deux personnes de l'annuaire). */
+export function NewGroupForm() {
+  const [state, action, pending] = useActionState(createGroupConversation, undefined);
+  return (
+    <form action={action} className="space-y-3">
+      <div>
+        <label className="label" htmlFor="ng-name">Nom du groupe</label>
+        <input id="ng-name" name="name" required maxLength={120} className="input" placeholder="Ex. Projet de fin d'année" />
+      </div>
+      <div>
+        <label className="label">Personnes (au moins deux)</label>
+        <PeoplePicker name="memberIds" placeholder="Ajouter une personne de l'annuaire…" />
+      </div>
+      <Feedback state={state} />
+      <button className="btn" disabled={pending}><Users size={15} /> {pending ? "Création…" : "Créer le groupe"}</button>
+    </form>
+  );
+}
+
+/** Bouton « Quitter le groupe » dans l'en-tête d'une conversation de groupe. */
+export function LeaveGroupButton({ conversationId }: { conversationId: number }) {
+  return (
+    <form action={leaveGroup}>
+      <input type="hidden" name="conversationId" value={conversationId} />
+      <ConfirmButton message="Quitter ce groupe ? Tu ne recevras plus ses messages." className="btn-ghost shrink-0 text-xs text-muted hover:text-danger">
+        <DoorOpen size={14} /> Quitter le groupe
+      </ConfirmButton>
+    </form>
+  );
 }
 
 /** Zone de réponse d'une conversation : éditeur de texte (gras, italique, liste, lien), émojis, photos, fichiers, réponse à un message. */

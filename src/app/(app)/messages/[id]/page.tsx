@@ -1,20 +1,21 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { and, asc, eq } from "drizzle-orm";
-import { CheckCircle2, Handshake, Store } from "lucide-react";
+import { and, asc, eq, isNull } from "drizzle-orm";
+import { CheckCircle2, Handshake, Store, Trash2, Users } from "lucide-react";
 import { db } from "@/db";
-import { conversations, listings, messages, reviews, users } from "@/db/schema";
+import { conversationMembers, conversations, listings, messages, reviews, users } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { avatarUrl } from "@/lib/avatar-files";
 import { LISTING_LABEL, LISTING_PHOTO_PREFIX, formatPrice } from "@/lib/listing-shared";
 import { concludeListing, setListingStatus } from "@/lib/listing-actions";
-import { hydrateMessages, messageCountsBySender, ratingSummary } from "@/lib/messaging";
+import { deleteConversation } from "@/lib/message-actions";
+import { hydrateMessages, isParticipant, messageCountsBySender, ratingSummary } from "@/lib/messaging";
 import { emitEvent } from "@/lib/message-bus";
 import { Avatar } from "@/components/people-forms";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { ConversationPanel } from "@/components/ConversationPanel";
-import { ReviewForm } from "@/components/message-forms";
+import { LeaveGroupButton, ReviewForm } from "@/components/message-forms";
 import { RatingBadge, Stars } from "@/components/Stars";
 
 export const metadata = { title: "Conversation" };
@@ -24,8 +25,9 @@ export default async function ConversationPage({ params }: PageProps<"/messages/
   const id = Number((await params).id);
   if (!Number.isInteger(id)) notFound();
   const [conv] = await db.select().from(conversations).where(eq(conversations.id, id)).limit(1);
-  // Une conversation n'est visible que par ses deux participants (pas même par un administrateur).
-  if (!conv || (conv.buyerId !== user.id && conv.sellerId !== user.id)) notFound();
+  if (!conv || !(await isParticipant(conv, user.id))) notFound();
+
+  if (conv.kind === "group") return <GroupConversation conv={conv} userId={user.id} />;
 
   const iAmBuyer = conv.buyerId === user.id;
   const otherId = iAmBuyer ? conv.sellerId : conv.buyerId;
@@ -61,10 +63,16 @@ export default async function ConversationPage({ params }: PageProps<"/messages/
         <p className="text-sm"><Link href="/messages" className="text-muted underline">← Messages</Link></p>
         <div className="flex items-center gap-3">
           <Avatar name={other?.name ?? "?"} url={avatarUrl(other?.avatar)} size={48} />
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h1 className="truncate text-xl font-bold">{other?.visible ? <Link href={`/annuaire/${other.id}`} className="hover:text-accent">{other.name}</Link> : (other?.name ?? "Personne supprimée")}</h1>
             {rating && <RatingBadge avg={rating.avg} n={rating.n} />}
           </div>
+          <form action={deleteConversation}>
+            <input type="hidden" name="conversationId" value={id} />
+            <ConfirmButton message="Supprimer définitivement cette conversation ? Les messages et pièces jointes disparaissent pour les deux personnes." className="btn-ghost shrink-0 text-xs text-muted hover:text-danger">
+              <Trash2 size={14} /> Supprimer
+            </ConfirmButton>
+          </form>
         </div>
       </header>
 
@@ -159,6 +167,55 @@ export default async function ConversationPage({ params }: PageProps<"/messages/
         </aside>
         )}
       </div>
+    </div>
+  );
+}
+
+type GroupConv = { id: number; name: string | null; buyerId: number };
+
+async function GroupConversation({ conv, userId }: { conv: GroupConv; userId: number }) {
+  const [thread, members] = await Promise.all([
+    db.select().from(messages).where(eq(messages.conversationId, conv.id)).orderBy(asc(messages.id)),
+    db.select({ id: users.id, name: users.name, avatar: users.avatarFile }).from(users)
+      .innerJoin(conversationMembers, eq(conversationMembers.userId, users.id))
+      .where(and(eq(conversationMembers.conversationId, conv.id), isNull(conversationMembers.leftAt))),
+  ]);
+  const liveThread = await hydrateMessages(conv.id, thread);
+  const participantNames = Object.fromEntries(members.map((m) => [m.id, m.name]));
+  const now = new Date();
+  await db.update(conversationMembers).set({ readAt: now }).where(and(eq(conversationMembers.conversationId, conv.id), eq(conversationMembers.userId, userId)));
+  const amCreator = conv.buyerId === userId;
+
+  return (
+    <div className="max-w-2xl space-y-5">
+      <AutoRefresh seconds={20} />
+      <header className="space-y-2">
+        <p className="text-sm"><Link href="/messages" className="text-muted underline">← Messages</Link></p>
+        <div className="flex items-center gap-3">
+          <span className="grid size-12 shrink-0 place-items-center rounded-full bg-accent/15 text-accent"><Users size={20} /></span>
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-xl font-bold">{conv.name || "Groupe"}</h1>
+            <p className="truncate text-sm text-muted">{members.map((m) => m.name).join(", ")}</p>
+          </div>
+          {amCreator ? (
+            <form action={deleteConversation}>
+              <input type="hidden" name="conversationId" value={conv.id} />
+              <ConfirmButton message="Supprimer ce groupe pour tout le monde ? Les messages et pièces jointes disparaissent pour tous les membres." className="btn-ghost shrink-0 text-xs text-muted hover:text-danger">
+                <Trash2 size={14} /> Supprimer
+              </ConfirmButton>
+            </form>
+          ) : (
+            <LeaveGroupButton conversationId={conv.id} />
+          )}
+        </div>
+      </header>
+
+      <section className="card space-y-3" aria-label="Messages">
+        <ConversationPanel
+          conversationId={conv.id} meId={userId} otherName="Le groupe" otherReadAt={null} initial={liveThread}
+          isGroup participantNames={participantNames}
+        />
+      </section>
     </div>
   );
 }

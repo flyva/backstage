@@ -1,8 +1,25 @@
 import "server-only";
-import { and, avg, count, eq, inArray, isNull, lt, or } from "drizzle-orm";
+import { and, avg, count, eq, inArray, isNull, lt, ne, or } from "drizzle-orm";
 import { db } from "@/db";
-import { conversations, messageAttachments, messages, reviews } from "@/db/schema";
+import { conversationMembers, conversations, messageAttachments, messages, reviews } from "@/db/schema";
 import { toLive, type LiveMessage } from "@/lib/message-bus";
+
+type Conv = { id: number; kind: "listing" | "dm" | "group"; buyerId: number; sellerId: number };
+
+/** Est-elle (encore) dans cette conversation ? Pour un groupe, vérifie l'adhésion (et qu'elle ne l'a pas quitté). */
+export async function isParticipant(conv: Conv, userId: number): Promise<boolean> {
+  if (conv.kind !== "group") return conv.buyerId === userId || conv.sellerId === userId;
+  const [row] = await db.select({ id: conversationMembers.id }).from(conversationMembers)
+    .where(and(eq(conversationMembers.conversationId, conv.id), eq(conversationMembers.userId, userId), isNull(conversationMembers.leftAt))).limit(1);
+  return !!row;
+}
+
+/** Membres actifs (n'ont pas quitté) d'un groupe, hors `exceptUserId` si fourni. */
+export async function activeGroupMemberIds(conversationId: number, exceptUserId?: number): Promise<number[]> {
+  const rows = await db.select({ userId: conversationMembers.userId }).from(conversationMembers)
+    .where(and(eq(conversationMembers.conversationId, conversationId), isNull(conversationMembers.leftAt), ...(exceptUserId ? [ne(conversationMembers.userId, exceptUserId)] : [])));
+  return rows.map((r) => r.userId);
+}
 
 /** Note moyenne et nombre d'avis reçus par chaque personne. */
 export async function ratingSummary(userIds: number[]): Promise<Map<number, { avg: number; n: number }>> {
@@ -21,16 +38,25 @@ export async function ratingSummary(userIds: number[]): Promise<Map<number, { av
  * elle n'est donc jamais « non lue » pour l'expéditeur.
  */
 export async function unreadConversations(userId: number): Promise<number> {
-  const [row] = await db
-    .select({ n: count() })
-    .from(conversations)
-    .where(
-      or(
-        and(eq(conversations.buyerId, userId), or(isNull(conversations.buyerReadAt), lt(conversations.buyerReadAt, conversations.lastMessageAt))),
-        and(eq(conversations.sellerId, userId), or(isNull(conversations.sellerReadAt), lt(conversations.sellerReadAt, conversations.lastMessageAt))),
+  const [[row], [groupRow]] = await Promise.all([
+    db.select({ n: count() }).from(conversations).where(
+      and(
+        ne(conversations.kind, "group"),
+        or(
+          and(eq(conversations.buyerId, userId), or(isNull(conversations.buyerReadAt), lt(conversations.buyerReadAt, conversations.lastMessageAt))),
+          and(eq(conversations.sellerId, userId), or(isNull(conversations.sellerReadAt), lt(conversations.sellerReadAt, conversations.lastMessageAt))),
+        ),
       ),
-    );
-  return Number(row?.n ?? 0);
+    ),
+    db.select({ n: count() }).from(conversationMembers).innerJoin(conversations, eq(conversations.id, conversationMembers.conversationId)).where(
+      and(
+        eq(conversationMembers.userId, userId),
+        isNull(conversationMembers.leftAt),
+        or(isNull(conversationMembers.readAt), lt(conversationMembers.readAt, conversations.lastMessageAt)),
+      ),
+    ),
+  ]);
+  return Number(row?.n ?? 0) + Number(groupRow?.n ?? 0);
 }
 
 /** Nombre de messages déjà envoyés par chaque personne d'une conversation. */

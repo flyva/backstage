@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { conversations, messageAttachments, messages } from "@/db/schema";
 import { getUser } from "@/lib/auth";
 import { MESSAGE_FILE_NAME, messageFilesDir } from "@/lib/message-files";
+import { isParticipant } from "@/lib/messaging";
 
 export async function GET(_: Request, ctx: { params: Promise<{ id: string; fileId: string }> }) {
   const user = await getUser();
@@ -14,9 +15,9 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string; fileI
   const fid = Number(fileId);
   if (!Number.isInteger(conversationId) || !Number.isInteger(fid)) return new Response("Introuvable", { status: 404 });
 
-  // Visible uniquement par les deux participants de la conversation.
-  const [conv] = await db.select({ buyerId: conversations.buyerId, sellerId: conversations.sellerId }).from(conversations).where(eq(conversations.id, conversationId)).limit(1);
-  if (!conv || (conv.buyerId !== user.id && conv.sellerId !== user.id)) return new Response("Introuvable", { status: 404 });
+  // Visible uniquement par les participantes de la conversation.
+  const [conv] = await db.select({ id: conversations.id, kind: conversations.kind, buyerId: conversations.buyerId, sellerId: conversations.sellerId }).from(conversations).where(eq(conversations.id, conversationId)).limit(1);
+  if (!conv || !(await isParticipant(conv, user.id))) return new Response("Introuvable", { status: 404 });
 
   const [row] = await db
     .select({ file: messageAttachments.file, originalName: messageAttachments.originalName, mime: messageAttachments.mime })

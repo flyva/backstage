@@ -81,6 +81,8 @@ export const users = mysqlTable("users", {
   onboarded: boolean("onboarded").notNull().default(false),
   // Dernière ouverture de la cloche : les nouveautés plus récentes comptent comme « non lues ».
   notifSeenAt: datetime("notif_seen_at"),
+  // Dernière requête vue de cette personne (mise à jour au plus une fois toutes les 10 min) : sert aux statistiques d'utilisation en admin.
+  lastSeenAt: datetime("last_seen_at"),
   // Identifiant Microsoft (« oid » Entra ID) une fois le compte lié à Office 365.
   // « active » : accès normal ; « pending » : compte Google personnel en attente de validation par un admin ;
   // « disabled » : compte désactivé par un admin (plus de connexion possible, données conservées).
@@ -1021,11 +1023,16 @@ export const pollInvites = mysqlTable(
 
 // Une conversation par annonce et par personne intéressée (acheteur) avec l'auteur de l'annonce (vendeur).
 // listingId vaut null pour un message direct (depuis l'annuaire, hors annonce) : buyerId est alors la personne qui a écrit en premier.
+// kind = "group" : conversation à plusieurs, les vraies participantes sont dans conversationMembers (pas buyer/sellerId,
+// qui valent toutes les deux l'id de la personne qui a créé le groupe — gardées non nulles pour ne pas toucher au
+// reste du code annonces/DM, mais ignorées pour un groupe).
 export const conversations = mysqlTable(
   "conversations",
   {
     id: int("id").primaryKey().autoincrement(),
     listingId: int("listing_id").references(() => listings.id, { onDelete: "cascade" }),
+    kind: mysqlEnum("kind", ["listing", "dm", "group"]).notNull().default("dm"),
+    name: varchar("name", { length: 120 }), // nom du groupe (kind = "group" uniquement)
     buyerId: int("buyer_id").notNull().references(() => users.id, { onDelete: "cascade" }),
     sellerId: int("seller_id").notNull().references(() => users.id, { onDelete: "cascade" }),
     buyerReadAt: datetime("buyer_read_at"),
@@ -1034,6 +1041,21 @@ export const conversations = mysqlTable(
     createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
   },
   (t) => [index("conv_listing_buyer_idx").on(t.listingId, t.buyerId), index("conv_buyer_idx").on(t.buyerId), index("conv_seller_idx").on(t.sellerId)],
+);
+
+// Participantes d'une conversation de groupe (kind = "group" seulement). readAt : lu par cette personne jusqu'à quand.
+// leftAt : a quitté le groupe (ne reçoit plus rien, disparaît de sa liste, mais l'historique reste pour les autres).
+export const conversationMembers = mysqlTable(
+  "conversation_members",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    conversationId: int("conversation_id").notNull().references(() => conversations.id, { onDelete: "cascade" }),
+    userId: int("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    readAt: datetime("read_at"),
+    joinedAt: datetime("joined_at").notNull().$defaultFn(() => new Date()),
+    leftAt: datetime("left_at"),
+  },
+  (t) => [uniqueIndex("cm_conv_user_idx").on(t.conversationId, t.userId), index("cm_user_idx").on(t.userId)],
 );
 
 export const messages = mysqlTable(

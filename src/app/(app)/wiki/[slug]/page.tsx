@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { ArrowLeft, Download, FilePlus2, History, Pencil, Printer } from "lucide-react";
 import { db } from "@/db";
@@ -39,6 +40,8 @@ export default async function WikiPage({ params }: PageProps<"/wiki/[slug]">) {
   }
 
   const { page, editor } = row;
+  // Les cours ont leur propre section (/cours/lecon) : pas de doublon dans le wiki classique.
+  if (page.category === "Cours") redirect(`/cours/lecon/${page.slug}`);
   const all = await db.select({ id: wikiPages.id, slug: wikiPages.slug, title: wikiPages.title, category: wikiPages.category, parentId: wikiPages.parentId }).from(wikiPages);
   const trail = ancestors(all, { id: page.id, slug: page.slug, title: page.title, category: page.category, parentId: page.parentId });
   const subpages = childrenMap(all).get(page.id) ?? [];

@@ -4,6 +4,7 @@ import { ProjectTabs } from "@/components/ProjectTabs";
 const TABS = [
   { slug: "", label: "Général" },
   { slug: "utilisateurs", label: "Utilisateurs" },
+  { slug: "statistiques", label: "Statistiques" },
   { slug: "roles", label: "Rôles" },
   { slug: "filieres", label: "Filières" },
   { slug: "checklists", label: "Checklists" },

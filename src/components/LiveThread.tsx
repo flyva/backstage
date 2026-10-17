@@ -44,12 +44,14 @@ const TYPING_MS = 4000; // « écrit… » disparaît 4 s après le dernier sign
  * l'indication « est en train d'écrire » et « Vu » sous ton dernier message. Si le flux est coupé (réseau, proxy), on interroge
  * le serveur toutes les 4 s en attendant qu'il revienne.
  */
-export function LiveThread({ conversationId, meId, otherName, otherReadAt, initial, onReply }: {
+export function LiveThread({ conversationId, meId, otherName, otherReadAt, initial, onReply, isGroup = false, participantNames }: {
   conversationId: number; meId: number; otherName: string; otherReadAt: string | null; initial: LiveMessage[]; onReply?: (m: LiveMessage) => void;
+  isGroup?: boolean; participantNames?: Record<number, string>;
 }) {
+  const nameOf = (userId: number) => (userId === meId ? "Toi" : (participantNames?.[userId] ?? otherName));
   const [items, setItems] = useState<LiveMessage[]>(initial);
   const [live, setLive] = useState(false);
-  const [typing, setTyping] = useState(false);
+  const [typingUserId, setTypingUserId] = useState<number | null>(null);
   const [readAt, setReadAt] = useState<string | null>(otherReadAt);
   const lastId = useRef(initial.at(-1)?.id ?? 0);
   const [openedAtId] = useState(initial.at(-1)?.id ?? 0); // les messages plus récents que l'ouverture arrivent avec une animation
@@ -93,14 +95,14 @@ export function LiveThread({ conversationId, meId, otherName, otherReadAt, initi
     es.addEventListener("message", (e) => {
       const m = JSON.parse((e as MessageEvent<string>).data) as LiveMessage;
       add.current([m]);
-      if (m.senderId !== meId) { setTyping(false); read(); }
+      if (m.senderId !== meId) { setTypingUserId(null); read(); }
     });
     es.addEventListener("typing", (e) => {
       const { userId } = JSON.parse((e as MessageEvent<string>).data) as { userId: number };
       if (userId === meId) return;
-      setTyping(true);
+      setTypingUserId(userId);
       if (typingTimer.current) clearTimeout(typingTimer.current);
-      typingTimer.current = setTimeout(() => setTyping(false), TYPING_MS);
+      typingTimer.current = setTimeout(() => setTypingUserId(null), TYPING_MS);
     });
     es.addEventListener("read", (e) => {
       const { userId, at } = JSON.parse((e as MessageEvent<string>).data) as { userId: number; at: string };
@@ -124,7 +126,7 @@ export function LiveThread({ conversationId, meId, otherName, otherReadAt, initi
   useEffect(() => {
     bottom.current?.scrollIntoView({ behavior: first.current ? "auto" : "smooth", block: "nearest" });
     first.current = false;
-  }, [items.length, typing]);
+  }, [items.length, typingUserId]);
 
   // « Vu » : sous mon dernier message, une fois que l'autre personne a ouvert la conversation après son envoi.
   const lastMineId = [...items].reverse().find((m) => m.senderId === meId)?.id;
@@ -140,9 +142,10 @@ export function LiveThread({ conversationId, meId, otherName, otherReadAt, initi
             <li key={m.id} className={`group flex flex-col ${mine ? "items-end" : "items-start"} ${m.id > openedAtId ? "anim-msg-in" : ""}`}>
               <div className={`flex items-end gap-1.5 ${mine ? "flex-row-reverse" : ""}`}>
                 <div className={`max-w-[85%] rounded-2xl px-4 py-2 text-sm ${mine ? "bg-accent text-accent-fg" : "border border-line bg-bg"}`}>
+                  {isGroup && !mine && <p className="mb-0.5 text-xs font-semibold text-accent">{nameOf(m.senderId)}</p>}
                   {m.replyTo && (
                     <div className={`mb-1.5 rounded-lg border-l-2 px-2 py-1 text-xs ${mine ? "border-accent-fg/40 bg-black/10" : "border-accent bg-surface"}`}>
-                      <p className="font-medium">{m.replyTo.senderId === meId ? "Toi" : otherName}</p>
+                      <p className="font-medium">{nameOf(m.replyTo.senderId)}</p>
                       <p className="truncate opacity-80">{m.replyTo.body || "Pièce jointe"}</p>
                     </div>
                   )}
@@ -169,10 +172,10 @@ export function LiveThread({ conversationId, meId, otherName, otherReadAt, initi
             </li>
           );
         })}
-        {typing && (
-          <li className="anim-msg-in flex items-center gap-2 text-muted" aria-label={`${otherName} est en train d'écrire`}>
+        {typingUserId !== null && (
+          <li className="anim-msg-in flex items-center gap-2 text-muted" aria-label={`${nameOf(typingUserId)} est en train d'écrire`}>
             <span className="flex items-center gap-1 rounded-2xl border border-line bg-bg px-4 py-3" aria-hidden><i className="typing-dot" /><i className="typing-dot" /><i className="typing-dot" /></span>
-            <span className="text-xs">{otherName} écrit…</span>
+            <span className="text-xs">{nameOf(typingUserId)} écrit…</span>
           </li>
         )}
         <div ref={bottom} />

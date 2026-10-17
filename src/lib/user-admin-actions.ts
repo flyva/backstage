@@ -133,11 +133,13 @@ export async function updateUser(_: FormState, fd: FormData): Promise<FormState>
   const willBeAdminActive = p.data.status === "active" && role.isAdmin;
   if (wasAdminActive && !willBeAdminActive && (await otherActiveAdmins(uid)) === 0) return { error: "Il doit rester au moins un administrateur actif" };
 
+  // Compte Google/Microsoft : l'adresse vient du fournisseur, elle ne se modifie pas depuis Backstage (même par un admin).
+  const ssoLinked = !!target.googleSub || !!target.msOid;
   await db.update(users).set({
     firstName: p.data.firstName,
     lastName: p.data.lastName,
     name: joinName(p.data.firstName, p.data.lastName),
-    email: p.data.email,
+    email: ssoLinked ? target.email : p.data.email,
     roleId: roleId.data,
     status: p.data.status,
   }).where(eq(users.id, uid));

@@ -134,11 +134,12 @@ export function DeleteRoleForm({ id }: { id: number }) {
 }
 
 export function UserEditForm({
-  user, roles, isSelf,
+  user, roles, isSelf, ssoLinked,
 }: {
   user: { id: number; firstName: string; lastName: string; email: string; roleId: number | null; status: "active" | "pending" | "disabled" | "rejected" };
   roles: { id: number; name: string }[];
   isSelf: boolean;
+  ssoLinked: boolean;
 }) {
   const [state, action, pending] = useActionState(updateUser, undefined);
   return (
@@ -147,7 +148,12 @@ export function UserEditForm({
       <div className="grid gap-3 sm:grid-cols-2">
         <div><label className="label" htmlFor="u-fn">Prénom</label><input id="u-fn" name="firstName" defaultValue={user.firstName} required maxLength={60} className="input" /></div>
         <div><label className="label" htmlFor="u-ln">Nom</label><input id="u-ln" name="lastName" defaultValue={user.lastName} required maxLength={60} className="input" /></div>
-        <div className="sm:col-span-2"><label className="label" htmlFor="u-em">Adresse e-mail</label><input id="u-em" name="email" type="email" defaultValue={user.email} required maxLength={190} className="input" /></div>
+        <div className="sm:col-span-2">
+          <label className="label" htmlFor="u-em">Adresse e-mail</label>
+          <input id="u-em" name="email" type="email" defaultValue={user.email} required maxLength={190} disabled={ssoLinked} className="input disabled:opacity-60" />
+          {ssoLinked && <p className="mt-1 text-xs text-muted">Connexion via Google ou Microsoft : l&apos;adresse vient de ce compte, elle ne se change pas ici.</p>}
+          {ssoLinked && <input type="hidden" name="email" value={user.email} />}
+        </div>
         <div>
           <label className="label" htmlFor="u-role">Rôle</label>
           <select id="u-role" name="roleId" defaultValue={user.roleId ?? ""} disabled={isSelf} className="input">{roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select>

@@ -78,6 +78,11 @@ export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
     .limit(1);
   const row = rows[0];
   if (!row || row.expiresAt < new Date() || row.user.status === "disabled") return null;
+  // Présence pour les statistiques d'utilisation (admin) : écrite au plus une fois toutes les 10 min, pas à chaque requête.
+  const now = new Date();
+  if (!row.user.lastSeenAt || now.getTime() - row.user.lastSeenAt.getTime() > 10 * 60e3) {
+    db.update(users).set({ lastSeenAt: now }).where(eq(users.id, row.user.id)).catch(() => {});
+  }
   return { ...row.user, perms: permsOf(row.role), roleName: row.role?.name ?? "Membre" };
 });
 

@@ -18,7 +18,7 @@ export default async function CourseQuizPage({ params }: PageProps<"/quiz/[key]"
 
   return (
     <div className="max-w-2xl space-y-5">
-      <p className="text-sm"><Link href={`/wiki/${course.pages[0]?.slug ?? ""}`} className="text-muted underline">← {course.label}</Link></p>
+      <p className="text-sm"><Link href={`/cours/lecon/${course.pages[0]?.slug ?? ""}`} className="text-muted underline">← {course.label}</Link></p>
       <div>
         <h1 className="text-2xl font-bold">Quiz {course.label}</h1>
         <p className="text-sm text-muted">Teste-toi sur le cours {course.label.toLowerCase()}.</p>

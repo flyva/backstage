@@ -2,16 +2,14 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { Bell, KeyRound, LogOut, Palette, Settings, Shield, Ticket, User } from "lucide-react";
+import { LogOut, Settings, Shield, Ticket, User } from "lucide-react";
 import { logout } from "@/lib/actions";
 
 type MenuItem = { href: string; label: string; icon: typeof User; hint?: string; badge?: number };
 
 const BASE_ITEMS: MenuItem[] = [
   { href: "/profil", label: "Mon profil", icon: User, hint: "Nom, adresse, planning Ypareo" },
-  { href: "/parametres", label: "Personnalisation", icon: Palette, hint: "Thème, couleurs, menu" },
-  { href: "/parametres/notifications", label: "Notifications", icon: Bell },
-  { href: "/parametres/securite", label: "Sécurité", icon: KeyRound, hint: "Mot de passe" },
+  { href: "/parametres", label: "Paramètres", icon: Settings, hint: "Personnalisation, notifications, sécurité" },
 ];
 
 const ADMIN_ITEM = { href: "/admin", label: "Administration", icon: Shield, hint: "Utilisateurs, rôles, réglages" };
@@ -73,9 +71,6 @@ export function UserMenu({
             ))}
           </ul>
           <div className="border-t border-line p-1.5">
-            <Link href="/parametres" role="menuitem" onClick={() => setOpen(false)} className="flex items-center justify-between rounded-xl px-3 py-2 text-sm font-medium text-accent hover:bg-bg">
-              Tous les paramètres <span aria-hidden>→</span>
-            </Link>
             {footer}
             <form action={logout}>
               <button role="menuitem" className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-muted hover:bg-bg hover:text-fg"><LogOut size={16} /> Déconnexion</button>

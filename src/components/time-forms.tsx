@@ -70,29 +70,33 @@ export function TimeSettingsForm({ standardHours, workDaysPerWeek, tutorUserId, 
   const [state, action, pending] = useActionState(saveTimeSettings, undefined);
   const restDays = 7 - workDaysPerWeek;
   return (
-    <form action={action} className="flex flex-wrap items-end gap-3">
-      <div className="w-44">
-        <label className="label" htmlFor="ts-standard">Journée standard</label>
-        <input id="ts-standard" name="standardHours" type="number" min={1} max={16} step={0.25} defaultValue={standardHours} required className="input" />
-        <p className="mt-1 text-xs text-muted">En heures (ex. 7). Sert à calculer les heures sup.</p>
+    <form action={action} className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div>
+          <label className="label" htmlFor="ts-standard">Journée standard</label>
+          <input id="ts-standard" name="standardHours" type="number" min={1} max={16} step={0.25} defaultValue={standardHours} required className="input" />
+          <p className="mt-1 text-xs text-muted">En heures (ex. 7). Sert à calculer les heures sup.</p>
+        </div>
+        <div>
+          <label className="label" htmlFor="ts-weekdays">Jours travaillés / semaine</label>
+          <select id="ts-weekdays" name="workDaysPerWeek" defaultValue={workDaysPerWeek} className="input">
+            {[1, 2, 3, 4, 5, 6, 7].map((n) => <option key={n} value={n}>{n} jour{n > 1 ? "s" : ""}</option>)}
+          </select>
+          <p className="mt-1 text-xs text-muted">Les heures sup se comptent sur la semaine entière. Les {restDays > 0 ? `${restDays} dernier${restDays > 1 ? "s" : ""} jour${restDays > 1 ? "s" : ""} de la semaine (ex. week-end)` : "jours restants"} sont marqués « Repos » tout seuls.</p>
+        </div>
+        <div>
+          <label className="label" htmlFor="ts-tutor">Référent (tuteur, patron…)</label>
+          <select id="ts-tutor" name="tutorUserId" defaultValue={tutorUserId ?? ""} className="input">
+            <option value="">Personne</option>
+            {colleagues.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <p className="mt-1 text-xs text-muted">Cette personne voit ta pointeuse et tes stats en lecture seule.</p>
+        </div>
       </div>
-      <div className="w-44">
-        <label className="label" htmlFor="ts-weekdays">Jours travaillés / semaine</label>
-        <select id="ts-weekdays" name="workDaysPerWeek" defaultValue={workDaysPerWeek} className="input">
-          {[1, 2, 3, 4, 5, 6, 7].map((n) => <option key={n} value={n}>{n} jour{n > 1 ? "s" : ""}</option>)}
-        </select>
-        <p className="mt-1 text-xs text-muted">Les heures sup se comptent sur la semaine entière. Les {restDays > 0 ? `${restDays} dernier${restDays > 1 ? "s" : ""} jour${restDays > 1 ? "s" : ""} de la semaine (ex. week-end)` : "jours restants"} sont marqués « Repos » tout seuls.</p>
+      <div className="flex items-center gap-3">
+        <button className="btn" disabled={pending}>{pending ? "…" : "Enregistrer"}</button>
+        <Feedback state={state} />
       </div>
-      <div className="min-w-56 flex-1">
-        <label className="label" htmlFor="ts-tutor">Référent (tuteur, patron…)</label>
-        <select id="ts-tutor" name="tutorUserId" defaultValue={tutorUserId ?? ""} className="input">
-          <option value="">Personne</option>
-          {colleagues.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
-        <p className="mt-1 text-xs text-muted">Cette personne voit ta pointeuse et tes stats en lecture seule.</p>
-      </div>
-      <button className="btn" disabled={pending}>{pending ? "…" : "Enregistrer"}</button>
-      <div className="basis-full"><Feedback state={state} /></div>
     </form>
   );
 }
