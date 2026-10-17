@@ -39,6 +39,7 @@ export const roles = mysqlTable("roles", {
   viewSavoirs: boolean("view_savoirs").notNull().default(true),
   viewPromo: boolean("view_promo").notNull().default(true),
   viewVie: boolean("view_vie").notNull().default(true),
+  viewDetente: boolean("view_detente").notNull().default(true),
   // Pages du sous-menu « Cours » visibles pour ce rôle : liste de clés séparées par des virgules (ex. "cours,habilitation").
   // Vide ou absent = toutes visibles (pas besoin de migration pour chaque nouvelle page ajoutée plus tard).
   courseTags: text("course_tags"),
@@ -739,6 +740,19 @@ export const expenseNotes = mysqlTable(
     createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
   },
   (t) => [index("exp_user_date_idx").on(t.userId, t.date)],
+);
+
+// Scores de l'espace détente (Tetris pour l'instant, « game » laisse la place à d'autres mini-jeux plus tard).
+export const detenteScores = mysqlTable(
+  "detente_scores",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    userId: int("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    game: varchar("game", { length: 30 }).notNull().default("tetris"),
+    score: int("score").notNull(),
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [index("ds_game_score_idx").on(t.game, t.score), index("ds_user_idx").on(t.userId)],
 );
 
 // ---------- Bibliothèques (régie) ----------

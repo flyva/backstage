@@ -512,6 +512,13 @@
       "when": 1792269559759,
       "tag": "0072_daily_karnak",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "5",
+      "when": 1792269867761,
+      "tag": "0073_lean_wrecker",
+      "breakpoints": true
     }
   ]
 }

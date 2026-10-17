@@ -15,11 +15,12 @@ export type RoleFlags = {
   viewSavoirs: boolean;
   viewPromo: boolean;
   viewVie: boolean;
+  viewDetente: boolean;
   courseTags: string | null;
 };
 
 export type Module = "materiel" | "bde" | "actus" | "galerie";
-export type Section = "savoirs" | "promo" | "vie";
+export type Section = "savoirs" | "promo" | "vie" | "detente";
 
 /** Pages du sous-menu « Cours » (dans Travail). D'autres s'ajouteront avec le temps : chacune a une clé stable, à cocher
  * ou non par rôle, sans toucher à la base (elles sont stockées comme une liste de clés dans `courseTags`). */
@@ -71,6 +72,7 @@ export function permsOf(r: RoleFlags | null | undefined): Perms {
       savoirs: a || (r ? !!r.viewSavoirs : true),
       promo: a || (r ? !!r.viewPromo : true),
       vie: a || (r ? !!r.viewVie : true),
+      detente: a || (r ? !!r.viewDetente : true),
     },
     courses: courseAccess(a, r?.courseTags ?? null),
   };
@@ -87,6 +89,7 @@ export const SECTION_FIELDS = [
   { key: "savoirs", field: "viewSavoirs", label: "Savoirs", hint: "Wiki, bibliothèque, assistant, FAQ." },
   { key: "promo", field: "viewPromo", label: "Promo", hint: "Actualités, annuaire, annonces, disponibilités, covoiturage." },
   { key: "vie", field: "viewVie", label: "Vie étudiante", hint: "BDE, galerie, Instagram." },
+  { key: "detente", field: "viewDetente", label: "Détente", hint: "Espace jeu (Tetris), scores et joueurs en direct." },
 ] as const;
 
 /** Domaines à trois niveaux (Aucun / Voir / Gérer). */
