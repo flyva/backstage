@@ -505,6 +505,13 @@
       "when": 1792230208496,
       "tag": "0071_omniscient_fenris",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "5",
+      "when": 1792269559759,
+      "tag": "0072_daily_karnak",
+      "breakpoints": true
     }
   ]
 }

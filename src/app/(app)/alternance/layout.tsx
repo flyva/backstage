@@ -6,6 +6,7 @@ const TABS = [
   { slug: "carnet", label: "Carnet de compétences" },
   { slug: "pointeuse", label: "Pointeuse" },
   { slug: "stats", label: "Statistiques" },
+  { slug: "notes-de-frais", label: "Notes de frais" },
 ];
 
 export default async function AlternanceLayout({ children }: { children: React.ReactNode }) {

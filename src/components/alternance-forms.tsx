@@ -1,11 +1,14 @@
 "use client";
 
 import { useActionState } from "react";
+import { Receipt } from "lucide-react";
 import type { FormState } from "@/lib/actions";
 import { applyRhythm, saveLog, setRange } from "@/lib/alternance-actions";
+import { saveExpenseNote } from "@/lib/expense-actions";
 import { KIND_LABEL } from "@/lib/alternance";
 import { MarkdownField } from "@/components/MarkdownField";
 import { DateRangeField } from "@/components/DateRangeField";
+import { AddressField } from "@/components/AddressField";
 
 function Feedback({ state }: { state: FormState }) {
   if (state?.error) return <p className="text-sm text-danger" role="alert">{state.error}</p>;
@@ -77,6 +80,27 @@ export function LogForm({ today, id, day, endDay, place = "entreprise", mission 
       </div>
       <Feedback state={state} />
       <button className="btn" disabled={pending}>{pending ? "Enregistrement…" : id ? "Enregistrer" : "Ajouter l'entrée"}</button>
+    </form>
+  );
+}
+
+/** Note de frais : photo du reçu, date/heure/lieu (auto-complété), prix. Le commentaire est généré côté serveur à l'enregistrement. */
+export function ExpenseNoteForm({ today, now }: { today: string; now: string }) {
+  const [state, action, pending] = useActionState(saveExpenseNote, undefined);
+  return (
+    <form action={action} className="space-y-4">
+      <div>
+        <label className="label" htmlFor="exp-photo">Photo du reçu</label>
+        <input id="exp-photo" name="photo" type="file" accept="image/jpeg,image/png" capture="environment" required className="input" />
+      </div>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div><label className="label" htmlFor="exp-date">Date</label><input id="exp-date" name="date" type="date" defaultValue={today} required className="input" /></div>
+        <div><label className="label" htmlFor="exp-time">Heure</label><input id="exp-time" name="time" type="time" defaultValue={now} required className="input" /></div>
+        <div><label className="label" htmlFor="exp-price">Prix (€)</label><input id="exp-price" name="price" type="number" step="0.01" min="0.01" required className="input" placeholder="12,50" /></div>
+      </div>
+      <AddressField id="exp-place" name="place" label="Lieu" placeholder="Nom et adresse du lieu" />
+      <Feedback state={state} />
+      <button className="btn" disabled={pending}><Receipt size={15} /> {pending ? "Enregistrement…" : "Enregistrer la note de frais"}</button>
     </form>
   );
 }

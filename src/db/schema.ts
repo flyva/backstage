@@ -724,6 +724,23 @@ export const workLogs = mysqlTable(
   (t) => [index("wl_user_day_idx").on(t.userId, t.day)],
 );
 
+// Note de frais : photo du reçu + date/heure/lieu/prix, avec un commentaire prêt à copier-coller pour l'entreprise.
+export const expenseNotes = mysqlTable(
+  "expense_notes",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    userId: int("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    photoFile: varchar("photo_file", { length: 60 }).notNull(),
+    date: date("date", { mode: "string" }).notNull(),
+    time: varchar("time", { length: 5 }).notNull(), // "HH:MM"
+    place: varchar("place", { length: 200 }).notNull(),
+    priceCents: int("price_cents").notNull(),
+    comment: text("comment").notNull(),
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [index("exp_user_date_idx").on(t.userId, t.date)],
+);
+
 // ---------- Bibliothèques (régie) ----------
 
 export const fixtureModels = mysqlTable("fixture_models", {
