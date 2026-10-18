@@ -6,7 +6,7 @@ import { unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { and, asc, count, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { LINK_KINDS, networkContacts, tracks, userLinks, users, type LinkKind } from "@/db/schema";
+import { LINK_KINDS, classes, networkContacts, tracks, userLinks, users, type LinkKind } from "@/db/schema";
 import { requireAdmin, requireUser } from "@/lib/auth";
 import { AVATAR_NAME, MAX_AVATAR_BYTES, avatarDir, ensureAvatarDir, newAvatarName, sniffAvatar } from "@/lib/avatar-files";
 import { HABILITATION_SYMBOLS, PHONE_RE, normalizeDiscord, normalizeUrl } from "@/lib/people-shared";
@@ -28,6 +28,13 @@ export async function saveFiche(_: FormState, fd: FormData): Promise<FormState> 
     if (!t) return { error: "Filière inconnue" };
     trackId = t.id;
   }
+  const classRaw = Number(fd.get("classId"));
+  let classId: number | null = null;
+  if (Number.isInteger(classRaw) && classRaw > 0) {
+    const [c] = await db.select({ id: classes.id }).from(classes).where(eq(classes.id, classRaw)).limit(1);
+    if (!c) return { error: "Classe inconnue" };
+    classId = c.id;
+  }
   const headline = text(fd, "headline", 120);
   const phone = text(fd, "phone", 30);
   if (phone && !PHONE_RE.test(phone)) return { error: "Numéro de téléphone invalide (chiffres, espaces, + . - ( ) uniquement)" };
@@ -39,7 +46,7 @@ export async function saveFiche(_: FormState, fd: FormData): Promise<FormState> 
   const habilitationRaw = text(fd, "habilitation", 12);
   const habilitation = (HABILITATION_SYMBOLS as readonly string[]).includes(habilitationRaw) ? habilitationRaw : null;
   await db.update(users).set({
-    trackId, headline: headline || null, phone: phone || null, contactEmail: contactEmail || null,
+    trackId, classId, headline: headline || null, phone: phone || null, contactEmail: contactEmail || null,
     showInDirectory: fd.get("showInDirectory") === "on", showPhone: fd.get("showPhone") === "on", cardShowPhone: fd.get("cardShowPhone") === "on",
     discord, cardShowDiscord: fd.get("cardShowDiscord") === "on", showCompany: fd.get("showCompany") === "on", cardShowSchool: fd.get("cardShowSchool") === "on",
     habilitation,
@@ -183,6 +190,37 @@ export async function saveTrack(_: FormState, fd: FormData): Promise<FormState> 
 export async function deleteTrack(fd: FormData) {
   await requireAdmin();
   await db.delete(tracks).where(eq(tracks.id, Number(fd.get("id")))); // les personnes concernées n'ont plus de filière (SET NULL)
+  revalidatePath("/admin/filieres");
+  revalidatePath("/profil");
+  revalidatePath("/annuaire");
+}
+
+// ---------- Classes de promo (administration) ----------
+
+export async function saveClass(_: FormState, fd: FormData): Promise<FormState> {
+  await requireAdmin();
+  const name = text(fd, "name", 80);
+  if (!name) return { error: "Le nom est obligatoire" };
+  const order = Number(fd.get("sortOrder"));
+  const sortOrder = Number.isInteger(order) ? Math.max(0, Math.min(999, order)) : 0;
+  const id = Number(fd.get("id"));
+  const [dup] = await db.select({ id: classes.id }).from(classes).where(eq(classes.name, name)).limit(1);
+  if (dup && dup.id !== id) return { error: "Une classe porte déjà ce nom" };
+  if (Number.isInteger(id) && id > 0) {
+    await db.update(classes).set({ name, sortOrder }).where(eq(classes.id, id));
+  } else {
+    const last = await db.select({ o: classes.sortOrder }).from(classes).orderBy(asc(classes.sortOrder));
+    await db.insert(classes).values({ name, sortOrder: fd.get("sortOrder") ? sortOrder : (last.at(-1)?.o ?? 0) + 1 });
+  }
+  revalidatePath("/admin/filieres");
+  revalidatePath("/profil");
+  revalidatePath("/annuaire");
+  return { ok: "Classe enregistrée" };
+}
+
+export async function deleteClass(fd: FormData) {
+  await requireAdmin();
+  await db.delete(classes).where(eq(classes.id, Number(fd.get("id")))); // les personnes concernées n'ont plus de classe (SET NULL)
   revalidatePath("/admin/filieres");
   revalidatePath("/profil");
   revalidatePath("/annuaire");

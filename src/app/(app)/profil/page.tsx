@@ -4,7 +4,7 @@ import { and, asc, eq, ne } from "drizzle-orm";
 import { Download } from "lucide-react";
 import QRCode from "qrcode";
 import { db } from "@/db";
-import { tracks, userLinks, users } from "@/db/schema";
+import { classes, tracks, userLinks, users } from "@/db/schema";
 import { ProfileForm } from "@/components/forms";
 import { AvatarForm, CardPanel, FeedPanel, FicheForm, LinksEditor } from "@/components/people-forms";
 import { TimeSettingsForm } from "@/components/time-forms";
@@ -97,6 +97,7 @@ type User = Awaited<ReturnType<typeof requireUser>>;
 
 async function FicheTab({ user }: { user: User }) {
   const allTracks = await db.select().from(tracks).orderBy(asc(tracks.sortOrder), asc(tracks.name));
+  const allClasses = await db.select().from(classes).orderBy(asc(classes.sortOrder), asc(classes.name));
   return (
     <div className="grid items-start gap-5 lg:grid-cols-[20rem_1fr]">
       <div className="card space-y-3">
@@ -109,7 +110,8 @@ async function FicheTab({ user }: { user: User }) {
           <Link href={`/annuaire/${user.id}`} className="btn-ghost text-xs">Voir ma fiche comme les autres</Link>
         </div>
         <FicheForm
-          tracks={allTracks.map((t) => ({ id: t.id, name: t.name }))} trackId={user.trackId} headline={user.headline ?? ""} phone={user.phone ?? ""}
+          tracks={allTracks.map((t) => ({ id: t.id, name: t.name }))} trackId={user.trackId}
+          classes={allClasses.map((c) => ({ id: c.id, name: c.name }))} classId={user.classId} headline={user.headline ?? ""} phone={user.phone ?? ""}
           contactEmail={user.contactEmail ?? ""} showInDirectory={user.showInDirectory} showPhone={user.showPhone} cardShowPhone={user.cardShowPhone} discord={user.discord ?? ""} cardShowDiscord={user.cardShowDiscord} cardShowSchool={user.cardShowSchool} showCompany={user.showCompany} companyName={user.companyName ?? ""} loginEmail={user.email} habilitation={user.habilitation ?? ""}
         />
       </div>

@@ -14,6 +14,8 @@ export type Person = {
   avatar: string | null;
   trackId: number | null;
   track: string | null;
+  classId: number | null;
+  className: string | null;
   headline: string | null;
   email3is: string | null;
   phone: string | null;
@@ -26,17 +28,19 @@ export type Person = {
 
 const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
-export function Directory({ people, tracks }: { people: Person[]; tracks: { id: number; name: string }[] }) {
+export function Directory({ people, tracks, classes }: { people: Person[]; tracks: { id: number; name: string }[]; classes: { id: number; name: string }[] }) {
   const [q, setQ] = useState("");
   const [track, setTrack] = useState("");
+  const [cls, setCls] = useState("");
   const shown = useMemo(() => {
     const n = norm(q.trim());
     return people.filter((p) => {
       if (track === "none" ? p.trackId !== null : track && String(p.trackId) !== track) return false;
+      if (cls === "none" ? p.classId !== null : cls && String(p.classId) !== cls) return false;
       if (!n) return true;
-      return [p.name, p.track, p.headline, p.email3is, p.discord, p.habilitation, p.company, ...p.links.map((l) => `${LINK_LABEL[l.kind]} ${l.label ?? ""}`)].some((v) => v && norm(v).includes(n));
+      return [p.name, p.track, p.className, p.headline, p.email3is, p.discord, p.habilitation, p.company, ...p.links.map((l) => `${LINK_LABEL[l.kind]} ${l.label ?? ""}`)].some((v) => v && norm(v).includes(n));
     });
-  }, [people, q, track]);
+  }, [people, q, track, cls]);
 
   return (
     <div className="space-y-4">
@@ -51,6 +55,11 @@ export function Directory({ people, tracks }: { people: Person[]; tracks: { id: 
           {tracks.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
           <option value="none">Sans filière</option>
         </select>
+        <select value={cls} onChange={(e) => setCls(e.target.value)} className="input w-auto" aria-label="Filtrer par classe">
+          <option value="">Toutes les classes</option>
+          {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          <option value="none">Sans classe</option>
+        </select>
         <span className="text-sm text-muted">{shown.length} personne{shown.length > 1 ? "s" : ""}</span>
       </div>
       {shown.length === 0 && <p className="text-sm text-muted">Personne ne correspond à cette recherche.</p>}
@@ -62,6 +71,7 @@ export function Directory({ people, tracks }: { people: Person[]; tracks: { id: 
               <div className="truncate font-semibold"><Link href={`/annuaire/${p.id}`} className="hover:text-accent">{p.name}</Link></div>
               <span className="flex flex-wrap items-center gap-1.5">
                 {p.track && <span className="inline-block rounded-full border border-line px-2 py-0.5 text-[11px] font-semibold text-muted">{p.track}</span>}
+                {p.className && <span className="inline-block rounded-full border border-line px-2 py-0.5 text-[11px] font-semibold text-muted">{p.className}</span>}
                 <HabilitationBadge value={p.habilitation} />
               </span>
               {p.headline && <div className="text-sm text-muted">{p.headline}</div>}

@@ -1,16 +1,19 @@
 import { asc, count } from "drizzle-orm";
 import { db } from "@/db";
-import { tracks, users } from "@/db/schema";
-import { TrackForm } from "@/components/people-forms";
+import { classes, tracks, users } from "@/db/schema";
+import { ClassForm, TrackForm } from "@/components/people-forms";
 
 export const metadata = { title: "Filières" };
 
 export default async function AdminTracksPage() {
-  const [list, counts] = await Promise.all([
+  const [list, counts, classList, classCounts] = await Promise.all([
     db.select().from(tracks).orderBy(asc(tracks.sortOrder), asc(tracks.name)),
     db.select({ trackId: users.trackId, n: count() }).from(users).groupBy(users.trackId),
+    db.select().from(classes).orderBy(asc(classes.sortOrder), asc(classes.name)),
+    db.select({ classId: users.classId, n: count() }).from(users).groupBy(users.classId),
   ]);
   const n = new Map(counts.map((c) => [c.trackId, c.n]));
+  const cn = new Map(classCounts.map((c) => [c.classId, c.n]));
   return (
     <div className="space-y-5">
       <section className="card space-y-3">
@@ -29,6 +32,24 @@ export default async function AdminTracksPage() {
       <section className="card space-y-3">
         <h2 className="font-semibold">Ajouter une filière</h2>
         <TrackForm />
+      </section>
+
+      <section className="card space-y-3">
+        <h2 className="font-semibold">Classes de promo</h2>
+        <p className="text-sm text-muted">Regroupement par classe (ex. « Promo 2026 A »), indépendant de la filière. Chaque personne choisit la sienne dans son profil.</p>
+        <ul className="divide-y divide-line">
+          {classList.map((c) => (
+            <li key={c.id} className="space-y-1 py-3">
+              <ClassForm cls={c} />
+              <p className="text-xs text-muted">{cn.get(c.id) ?? 0} personne{(cn.get(c.id) ?? 0) > 1 ? "s" : ""}</p>
+            </li>
+          ))}
+          {classList.length === 0 && <li className="py-3 text-sm text-muted">Aucune classe pour le moment.</li>}
+        </ul>
+      </section>
+      <section className="card space-y-3">
+        <h2 className="font-semibold">Ajouter une classe</h2>
+        <ClassForm />
       </section>
     </div>
   );

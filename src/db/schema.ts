@@ -53,6 +53,13 @@ export const tracks = mysqlTable("tracks", {
   sortOrder: int("sort_order").notNull().default(0),
 });
 
+// Classes de promo (ex. "Promo 2026 A") : même principe que les filières, mais regroupement par classe plutôt que par spécialité.
+export const classes = mysqlTable("classes", {
+  id: int("id").primaryKey().autoincrement(),
+  name: varchar("name", { length: 80 }).notNull().unique(),
+  sortOrder: int("sort_order").notNull().default(0),
+});
+
 export const users = mysqlTable("users", {
   id: int("id").primaryKey().autoincrement(),
   email: varchar("email", { length: 190 }).notNull().unique(),
@@ -94,6 +101,7 @@ export const users = mysqlTable("users", {
   msOid: varchar("ms_oid", { length: 80 }).unique(), // « tid.oid » : organisation + identifiant dans l'organisation
   // Fiche personnelle : annuaire de la promo et carte de visite en ligne.
   trackId: int("track_id").references(() => tracks.id, { onDelete: "set null" }), // filière
+  classId: int("class_id").references(() => classes.id, { onDelete: "set null" }), // classe de promo
   avatarFile: varchar("avatar_file", { length: 40 }),
   headline: varchar("headline", { length: 120 }), // « Régisseur son · alternant chez… »
   phone: varchar("phone", { length: 30 }),

@@ -8,8 +8,8 @@ import { Toggle } from "@/components/Toggle";
 import { LINK_KINDS, type LinkKind } from "@/db/schema";
 import { HABILITATION_SYMBOLS, LINK_LABEL, initialsOf } from "@/lib/people-shared";
 import {
-  addLink, deleteLink, regenerateCardSlug, removeAvatar, saveFiche, saveNetworkContact, saveTrack, setCardEnabled, uploadAvatar,
-  deleteNetworkContact, deleteTrack, setFeedEnabled, regenerateFeedToken,
+  addLink, deleteLink, regenerateCardSlug, removeAvatar, saveClass, saveFiche, saveNetworkContact, saveTrack, setCardEnabled, uploadAvatar,
+  deleteClass, deleteNetworkContact, deleteTrack, setFeedEnabled, regenerateFeedToken,
 } from "@/lib/people-actions";
 
 function Feedback({ state }: { state: FormState }) {
@@ -85,7 +85,9 @@ export function AvatarForm({ name, url }: { name: string; url: string | null }) 
 // ---------- Fiche ----------
 
 export function FicheForm(props: {
-  tracks: { id: number; name: string }[]; trackId: number | null; headline: string; phone: string; contactEmail: string;
+  tracks: { id: number; name: string }[]; trackId: number | null;
+  classes: { id: number; name: string }[]; classId: number | null;
+  headline: string; phone: string; contactEmail: string;
   showInDirectory: boolean; showPhone: boolean; cardShowPhone: boolean; discord: string; cardShowDiscord: boolean; cardShowSchool: boolean; showCompany: boolean; companyName: string; loginEmail: string;
   habilitation: string;
 }) {
@@ -98,6 +100,13 @@ export function FicheForm(props: {
           <select id="trackId" name="trackId" defaultValue={props.trackId ?? ""} className="input">
             <option value="">Non renseignée</option>
             {props.tracks.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="label" htmlFor="classId">Classe</label>
+          <select id="classId" name="classId" defaultValue={props.classId ?? ""} className="input">
+            <option value="">Non renseignée</option>
+            {props.classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
         <div>
@@ -356,6 +365,26 @@ export function TrackForm({ track }: { track?: { id: number; name: string; sortO
       <button className="btn" disabled={pending}>{track ? "Enregistrer" : "Ajouter"}</button>
       {track && (
         <button formAction={deleteTrack} className="btn-ghost" onClick={(e) => { if (!confirm(`Supprimer la filière « ${track.name} » ? Les personnes concernées n'auront plus de filière.`)) e.preventDefault(); }}>
+          <Trash2 size={15} /> Supprimer
+        </button>
+      )}
+      <div className="w-full"><Feedback state={state} /></div>
+    </form>
+  );
+}
+
+// ---------- Classes de promo (administration) ----------
+
+export function ClassForm({ cls }: { cls?: { id: number; name: string; sortOrder: number } }) {
+  const [state, action, pending] = useActionState(saveClass, undefined);
+  return (
+    <form action={action} className="flex flex-wrap items-center gap-2">
+      {cls && <input type="hidden" name="id" value={cls.id} />}
+      <input name="name" required maxLength={80} defaultValue={cls?.name} placeholder="Nom de la classe" className="input min-w-56 flex-1" aria-label="Nom de la classe" />
+      {cls && <input name="sortOrder" type="number" min={0} max={999} defaultValue={cls.sortOrder} className="input w-20" aria-label="Ordre d'affichage" title="Ordre d'affichage" />}
+      <button className="btn" disabled={pending}>{cls ? "Enregistrer" : "Ajouter"}</button>
+      {cls && (
+        <button formAction={deleteClass} className="btn-ghost" onClick={(e) => { if (!confirm(`Supprimer la classe « ${cls.name} » ? Les personnes concernées n'auront plus de classe.`)) e.preventDefault(); }}>
           <Trash2 size={15} /> Supprimer
         </button>
       )}
