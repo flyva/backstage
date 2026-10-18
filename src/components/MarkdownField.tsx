@@ -17,15 +17,15 @@ const prefixLines = (prefix: (i: number) => string, ph: string): Tool["run"] => 
 };
 
 const TOOLS: Tool[] = [
-  { label: "Gras", icon: Bold, run: around("**", "**", "texte en gras") },
-  { label: "Italique", icon: Italic, run: around("*", "*", "texte en italique") },
+  { label: "Gras (Ctrl+B)", icon: Bold, run: around("**", "**", "texte en gras") },
+  { label: "Italique (Ctrl+I)", icon: Italic, run: around("*", "*", "texte en italique") },
   { label: "Titre", icon: Heading2, run: prefixLines(() => "## ", "Titre") },
   { label: "Liste à puces", icon: List, run: prefixLines(() => "- ", "élément") },
   { label: "Liste numérotée", icon: ListOrdered, run: prefixLines((i) => `${i + 1}. `, "élément") },
   { label: "Citation", icon: Quote, run: prefixLines(() => "> ", "citation") },
   { label: "Code", icon: Code, run: around("`", "`", "code") },
   {
-    label: "Lien",
+    label: "Lien (Ctrl+K)",
     icon: Link2,
     run: (sel) => {
       const label = sel || "texte du lien";
@@ -112,6 +112,16 @@ export function MarkdownField({
     });
   };
 
+  // Raccourcis clavier façon Discord/Slack : Ctrl/Cmd + B, I, K (sans toucher la souris).
+  const SHORTCUTS: Record<string, Tool> = { b: TOOLS[0], i: TOOLS[1], k: TOOLS[7] };
+  const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (!(e.ctrlKey || e.metaKey)) return;
+    const tool = SHORTCUTS[e.key.toLowerCase()];
+    if (!tool) return;
+    e.preventDefault();
+    apply(tool);
+  };
+
   return (
     <div>
       <div className="mb-1 flex flex-wrap items-center gap-1">
@@ -165,6 +175,7 @@ export function MarkdownField({
         name={name}
         value={text}
         onChange={(e) => setText(e.target.value)}
+        onKeyDown={onKeyDown}
         rows={rows}
         maxLength={maxLength}
         spellCheck
