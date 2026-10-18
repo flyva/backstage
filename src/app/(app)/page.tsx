@@ -98,26 +98,23 @@ export default async function HomePage() {
 
   return (
     <div className="space-y-6">
-      <header
-        className="relative flex flex-wrap items-center justify-between gap-4 overflow-hidden rounded-2xl p-6 text-white shadow-[0_8px_30px_-10px_color-mix(in_srgb,var(--accent)_55%,transparent)]"
-        style={{ background: `linear-gradient(120deg, color-mix(in srgb, var(--accent) 92%, black 6%), color-mix(in srgb, var(--accent) 55%, ${isDay ? "#f59e0b" : "#4f46e5"} 45%))` }}
-      >
-        <span className="pointer-events-none absolute -right-10 -top-16 size-56 rounded-full bg-white/10 blur-2xl" aria-hidden />
-        <span className="pointer-events-none absolute -bottom-20 left-1/3 size-48 rounded-full bg-white/10 blur-2xl" aria-hidden />
-        <div className="relative flex items-center gap-4">
-          <span className="anim-icon-float grid size-14 shrink-0 place-items-center rounded-full bg-white/20 backdrop-blur-sm">
+      <header className="card flex flex-wrap items-center justify-between gap-4 border-l-4 border-accent">
+        <div className="flex items-center gap-4">
+          <span
+            className={`anim-icon-float grid size-14 shrink-0 place-items-center rounded-full ring-4 ring-surface ${isDay ? "bg-amber-400/15 text-amber-500" : "bg-indigo-400/15 text-indigo-400"}`}
+          >
             {isDay ? <Sun size={28} /> : <Moon size={28} />}
           </span>
           <div>
-            <h1 className="text-2xl font-bold capitalize drop-shadow-sm">{greeting} {user.firstName || user.name.split(" ")[0]} 👋</h1>
-            <p className="text-sm text-white/85 capitalize">{dayLabelLong} · Ton hub 3IS : cours, transports, matériel et actus.</p>
+            <h1 className="text-2xl font-bold capitalize">{greeting} {user.firstName || user.name.split(" ")[0]} 👋</h1>
+            <p className="text-sm text-muted capitalize">{dayLabelLong} · Ton hub 3IS : cours, transports, matériel et actus.</p>
           </div>
         </div>
         {shortcuts.length > 0 && (
-          <div className="relative flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2">
             {shortcuts.map(({ label, href, icon: Icon }) => (
-              <a key={label} href={href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-xl bg-white/15 px-3 py-2 text-xs font-medium text-white backdrop-blur-sm transition hover:bg-white/25">
-                <Icon size={14} /> {label} <ExternalLink size={11} className="opacity-70" />
+              <a key={label} href={href} target="_blank" rel="noopener noreferrer" className="btn-ghost text-xs">
+                <Icon size={14} /> {label} <ExternalLink size={11} className="text-muted" />
               </a>
             ))}
           </div>
