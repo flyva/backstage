@@ -7,6 +7,7 @@ import { skinFrom } from "@/lib/skin";
 import { siteIconVersion } from "@/lib/site-icon";
 import { PwaRegister } from "@/components/PwaRegister";
 import { RouteProgress } from "@/components/shell/RouteProgress";
+import { CookieBanner } from "@/components/CookieBanner";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 
@@ -42,6 +43,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full" suppressHydrationWarning>
         <Suspense fallback={null}><RouteProgress /></Suspense>
         {children}
+        <CookieBanner />
         <PwaRegister />
       </body>
     </html>
