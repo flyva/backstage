@@ -49,6 +49,8 @@ const subscribeClock = (cb: () => void) => {
 };
 const clock = () => Math.floor(Date.now() / 1000);
 
+const fmtClock = new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+
 const fmt = (sec: number) => {
   const s = Math.max(0, Math.floor(sec));
   const h = Math.floor(s / 3600);
@@ -151,6 +153,7 @@ export function ShowMode({ projectId, projectName, cues }: { projectId: number; 
       <div className="flex items-center justify-between gap-3 text-sm text-muted">
         <span className="truncate font-medium text-fg">{projectName}</span>
         <span className="flex items-center gap-3">
+          <span className="tabular-nums">{fmtClock.format(nowSec ? new Date(nowSec * 1000) : new Date())}</span>
           <span className="tabular-nums">Spectacle : <strong className="text-fg">{fmt(showElapsed)}</strong></span>
           <button type="button" className="btn-ghost px-2 py-1" aria-label="Plein écran" onClick={() => { if (document.fullscreenElement) void document.exitFullscreen(); else void document.documentElement.requestFullscreen?.(); }}><Maximize size={16} /></button>
         </span>
