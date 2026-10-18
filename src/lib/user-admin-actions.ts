@@ -9,6 +9,7 @@ import { roles, sessions, users } from "@/db/schema";
 import { hashPassword, requireAdmin } from "@/lib/auth";
 import { joinName } from "@/lib/names";
 import { COURSE_PAGES } from "@/lib/perms";
+import { TOGGLEABLE_GROUPS } from "@/lib/nav-data";
 import type { FormState } from "@/lib/actions";
 
 const id = z.coerce.number().int().positive();
@@ -65,6 +66,12 @@ export async function saveRole(_: FormState, fd: FormData): Promise<FormState> {
     courseTags: (() => {
       const kept = COURSE_PAGES.filter((c) => fd.get(`course_${c.key}`) !== "none").map((c) => c.key);
       return kept.length === COURSE_PAGES.length ? null : kept.join(",");
+    })(),
+    // null = rien de masqué, y compris les pages ajoutées plus tard ; une liste explicite ne fige que si quelque chose est vraiment décoché.
+    hiddenPages: (() => {
+      const all = TOGGLEABLE_GROUPS.flatMap((g) => g.pages);
+      const hidden = all.filter((pg) => fd.get(`page_${pg.href}`) !== "on").map((pg) => pg.href);
+      return hidden.length === 0 ? null : hidden.join(",");
     })(),
     ...levels(fd),
   };

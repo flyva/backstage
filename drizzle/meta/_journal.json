@@ -547,6 +547,13 @@
       "when": 1792331756551,
       "tag": "0077_mature_dragon_man",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "5",
+      "when": 1792335879173,
+      "tag": "0078_typical_scrambler",
+      "breakpoints": true
     }
   ]
 }

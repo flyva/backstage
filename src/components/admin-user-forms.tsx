@@ -5,6 +5,7 @@ import { Trash2 } from "lucide-react";
 import type { FormState } from "@/lib/actions";
 import { deleteRole, deleteUser, resetUserPassword, saveRole, updateUser } from "@/lib/user-admin-actions";
 import { ADMIN_PERM, COURSE_PAGES, LEVEL_FIELDS, LEVEL_LABEL, levelOf, SECTION_FIELDS, TICKETS_PERM, type Level } from "@/lib/perms";
+import { TOGGLEABLE_GROUPS } from "@/lib/nav-data";
 import { PasswordField } from "@/components/PasswordField";
 
 function Feedback({ state }: { state: FormState }) {
@@ -84,6 +85,29 @@ export function RoleForm({ role = {} }: { role?: RoleValues }) {
                   </div>
                 </div>
                 <p className="mt-1 text-xs text-muted">{sf.hint}</p>
+              </div>
+            );
+          })}
+        </div>
+      </fieldset>
+
+      <fieldset className="space-y-3">
+        <legend className="label">Pages du menu</legend>
+        <p className="text-xs text-muted">Décoche une page précise pour la retirer du menu de ce rôle, sans toucher aux autres (ex. accès à Alternance mais pas à la Pointeuse). Les domaines avec un niveau Voir/Gérer ci-dessus, et les pages de Cours, se règlent séparément.</p>
+        <div className="space-y-3">
+          {TOGGLEABLE_GROUPS.map((g) => {
+            const hiddenSet = typeof role.hiddenPages === "string" ? new Set(role.hiddenPages.split(",")) : new Set<string>();
+            return (
+              <div key={g.id} className="rounded-xl border border-line p-3">
+                <strong className="text-sm">{g.title}</strong>
+                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1.5">
+                  {g.pages.map((pg) => (
+                    <label key={pg.href} className="flex items-center gap-1.5 text-sm">
+                      <input type="checkbox" name={`page_${pg.href}`} defaultChecked={!role.id || !hiddenSet.has(pg.href)} className="size-4 accent-[var(--accent)]" />
+                      {pg.label}
+                    </label>
+                  ))}
+                </div>
               </div>
             );
           })}

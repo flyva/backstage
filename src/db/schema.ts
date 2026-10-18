@@ -43,6 +43,9 @@ export const roles = mysqlTable("roles", {
   // Pages du sous-menu « Cours » visibles pour ce rôle : liste de clés séparées par des virgules (ex. "cours,habilitation").
   // Vide ou absent = toutes visibles (pas besoin de migration pour chaque nouvelle page ajoutée plus tard).
   courseTags: text("course_tags"),
+  // Pages individuelles masquées du menu pour ce rôle (ex. "/alternance/pointeuse,/instagram") : liste de hrefs
+  // séparés par des virgules. Vide ou absent = rien de masqué. Même principe d'opt-out que courseTags.
+  hiddenPages: text("hidden_pages"),
   createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
 });
 

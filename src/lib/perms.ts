@@ -17,6 +17,9 @@ export type RoleFlags = {
   viewVie: boolean;
   viewDetente: boolean;
   courseTags: string | null;
+  // Pages individuelles masquées pour ce rôle (hors pages à niveau Voir/Gérer et pages de Cours, déjà couvertes
+  // ailleurs) : liste de hrefs séparés par des virgules. Vide ou absent = rien de masqué (comportement par défaut).
+  hiddenPages: string | null;
 };
 
 export type Module = "materiel" | "bde" | "actus" | "galerie";
@@ -49,6 +52,8 @@ export type Perms = {
   sections: Record<Section, boolean>;
   /** Pages du sous-menu Cours que ce rôle voit. */
   courses: Record<CoursePageKey, boolean>;
+  /** Pages individuelles du menu masquées pour ce rôle (vide pour un administrateur). */
+  hiddenPages: string[];
 };
 
 /** Un administrateur a tous les droits, quel que soit le détail coché. */
@@ -75,6 +80,7 @@ export function permsOf(r: RoleFlags | null | undefined): Perms {
       detente: a || (r ? !!r.viewDetente : true),
     },
     courses: courseAccess(a, r?.courseTags ?? null),
+    hiddenPages: a ? [] : (r?.hiddenPages ? r.hiddenPages.split(",").map((h) => h.trim()).filter(Boolean) : []),
   };
 }
 

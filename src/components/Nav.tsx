@@ -3,105 +3,20 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import {
-  BookOpen, BookUser, Bot, Briefcase, Calculator, Car, ChevronRight, CalendarDays, Camera, CircleHelp, Clock, Cog, FileDown, Gamepad2, Home, Images, Lightbulb, Link2, Network, Newspaper, PartyPopper, Receipt, School, NotebookPen, ShieldCheck, SquareKanban, TramFront, Users, Contact, Megaphone, CalendarClock, Zap, BarChart3,
-  type LucideIcon,
-} from "lucide-react";
-
-type Badge = "loans";
-type Item = { href?: string; label: string; icon: LucideIcon; badge?: Badge; adminOnly?: boolean; module?: string; children?: Item[] };
-type Group = { id: string; title: string; items: Item[] };
+import { ChevronRight } from "lucide-react";
+import { GROUPS, type Badge, type Item } from "@/lib/nav-data";
 
 // Six groupes par thème, dépliés UN SEUL à la fois (accordéon) : le menu ne dépasse jamais la hauteur de l'écran, donc il ne défile pas.
 // Le groupe de la page en cours est ouvert ; un clic sur un titre ouvre ce groupe (et referme l'autre).
-const GROUPS: Group[] = [
-  {
-    id: "quotidien", title: "Au quotidien",
-    items: [
-      { href: "/", label: "Accueil", icon: Home },
-      { href: "/agenda", label: "Agenda", icon: CalendarDays },
-      { href: "/mobilite", label: "Mobilité", icon: TramFront },
-    ],
-  },
-  {
-    id: "alternance", title: "Alternance",
-    items: [
-      { href: "/alternance", label: "Planning", icon: CalendarDays },
-      { href: "/alternance/carnet", label: "Carnet de compétences", icon: NotebookPen },
-      { href: "/alternance/pointeuse", label: "Pointeuse", icon: Clock },
-      { href: "/alternance/stats", label: "Statistiques", icon: BarChart3 },
-      { href: "/alternance/notes-de-frais", label: "Notes de frais", icon: Receipt },
-      { href: "/alternance/dossier", label: "Dossier complet (PDF)", icon: FileDown },
-    ],
-  },
-  {
-    id: "travail", title: "Travail",
-    items: [
-      { href: "/projets", label: "Projets", icon: Briefcase },
-      { href: "/kanban", label: "Mon kanban", icon: SquareKanban },
-      { href: "/reseau", label: "Carnet de réseau", icon: Contact },
-      { href: "/calculettes", label: "Calculettes", icon: Calculator },
-      {
-        label: "Cours", icon: NotebookPen,
-        children: [
-          { href: "/cours", label: "Mes cours", icon: NotebookPen, module: "cours" },
-          { href: "/habilitation", label: "Habilitation électrique", icon: ShieldCheck, module: "habilitation" },
-          { href: "/cours/lecon/reseaux", label: "Réseaux", icon: Network, module: "reseaux" },
-          { href: "/cours/lecon/mecanique", label: "Mécanique", icon: Cog, module: "mecanique" },
-          { href: "/cours/lecon/electricite", label: "Électricité", icon: Zap, module: "electricite" },
-          { href: "/cours/lecon/lumiere", label: "Lumière", icon: Lightbulb, module: "lumiere" },
-        ],
-      },
-    ],
-  },
-  {
-    id: "savoirs", title: "Savoirs",
-    items: [
-      { href: "/wiki", label: "Wiki", icon: BookOpen },
-      { href: "/assistant", label: "Assistant", icon: Bot },
-      { href: "/faq", label: "FAQ", icon: CircleHelp },
-    ],
-  },
-  {
-    id: "promo", title: "Promo",
-    items: [
-      { href: "/actus", label: "Actualités", icon: Newspaper, module: "actus" },
-      { href: "/annuaire", label: "Annuaire", icon: Users },
-      { href: "/annonces", label: "Annonces", icon: Megaphone },
-      { href: "/disponibilites", label: "Disponibilités", icon: CalendarClock },
-      { href: "/covoiturage", label: "Covoiturage", icon: Car },
-    ],
-  },
-  {
-    id: "vie", title: "Vie étudiante",
-    items: [
-      { href: "/bde", label: "BDE", icon: PartyPopper, module: "bde" },
-      { href: "/galerie", label: "Galerie", icon: Images, module: "galerie" },
-      { href: "/instagram", label: "Instagram", icon: Camera },
-    ],
-  },
-  {
-    id: "detente", title: "Détente",
-    items: [
-      { href: "/detente", label: "Tetris", icon: Gamepad2 },
-    ],
-  },
-  {
-    id: "ecole", title: "École",
-    items: [
-      { href: "/ecole", label: "Wi-Fi et plan", icon: School },
-      { href: "/contacts", label: "Contacts", icon: BookUser },
-      { href: "/liens", label: "Liens utiles", icon: Link2 },
-    ],
-  },
-];
-
 // « / » et « /alternance » sont aussi le préfixe d'autres items (Planning a des pages sœurs comme /alternance/carnet) : correspondance exacte pour eux.
 const isActive = (pathname: string, href: string) => (href === "/" || href === "/alternance" ? pathname === href : pathname.startsWith(href));
 const itemActive = (pathname: string, i: Item): boolean => (i.href ? isActive(pathname, i.href) : false) || !!i.children?.some((c) => itemActive(pathname, c));
-const visibleChildren = (i: Item, isAdmin: boolean, views: Record<string, boolean>) => (i.children ?? []).filter((c) => (!c.adminOnly || isAdmin) && (!c.module || views[c.module]));
+const itemVisible = (i: Item, isAdmin: boolean, views: Record<string, boolean>, hidden: Set<string>) =>
+  (!i.adminOnly || isAdmin) && (!i.module || views[i.module]) && !(i.href && hidden.has(i.href));
+const visibleChildren = (i: Item, isAdmin: boolean, views: Record<string, boolean>, hidden: Set<string>) => (i.children ?? []).filter((c) => itemVisible(c, isAdmin, views, hidden));
 
-export function Nav({ isAdmin, loanBadge, views }: { isAdmin: boolean; loanBadge: number; views: Record<string, boolean> }) {
+export function Nav({ isAdmin, loanBadge, views, hiddenPages }: { isAdmin: boolean; loanBadge: number; views: Record<string, boolean>; hiddenPages?: string[] }) {
+  const hidden = new Set(hiddenPages ?? []); // déjà vide pour un·e administrateur·rice (voir permsOf)
   const pathname = usePathname();
   // Groupe ouvert : celui de la page en cours, sauf si la personne en a choisi un autre (ou tout refermé) sur cette page.
   // Changer de page revient au groupe de la nouvelle page. Même principe, un cran plus bas, pour un sous-dossier (ex. Cours).
@@ -140,7 +55,7 @@ export function Nav({ isAdmin, loanBadge, views }: { isAdmin: boolean; loanBadge
     <nav className="space-y-0.5" aria-label="Navigation principale">
       {GROUPS.map((g) => {
         if (views[g.id] === false) return null; // section entière masquée pour ce rôle (Savoirs, Promo, Vie étudiante)
-        const items = g.items.filter((i) => (!i.adminOnly || isAdmin) && (!i.module || views[i.module]));
+        const items = g.items.filter((i) => itemVisible(i, isAdmin, views, hidden));
         if (items.length === 0) return null;
         const open = openId === g.id;
         const pending = items.reduce((n, i) => n + countOf(i.badge), 0);
@@ -164,7 +79,7 @@ export function Nav({ isAdmin, loanBadge, views }: { isAdmin: boolean; loanBadge
                 {items.map((i) => {
                   const count = countOf(i.badge);
                   if (i.children) {
-                    const kids = visibleChildren(i, isAdmin, views);
+                    const kids = visibleChildren(i, isAdmin, views, hidden);
                     if (kids.length === 0) return null;
                     const folderId = `${g.id}:${i.label}`;
                     const hasActiveChild = kids.some((c) => itemActive(pathname, c));

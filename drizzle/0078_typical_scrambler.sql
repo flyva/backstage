@@ -1,0 +1,1 @@
+ALTER TABLE `roles` ADD `hidden_pages` text;
