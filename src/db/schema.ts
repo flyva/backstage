@@ -60,6 +60,15 @@ export const classes = mysqlTable("classes", {
   sortOrder: int("sort_order").notNull().default(0),
 });
 
+// Statistiques de fréquentation (admin) : un compteur par page × type d'appareil, pas une ligne par visite (reste léger sur le Pi).
+export const pageStats = mysqlTable("page_stats", {
+  id: int("id").primaryKey().autoincrement(),
+  path: varchar("path", { length: 255 }).notNull(),
+  device: mysqlEnum("device", ["mobile", "desktop"]).notNull(),
+  visits: int("visits").notNull().default(0),
+  lastVisitAt: datetime("last_visit_at").notNull().$defaultFn(() => new Date()),
+}, (t) => [uniqueIndex("page_stats_path_device_idx").on(t.path, t.device)]);
+
 export const users = mysqlTable("users", {
   id: int("id").primaryKey().autoincrement(),
   email: varchar("email", { length: 190 }).notNull().unique(),

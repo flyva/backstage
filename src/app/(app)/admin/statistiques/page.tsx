@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { desc } from "drizzle-orm";
-import { Activity, Clock, UserCheck, Users } from "lucide-react";
+import { Activity, Clock, Laptop, Smartphone, UserCheck, Users } from "lucide-react";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { ago } from "@/lib/relative-time";
 import { Avatar } from "@/components/people-forms";
 import { avatarUrl } from "@/lib/avatar-files";
+import { deviceTotals, topPages } from "@/lib/stats-actions";
 
 export const metadata = { title: "Statistiques" };
 export const dynamic = "force-dynamic";
@@ -28,6 +29,9 @@ export default async function StatisticsPage() {
   const week = since(7 * 24 * 3600e3);
   const month = since(30 * 24 * 3600e3);
   const neverSeen = active.filter((u) => !u.lastSeenAt);
+  const [pages, devices] = await Promise.all([topPages(20), deviceTotals()]);
+  const totalVisits = devices.mobile + devices.desktop;
+  const mobilePct = totalVisits ? Math.round((devices.mobile / totalVisits) * 100) : 0;
 
   return (
     <div className="space-y-5">
@@ -49,6 +53,32 @@ export default async function StatisticsPage() {
           </ul>
         </section>
       )}
+
+      <section className="card space-y-3">
+        <h2 className="font-semibold">Pages les plus utilisées</h2>
+        {totalVisits > 0 && (
+          <p className="flex items-center gap-4 text-sm text-muted">
+            <span className="flex items-center gap-1.5"><Smartphone size={14} /> {devices.mobile} visites sur téléphone ({mobilePct}%)</span>
+            <span className="flex items-center gap-1.5"><Laptop size={14} /> {devices.desktop} visites sur ordinateur ({100 - mobilePct}%)</span>
+          </p>
+        )}
+        {pages.length === 0 ? (
+          <p className="text-sm text-muted">Pas encore de données (comptées depuis l&apos;ajout de cette statistique).</p>
+        ) : (
+          <ul className="divide-y divide-line">
+            {pages.map((p) => (
+              <li key={p.path} className="flex items-center gap-3 py-2 text-sm">
+                <span className="min-w-0 flex-1 truncate font-mono text-xs">{p.path}</span>
+                <span className="shrink-0 tabular-nums font-medium">{p.total}</span>
+                <span className="flex shrink-0 items-center gap-2 text-xs text-muted">
+                  <span className="flex items-center gap-1"><Smartphone size={12} /> {p.mobile}</span>
+                  <span className="flex items-center gap-1"><Laptop size={12} /> {p.desktop}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <section className="card space-y-1">
         <h2 className="mb-2 font-semibold">Dernière activité, par personne</h2>

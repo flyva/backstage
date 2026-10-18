@@ -540,6 +540,13 @@
       "when": 1792331145285,
       "tag": "0076_pink_the_executioner",
       "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "5",
+      "when": 1792331756551,
+      "tag": "0077_mature_dragon_man",
+      "breakpoints": true
     }
   ]
 }
