@@ -8,7 +8,7 @@ import { Toggle } from "@/components/Toggle";
 import { LINK_KINDS, type LinkKind } from "@/db/schema";
 import { HABILITATION_SYMBOLS, LINK_LABEL, initialsOf } from "@/lib/people-shared";
 import {
-  addLink, deleteLink, regenerateCardSlug, removeAvatar, saveClass, saveFiche, saveNetworkContact, saveTrack, setCardEnabled, uploadAvatar,
+  addLink, deleteLink, deleteMyAccount, regenerateCardSlug, removeAvatar, saveClass, saveFiche, saveNetworkContact, saveTrack, setCardEnabled, uploadAvatar,
   deleteClass, deleteNetworkContact, deleteTrack, setFeedEnabled, regenerateFeedToken,
 } from "@/lib/people-actions";
 
@@ -383,6 +383,26 @@ export function TrackForm({ track }: { track?: { id: number; name: string; sortO
         </button>
       )}
       <div className="w-full"><Feedback state={state} /></div>
+    </form>
+  );
+}
+
+// ---------- Suppression de compte (RGPD) ----------
+
+export function DeleteMyAccountForm({ email }: { email: string }) {
+  const [state, action, pending] = useActionState(deleteMyAccount, undefined);
+  return (
+    <form action={action} className="space-y-2">
+      <label className="label" htmlFor="confirmEmail">Retape ton adresse ({email}) pour confirmer</label>
+      <input id="confirmEmail" name="confirmEmail" type="email" required autoComplete="off" placeholder={email} className="input" />
+      <Feedback state={state} />
+      <button
+        className="btn border-danger bg-danger text-white hover:opacity-90"
+        disabled={pending}
+        onClick={(e) => { if (!confirm("Supprimer définitivement ton compte et tes données ? Impossible à annuler.")) e.preventDefault(); }}
+      >
+        <Trash2 size={15} /> {pending ? "Suppression…" : "Supprimer mon compte"}
+      </button>
     </form>
   );
 }

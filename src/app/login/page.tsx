@@ -54,6 +54,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
 
       {message && <div className="card border-danger text-sm" role="alert">{message}</div>}
       {(await searchParams).reinitialise === "1" && <div className="card border-green-600 text-sm" role="status">Mot de passe changé : connecte-toi avec le nouveau.</div>}
+      {(await searchParams)["compte-supprime"] === "1" && <div className="card border-green-600 text-sm" role="status">Ton compte a bien été supprimé.</div>}
 
       <div className="card space-y-4">
         {social && (

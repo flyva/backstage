@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD `cgu_accepted_at` datetime;

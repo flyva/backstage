@@ -73,6 +73,7 @@ export async function register(_: FormState, fd: FormData): Promise<FormState> {
     return { error: `Seules les adresses ${domains.map((d) => `@${d}`).join(", ")} peuvent s'inscrire.`, values: keep };
   }
   if (String(fd.get("password2") ?? "") !== password) return { error: "Les deux mots de passe ne correspondent pas", values: keep };
+  if (fd.get("cgu") !== "on") return { error: "Tu dois accepter les CGU pour créer un compte", values: keep };
 
   if (!allow(`register:${await clientIp()}`, 5, 60 * 60e3)) return { error: "Trop d'inscriptions depuis cette adresse : réessaie plus tard", values: keep };
   // Si REGISTRATION_CODE est défini, l'inscription est réservée aux personnes qui le connaissent.
@@ -100,10 +101,18 @@ export async function register(_: FormState, fd: FormData): Promise<FormState> {
   const [{ total }] = await db.select({ total: count() }).from(users).where(eq(users.status, "active"));
   const [res] = await db.insert(users).values({
     email, firstName, lastName, name: joinName(firstName, lastName), passwordHash: await hashPassword(password),
-    roleId: await newUserRoleId(total === 0),
+    roleId: await newUserRoleId(total === 0), cguAcceptedAt: new Date(),
   });
   await createSession(res.insertId);
   redirect("/profil?bienvenue=1");
+}
+
+/** Acceptation des CGU après coup (comptes Google/Microsoft, créés sans passer par le formulaire d'inscription). */
+export async function acceptCgu() {
+  const user = await getSessionUser();
+  if (!user) redirect("/login");
+  if (!user.cguAcceptedAt) await db.update(users).set({ cguAcceptedAt: new Date() }).where(eq(users.id, user.id));
+  redirect("/");
 }
 
 export async function changePassword(_: FormState, fd: FormData): Promise<FormState> {

@@ -6,7 +6,7 @@ import QRCode from "qrcode";
 import { db } from "@/db";
 import { classes, tracks, userLinks, users } from "@/db/schema";
 import { ProfileForm } from "@/components/forms";
-import { AvatarForm, CardPanel, FeedPanel, FicheForm, LinksEditor } from "@/components/people-forms";
+import { AvatarForm, CardPanel, DeleteMyAccountForm, FeedPanel, FicheForm, LinksEditor } from "@/components/people-forms";
 import { TimeSettingsForm } from "@/components/time-forms";
 import { avatarUrl } from "@/lib/avatar-files";
 import { absoluteUrl } from "@/lib/base-url";
@@ -80,6 +80,11 @@ export default async function ProfilPage({ searchParams }: PageProps<"/profil">)
             <p className="text-sm text-muted">Télécharge un fichier avec tes données personnelles : profil, journal de bord, pointeuse, messages envoyés, avis, notes de frais.</p>
             <a href="/api/rgpd/export" className="btn-ghost w-fit"><Download size={15} aria-hidden /> Exporter mes données</a>
             <p className="text-xs text-muted"><Link href="/cgu" className="underline">CGU</Link> · <Link href="/mentions-legales" className="underline">Mentions légales</Link></p>
+          </div>
+          <div className="card space-y-2 border-danger">
+            <h2 className="font-semibold">Supprimer mon compte</h2>
+            <p className="text-sm text-muted">Efface définitivement ton compte et tes données. Impossible si tu as créé du contenu partagé (projets, annonces, articles, prêts…) : demande à un administrateur de désactiver ton compte à la place.</p>
+            <DeleteMyAccountForm email={user.email} />
           </div>
           </div>
         </div>

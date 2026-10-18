@@ -55,6 +55,14 @@ export function RegisterForm({ codeRequired = false, emailDomain }: { codeRequir
           <p className="mt-1 text-xs text-muted">Demandé à la personne qui gère Backstage.</p>
         </div>
       )}
+      <label className="flex items-start gap-2.5 text-sm">
+        <input type="checkbox" name="cgu" required className="mt-0.5 size-4 accent-[var(--accent)]" />
+        <span>
+          J&apos;accepte les <a href="/cgu" target="_blank" rel="noopener noreferrer" className="text-accent underline">CGU</a>,
+          les <a href="/mentions-legales" target="_blank" rel="noopener noreferrer" className="text-accent underline">mentions légales</a> et
+          la <a href="/politique-de-confidentialite" target="_blank" rel="noopener noreferrer" className="text-accent underline">politique de confidentialité</a>.
+        </span>
+      </label>
       <Feedback state={state} />
       <button className="btn w-full" disabled={pending || mismatch || !!state?.ok}>{pending ? "Création…" : "Créer mon compte"}</button>
     </form>

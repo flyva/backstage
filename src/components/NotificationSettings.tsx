@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { Bell, BellOff } from "lucide-react";
 import { removeSubscription, saveSubscription, sendTestNotification, updateNotifyPrefs } from "@/lib/push-actions";
 
-type Prefs = { news: boolean; bde: boolean; loans: boolean; reminders: boolean; messages: boolean; listings: boolean; updates: boolean };
+type Prefs = { news: boolean; bde: boolean; loans: boolean; reminders: boolean; messages: boolean; listings: boolean; updates: boolean; emptyPointeuse: boolean };
 type Support = "loading" | "unsupported" | "no-sw" | "denied" | "off" | "on";
 
 function toKey(base64: string) {
@@ -109,6 +109,7 @@ export function NotificationSettings({ publicKey, serverReady, initial }: { publ
           ["messages", "Messages (direct, groupe ou annonce) et avis"],
           ["listings", "Nouvelles annonces publiées par la promo"],
           ["updates", "Nouveautés de Backstage marquées importantes"],
+          ["emptyPointeuse", "Rien pointé un jour travaillé (facultatif, décoché par défaut)"],
         ] as const).map(([key, label]) => (
           <label key={key} className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={prefs[key]} onChange={(e) => setPref(key, e.target.checked)} className="size-4 accent-[var(--accent)]" />

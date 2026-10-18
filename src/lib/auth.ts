@@ -99,6 +99,8 @@ export async function requireUser() {
   const user = await getSessionUser();
   if (!user) redirect("/login");
   if (user.status !== "active") redirect("/en-attente");
+  // Inscription Google/Microsoft : pas de formulaire avec case à cocher, donc l'acceptation se fait ici, au premier accès.
+  if (!user.cguAcceptedAt) redirect("/accepter-cgu");
   return user;
 }
 

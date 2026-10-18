@@ -5,7 +5,8 @@ import { ArrowLeft, Building2, Mail, Phone, ShieldCheck } from "lucide-react";
 import { db } from "@/db";
 import { roles, tracks, users } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
-import { DeleteUserForm, ResetPasswordForm, UserEditForm } from "@/components/admin-user-forms";
+import { logAdminAction } from "@/lib/audit";
+import { AnonymizeUserForm, DeleteUserForm, ResetPasswordForm, UserEditForm } from "@/components/admin-user-forms";
 
 export const metadata = { title: "Modifier une personne" };
 
@@ -18,6 +19,7 @@ export default async function EditUserPage({ params }: PageProps<"/admin/utilisa
   if (!Number.isInteger(uid)) notFound();
   const [user] = await db.select().from(users).where(eq(users.id, uid)).limit(1);
   if (!user) notFound();
+  if (user.id !== admin.id) await logAdminAction(admin.id, "view", user.id, user.name); // pas la peine de tracer la consultation de sa propre fiche
   const allRoles = await db.select({ id: roles.id, name: roles.name }).from(roles).orderBy(asc(roles.name));
   const [track] = user.trackId ? await db.select({ name: tracks.name }).from(tracks).where(eq(tracks.id, user.trackId)).limit(1) : [];
   const ssoLinked = !!user.googleSub || !!user.msOid;
@@ -68,8 +70,11 @@ export default async function EditUserPage({ params }: PageProps<"/admin/utilisa
       {user.id !== admin.id && (
         <section className="card space-y-3 border-danger/40">
           <h3 className="font-semibold text-danger">Zone dangereuse</h3>
-          <p className="text-sm text-muted">Pour empêcher quelqu&apos;un de se connecter en gardant ses projets et ses contenus, passe son statut sur « Désactivé ». La suppression est définitive et n&apos;est possible que si la personne n&apos;a rien créé.</p>
+          <p className="text-sm text-muted">Pour empêcher quelqu&apos;un de se connecter en gardant ses projets et ses contenus, passe son statut sur « Désactivé ». La suppression est définitive et n&apos;est possible que si la personne n&apos;a rien créé : sinon, anonymise-la (son nom et ses coordonnées disparaissent, ses messages et avis restent sans être identifiables).</p>
           <DeleteUserForm id={user.id} name={user.name} />
+          <div className="border-t border-line pt-3">
+            <AnonymizeUserForm id={user.id} name={user.name} />
+          </div>
         </section>
       )}
     </div>

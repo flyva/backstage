@@ -1,9 +1,9 @@
 "use client";
 
 import { useActionState } from "react";
-import { Trash2 } from "lucide-react";
+import { EyeOff, Trash2 } from "lucide-react";
 import type { FormState } from "@/lib/actions";
-import { deleteRole, deleteUser, resetUserPassword, saveRole, updateUser } from "@/lib/user-admin-actions";
+import { anonymizeUser, deleteRole, deleteUser, resetUserPassword, saveRole, updateUser } from "@/lib/user-admin-actions";
 import { ADMIN_PERM, COURSE_PAGES, LEVEL_FIELDS, LEVEL_LABEL, levelOf, SECTION_FIELDS, TICKETS_PERM, type Level } from "@/lib/perms";
 import { TOGGLEABLE_GROUPS } from "@/lib/nav-data";
 import { PasswordField } from "@/components/PasswordField";
@@ -219,6 +219,17 @@ export function DeleteUserForm({ id, name }: { id: number; name: string }) {
     <form action={action} onSubmit={(e) => { if (!confirm(`Supprimer définitivement ${name} ? Cette action est irréversible.`)) e.preventDefault(); }} className="space-y-2">
       <input type="hidden" name="id" value={id} />
       <button className="flex items-center gap-1 text-sm text-danger" disabled={pending}><Trash2 size={14} /> Supprimer cette personne</button>
+      <Feedback state={state} />
+    </form>
+  );
+}
+
+export function AnonymizeUserForm({ id, name }: { id: number; name: string }) {
+  const [state, action, pending] = useActionState(anonymizeUser, undefined);
+  return (
+    <form action={action} onSubmit={(e) => { if (!confirm(`Anonymiser ${name} ? Son nom et ses coordonnées disparaissent définitivement ; ses messages et avis restent mais sans être identifiables.`)) e.preventDefault(); }} className="space-y-2">
+      <input type="hidden" name="id" value={id} />
+      <button className="flex items-center gap-1 text-sm text-muted hover:text-danger" disabled={pending}><EyeOff size={14} /> Anonymiser cette personne</button>
       <Feedback state={state} />
     </form>
   );

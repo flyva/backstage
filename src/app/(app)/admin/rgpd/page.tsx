@@ -21,10 +21,26 @@ export default async function RgpdAdminPage() {
       <section className="card space-y-2">
         <h2 className="font-semibold">Données personnelles</h2>
         <ul className="space-y-1.5 text-sm text-muted">
-          <li>• Chaque personne peut exporter ses propres données depuis <Link href="/profil" className="text-accent underline">son profil</Link> (onglet Général).</li>
-          <li>• Supprimer un compte : <Link href="/admin/utilisateurs" className="text-accent underline">Utilisateurs</Link>, fiche de la personne, zone dangereuse. Impossible si elle a créé des projets ou du contenu partagé : désactive plutôt son accès (statut « Désactivé »).</li>
+          <li>• Chaque personne peut exporter ou supprimer son propre compte depuis <Link href="/profil" className="text-accent underline">son profil</Link> (onglet Général).</li>
+          <li>• Supprimer un compte depuis l&apos;admin : <Link href="/admin/utilisateurs" className="text-accent underline">Utilisateurs</Link>, fiche de la personne, zone dangereuse. Impossible si elle a créé des projets ou du contenu partagé : désactive plutôt son accès (statut « Désactivé »), ou anonymise-la depuis sa fiche.</li>
           <li>• Les sauvegardes (<Link href="/admin/sauvegardes" className="text-accent underline">Sauvegardes</Link>) contiennent les mêmes données : une suppression de compte n&apos;efface pas rétroactivement les sauvegardes déjà faites.</li>
+          <li>• Accès bloqué tant que les CGU ne sont pas acceptées (page <code>/accepter-cgu</code>) : vaut pour les nouveaux comptes et pour les comptes déjà existants qui ne les avaient jamais explicitement acceptées.</li>
         </ul>
+      </section>
+
+      <section className="card space-y-2">
+        <h2 className="font-semibold">Conservation et purge automatique</h2>
+        <p className="text-sm text-muted">Une tâche quotidienne (cron des rappels) supprime automatiquement :</p>
+        <ul className="space-y-1.5 text-sm text-muted">
+          <li>• Les demandes refusées (statut « Rejeté ») après 90 jours.</li>
+          <li>• Les comptes jamais validés (statut « En attente », compte Google personnel) après 180 jours.</li>
+        </ul>
+        <p className="text-xs text-muted">Un compte avec du contenu partagé n&apos;est jamais supprimé automatiquement (même règle que la suppression manuelle).</p>
+      </section>
+
+      <section className="card space-y-2">
+        <h2 className="font-semibold">Journal des accès administrateur</h2>
+        <p className="text-sm text-muted">Qui, côté admin, a consulté ou modifié la fiche d&apos;une personne, changé son rôle, désactivé, anonymisé ou supprimé son compte : <Link href="/admin/audit" className="text-accent underline">Journal d&apos;audit</Link>.</p>
       </section>
     </div>
   );

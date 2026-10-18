@@ -1,7 +1,8 @@
 import { timingSafeEqual } from "node:crypto";
-import { and, eq, inArray, lte, or } from "drizzle-orm";
+import { and, eq, inArray, lt, lte, or } from "drizzle-orm";
 import { db } from "@/db";
-import { equipmentItems, loans, roles, users, workDays } from "@/db/schema";
+import { equipmentItems, loans, roles, timeEntries, users, workDays } from "@/db/schema";
+import { addDays, weekday } from "@/lib/alternance";
 import { daysBetween, todayParis } from "@/lib/equipment";
 import { notifyUser } from "@/lib/push";
 import { cardHref, dueCards } from "@/lib/reminders";
@@ -67,7 +68,38 @@ async function run(req: Request) {
     planned += await notifyUser(p.userId, { title: "Demain", body: p.kind === "ecole" ? "Demain : journée à l'école." : "Demain : journée en entreprise.", url: "/alternance", tag: `plan-${p.userId}` }, "reminders");
   }
 
-  return Response.json({ ok: true, remindedTasks: reminded, remindedPlanning: planned, loansConcerned: due.length, overdue, notifiedBorrowers: borrowers, notifiedManagers: managers });
+  // Rappel « rien pointé » (facultatif, décoché par défaut) : jour ouvré d'hier sans école/congé/maladie planifiés et sans aucune ligne de pointeuse saisie.
+  const yesterday = addDays(today, -1);
+  let emptyPointeuse = 0;
+  if (weekday(yesterday) < 5) { // au-delà, la plupart des gens sont en repos de toute façon ; le vrai filtre est workDaysPerWeek, vérifié ensuite
+    const optedIn = await db.select({ id: users.id, workDaysPerWeek: users.workDaysPerWeek }).from(users).where(and(eq(users.status, "active"), eq(users.notifyEmptyPointeuse, true)));
+    const candidates = optedIn.filter((u) => weekday(yesterday) < u.workDaysPerWeek);
+    if (candidates.length > 0) {
+      const ids = candidates.map((u) => u.id);
+      const [planned2, logged] = await Promise.all([
+        db.select({ userId: workDays.userId }).from(workDays).where(and(inArray(workDays.userId, ids), eq(workDays.day, yesterday), inArray(workDays.kind, ["ecole", "conge", "maladie"]))),
+        db.select({ userId: timeEntries.userId }).from(timeEntries).where(and(inArray(timeEntries.userId, ids), eq(timeEntries.day, yesterday))),
+      ]);
+      const covered = new Set([...planned2.map((p) => p.userId), ...logged.map((l) => l.userId)]);
+      for (const u of candidates) {
+        if (covered.has(u.id)) continue;
+        emptyPointeuse += await notifyUser(u.id, { title: "Pointeuse", body: "Rien n'a été pointé hier : pense à compléter ta pointeuse si tu as travaillé.", url: "/alternance/pointeuse", tag: `empty-pointeuse-${u.id}` }, "reminders");
+      }
+    }
+  }
+
+  // Purge RGPD : les comptes jamais activés ne doivent pas s'accumuler indéfiniment (voir Admin > RGPD).
+  const RETENTION = { rejected: 90, pending: 180 }; // jours depuis la création
+  const purged = { rejected: 0, pending: 0 };
+  for (const [status, days] of Object.entries(RETENTION) as [keyof typeof RETENTION, number][]) {
+    const cutoff = new Date(`${addDays(today, -days)}T00:00:00Z`);
+    const old = await db.select({ id: users.id }).from(users).where(and(eq(users.status, status), lt(users.createdAt, cutoff)));
+    for (const u of old) {
+      try { await db.delete(users).where(eq(users.id, u.id)); purged[status]++; } catch { /* a rejeté/en attente ne devrait jamais avoir de contenu, mais au cas où : on laisse ce compte-là */ }
+    }
+  }
+
+  return Response.json({ ok: true, remindedTasks: reminded, remindedPlanning: planned, loansConcerned: due.length, overdue, notifiedBorrowers: borrowers, notifiedManagers: managers, remindedEmptyPointeuse: emptyPointeuse, purged });
 }
 
 export const GET = run;

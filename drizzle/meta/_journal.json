@@ -554,6 +554,20 @@
       "when": 1792335879173,
       "tag": "0078_typical_scrambler",
       "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "5",
+      "when": 1792337793456,
+      "tag": "0079_dazzling_taskmaster",
+      "breakpoints": true
+    },
+    {
+      "idx": 80,
+      "version": "5",
+      "when": 1792338169238,
+      "tag": "0080_fixed_texas_twister",
+      "breakpoints": true
     }
   ]
 }

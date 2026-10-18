@@ -53,7 +53,7 @@ export async function confirmRegistration(_: FormState, fd: FormData): Promise<F
   const [{ total }] = await db.select({ total: count() }).from(users).where(eq(users.status, "active"));
   const [res] = await db.insert(users).values({
     email: row.email, firstName: row.firstName, lastName: row.lastName, name: joinName(row.firstName, row.lastName),
-    passwordHash: row.passwordHash, roleId: await newUserRoleId(total === 0),
+    passwordHash: row.passwordHash, roleId: await newUserRoleId(total === 0), cguAcceptedAt: new Date(), // acceptées au moment du formulaire initial
   });
   await db.delete(pendingRegistrations).where(eq(pendingRegistrations.id, row.id));
   await createSession(res.insertId);

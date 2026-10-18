@@ -1,16 +1,18 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { randomBytes } from "node:crypto";
 import { unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { and, asc, count, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { LINK_KINDS, classes, networkContacts, tracks, userLinks, users, type LinkKind } from "@/db/schema";
-import { requireAdmin, requireUser } from "@/lib/auth";
+import { LINK_KINDS, classes, networkContacts, roles, tracks, userLinks, users, type LinkKind } from "@/db/schema";
+import { destroySession, requireAdmin, requireUser } from "@/lib/auth";
 import { AVATAR_NAME, MAX_AVATAR_BYTES, avatarDir, ensureAvatarDir, newAvatarName, sniffAvatar } from "@/lib/avatar-files";
 import { HABILITATION_SYMBOLS, PHONE_RE, normalizeDiscord, normalizeUrl } from "@/lib/people-shared";
 import { allow } from "@/lib/rate-limit";
+import { otherActiveAdmins } from "@/lib/user-admin-actions";
 import type { FormState } from "@/lib/actions";
 
 const MAX_LINKS = 12;
@@ -241,4 +243,28 @@ export async function regenerateFeedToken() {
   const user = await requireUser();
   await db.update(users).set({ feedToken: newFeedToken() }).where(eq(users.id, user.id));
   revalidatePath("/profil");
+}
+
+// ---------- Suppression de compte (RGPD, en libre-service) ----------
+
+/**
+ * Supprime son propre compte. Retape son adresse (plutôt que le mot de passe, inutilisable pour un compte
+ * Google/Microsoft) pour confirmer. Bloqué si la personne a créé du contenu partagé (mêmes contraintes que la
+ * suppression par un admin) : désactiver son compte via un admin reste la seule option dans ce cas.
+ */
+export async function deleteMyAccount(_: FormState, fd: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const typed = String(fd.get("confirmEmail") ?? "").trim().toLowerCase();
+  if (typed !== user.email.toLowerCase()) return { error: "L'adresse saisie ne correspond pas à ton compte" };
+  const [role] = user.roleId ? await db.select({ isAdmin: roles.isAdmin }).from(roles).where(eq(roles.id, user.roleId)).limit(1) : [];
+  if (role?.isAdmin && (await otherActiveAdmins(user.id)) === 0) {
+    return { error: "Tu es le seul administrateur actif : désigne quelqu'un d'autre comme administrateur avant de supprimer ton compte." };
+  }
+  try {
+    await db.delete(users).where(eq(users.id, user.id));
+  } catch {
+    return { error: "Impossible : tu as créé du contenu partagé (projets, annonces, articles, prêts…) qui disparaîtrait avec ton compte. Demande à un administrateur de désactiver ton compte à la place." };
+  }
+  await destroySession();
+  redirect("/login?compte-supprime=1");
 }

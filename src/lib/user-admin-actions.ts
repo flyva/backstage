@@ -10,13 +10,15 @@ import { hashPassword, requireAdmin } from "@/lib/auth";
 import { joinName } from "@/lib/names";
 import { COURSE_PAGES } from "@/lib/perms";
 import { TOGGLEABLE_GROUPS } from "@/lib/nav-data";
+import { logAdminAction } from "@/lib/audit";
+import { randomBytes } from "node:crypto";
 import type { FormState } from "@/lib/actions";
 
 const id = z.coerce.number().int().positive();
 const refresh = () => revalidatePath("/admin", "layout");
 
 /** Nombre d'administrateurs actifs, sans compter `exceptUserId`. Sert à ne jamais retirer le dernier. */
-async function otherActiveAdmins(exceptUserId: number) {
+export async function otherActiveAdmins(exceptUserId: number) {
   const [r] = await db
     .select({ n: count() })
     .from(users)
@@ -153,6 +155,8 @@ export async function updateUser(_: FormState, fd: FormData): Promise<FormState>
   }).where(eq(users.id, uid));
   // Compte désactivé : déconnecté partout, tout de suite.
   if (p.data.status === "disabled") await db.delete(sessions).where(eq(sessions.userId, uid));
+  const changes = [role.id !== target.roleId && `rôle → ${role.name}`, p.data.status !== target.status && `statut → ${p.data.status}`].filter(Boolean).join(", ");
+  if (changes) await logAdminAction(admin.id, "update", uid, `${target.name} : ${changes}`);
   refresh();
   return { ok: "Personne enregistrée" };
 }
@@ -174,15 +178,45 @@ export async function deleteUser(_: FormState, fd: FormData): Promise<FormState>
   const admin = await requireAdmin();
   const uid = id.parse(fd.get("id"));
   if (uid === admin.id) return { error: "Tu ne peux pas supprimer ton propre compte" };
-  const [target] = await db.select({ roleId: users.roleId, status: users.status }).from(users).where(eq(users.id, uid)).limit(1);
+  const [target] = await db.select({ name: users.name, roleId: users.roleId, status: users.status }).from(users).where(eq(users.id, uid)).limit(1);
   if (!target) return { error: "Personne introuvable" };
   const isAdminActive = target.status === "active" && (await db.select({ a: roles.isAdmin }).from(roles).where(eq(roles.id, target.roleId ?? 0)))[0]?.a;
   if (isAdminActive && (await otherActiveAdmins(uid)) === 0) return { error: "Il doit rester au moins un administrateur actif" };
   try {
     await db.delete(users).where(eq(users.id, uid));
   } catch {
-    return { error: "Cette personne a créé du contenu (projets, cartes, articles, prêts…) : le supprimer le ferait disparaître. Désactive son compte à la place." };
+    return { error: "Cette personne a créé du contenu (projets, cartes, articles, prêts…) : le supprimer le ferait disparaître. Désactive son compte à la place, ou anonymise-la." };
   }
+  await logAdminAction(admin.id, "delete", null, target.name);
   refresh();
   redirect("/admin/utilisateurs"); // la page de la personne n'existe plus
+}
+
+/**
+ * Anonymise un compte qui ne peut pas être supprimé (contenu partagé lié) : nom, coordonnées et profil remplacés,
+ * compte désactivé et déconnecté. Ses messages/avis restent en base mais ne pointent plus vers une personne
+ * identifiable. Irréversible (les informations d'origine ne sont pas conservées ailleurs).
+ */
+export async function anonymizeUser(_: FormState, fd: FormData): Promise<FormState> {
+  const admin = await requireAdmin();
+  const uid = id.parse(fd.get("id"));
+  if (uid === admin.id) return { error: "Tu ne peux pas anonymiser ton propre compte" };
+  const [target] = await db.select({ name: users.name, roleId: users.roleId, status: users.status }).from(users).where(eq(users.id, uid)).limit(1);
+  if (!target) return { error: "Personne introuvable" };
+  const isAdminActive = target.status === "active" && (await db.select({ a: roles.isAdmin }).from(roles).where(eq(roles.id, target.roleId ?? 0)))[0]?.a;
+  if (isAdminActive && (await otherActiveAdmins(uid)) === 0) return { error: "Il doit rester au moins un administrateur actif" };
+
+  const placeholder = `supprime-${uid}-${randomBytes(4).toString("hex")}@anonymise.local`;
+  await db.update(users).set({
+    firstName: "", lastName: "", name: "Personne supprimée", email: placeholder, status: "disabled",
+    passwordHash: await hashPassword(randomBytes(32).toString("hex")), googleSub: null, msOid: null,
+    phone: null, companyName: null, companyAddress: null, companyLat: null, companyLng: null,
+    homeAddress: null, homeLat: null, homeLng: null, avatarFile: null, headline: null, contactEmail: null,
+    discord: null, habilitation: null, trackId: null, classId: null, cardEnabled: false, cardSlug: null,
+    icalUrl: null, feedToken: null,
+  }).where(eq(users.id, uid));
+  await db.delete(sessions).where(eq(sessions.userId, uid));
+  await logAdminAction(admin.id, "anonymize", uid, target.name);
+  refresh();
+  redirect("/admin/utilisateurs");
 }

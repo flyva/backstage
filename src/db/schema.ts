@@ -107,6 +107,10 @@ export const users = mysqlTable("users", {
   // « active » : accès normal ; « pending » : compte Google personnel en attente de validation par un admin ;
   // « disabled » : compte désactivé par un admin (plus de connexion possible, données conservées).
   status: mysqlEnum("status", ["active", "pending", "disabled", "rejected"]).notNull().default("active"),
+  // Date d'acceptation des CGU/mentions légales/politique de confidentialité. Absent = pas encore accepté : l'accès
+  // est bloqué (page /accepter-cgu) jusqu'au clic. Republier un texte légal n'efface pas cette date (pas de
+  // réacceptation forcée pour l'instant) : voir la page RGPD en admin si ça doit changer.
+  cguAcceptedAt: datetime("cgu_accepted_at"),
   rejectionNote: varchar("rejection_note", { length: 500 }), // motif du refus, affiché à la personne refusée quand elle se reconnecte
   requestNote: varchar("request_note", { length: 500 }), // message laissé par une personne en attente de validation (qui elle est, pourquoi elle demande l'accès)
   googleSub: varchar("google_sub", { length: 40 }).unique(), // identifiant Google (« sub »)
@@ -136,6 +140,7 @@ export const users = mysqlTable("users", {
   notifyMessages: boolean("notify_messages").notNull().default(true), // messages des annonces, vente validée, nouvel avis
   notifyListings: boolean("notify_listings").notNull().default(false), // nouvelle annonce publiée par la promo (désactivé par défaut : peut être bavard)
   notifyUpdates: boolean("notify_updates").notNull().default(true), // nouveauté marquée importante
+  notifyEmptyPointeuse: boolean("notify_empty_pointeuse").notNull().default(false), // facultatif : rappel si rien pointé un jour travaillé (voir cron reminders)
   // Pointeuse : durée d'une journée standard (par défaut 7 h) et nombre de jours travaillés par semaine (par défaut 5).
   // Les heures sup se comptent sur la semaine (effectif au-delà de standardWorkMinutes × workDaysPerWeek) ; les derniers
   // jours de la semaine au-delà de workDaysPerWeek sont marqués « repos » automatiquement s'il n'y a rien dessus.
@@ -156,6 +161,21 @@ export const sessions = mysqlTable(
     expiresAt: datetime("expires_at").notNull(),
   },
   (t) => [index("sessions_user_idx").on(t.userId)],
+);
+
+// Qui, côté admin, a consulté ou modifié la fiche de qui (RGPD : traçabilité des accès aux données sensibles).
+// targetUserId en SET NULL : le journal garde la trace même si le compte visé est supprimé plus tard (le nom est dans `detail`).
+export const adminAuditLog = mysqlTable(
+  "admin_audit_log",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    adminId: int("admin_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    action: varchar("action", { length: 40 }).notNull(), // "view" | "update" | "disable" | "anonymize" | "delete"
+    targetUserId: int("target_user_id").references((): AnyMySqlColumn => users.id, { onDelete: "set null" }),
+    detail: varchar("detail", { length: 300 }),
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [index("audit_admin_idx").on(t.adminId), index("audit_target_idx").on(t.targetUserId)],
 );
 
 export const faqItems = mysqlTable("faq_items", {
