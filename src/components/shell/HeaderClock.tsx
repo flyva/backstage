@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 const fmt = new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit" });
 const fmtFull = new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -37,7 +38,7 @@ export function HeaderClock() {
       >
         {now}
       </button>
-      {fullscreen && <FullscreenClock onClose={() => setFullscreen(false)} />}
+      {fullscreen && createPortal(<FullscreenClock onClose={() => setFullscreen(false)} />, document.body)}
     </>
   );
 }

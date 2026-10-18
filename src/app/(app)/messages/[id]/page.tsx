@@ -17,7 +17,7 @@ import { AutoRefresh } from "@/components/AutoRefresh";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { ConversationPanel } from "@/components/ConversationPanel";
 import { ConversationShell } from "@/components/ConversationShell";
-import { LeaveGroupButton, ReviewForm } from "@/components/message-forms";
+import { AddGroupMembersForm, LeaveGroupButton, ReviewForm } from "@/components/message-forms";
 import { RatingBadge, Stars } from "@/components/Stars";
 
 export const metadata = { title: "Conversation" };
@@ -229,6 +229,7 @@ async function GroupConversation({ conv, userId }: { conv: GroupConv; userId: nu
             <LeaveGroupButton conversationId={conv.id} />
           )}
         </div>
+        <AddGroupMembersForm conversationId={conv.id} />
       </header>
 
       <ConversationShell

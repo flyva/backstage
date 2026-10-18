@@ -2,9 +2,9 @@
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Bold, DoorOpen, File as FileIcon, Image as ImageIcon, Italic, Link2, List, MessageCircle, Paperclip, Send, Strikethrough, Users, X } from "lucide-react";
+import { Bold, DoorOpen, File as FileIcon, Image as ImageIcon, Italic, Link2, List, MessageCircle, Paperclip, Send, Strikethrough, UserPlus, Users, X } from "lucide-react";
 import type { FormState } from "@/lib/actions";
-import { createGroupConversation, leaveGroup, saveReview, sendMessage, startConversation, startDirectConversation } from "@/lib/message-actions";
+import { addGroupMembers, createGroupConversation, leaveGroup, saveReview, sendMessage, startConversation, startDirectConversation } from "@/lib/message-actions";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { EmojiPicker } from "@/components/EmojiPicker";
 import { PeoplePicker } from "@/components/PeoplePicker";
@@ -109,6 +109,23 @@ export function NewGroupForm() {
       <Feedback state={state} />
       <button className="btn" disabled={pending}><Users size={15} /> {pending ? "Création…" : "Créer le groupe"}</button>
     </form>
+  );
+}
+
+/** Ajoute des personnes à un groupe existant (repliable, dans l'en-tête de la conversation). */
+export function AddGroupMembersForm({ conversationId }: { conversationId: number }) {
+  const [state, action, pending] = useActionState(addGroupMembers, undefined);
+  const details = useRef<HTMLDetailsElement>(null);
+  return (
+    <details ref={details} className="text-sm">
+      <summary className="btn-ghost inline-flex w-fit cursor-pointer select-none items-center gap-1.5 text-xs text-muted"><UserPlus size={14} /> Ajouter des membres</summary>
+      <form action={async (fd) => { await action(fd); if (details.current) details.current.open = false; }} className="mt-2 space-y-2 rounded-xl border border-line bg-bg p-3">
+        <input type="hidden" name="conversationId" value={conversationId} />
+        <PeoplePicker name="memberIds" placeholder="Ajouter une personne de l'annuaire…" />
+        <Feedback state={state} />
+        <button className="btn" disabled={pending}><UserPlus size={15} /> {pending ? "Ajout…" : "Ajouter au groupe"}</button>
+      </form>
+    </details>
   );
 }
 

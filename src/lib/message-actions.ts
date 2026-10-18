@@ -76,6 +76,33 @@ export async function createGroupConversation(_: FormState, fd: FormData): Promi
   redirect(`/messages/${res.insertId}`);
 }
 
+/** Ajoute des personnes à un groupe existant (n'importe quel membre actif peut inviter). Repêche aussi une personne qui l'avait quitté. */
+export async function addGroupMembers(_: FormState, fd: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const conversationId = Number(fd.get("conversationId"));
+  const [conv] = await db.select({ id: conversations.id, kind: conversations.kind }).from(conversations).where(eq(conversations.id, conversationId)).limit(1);
+  if (!conv || conv.kind !== "group") return { error: "Groupe introuvable" };
+  const [member] = await db.select({ userId: conversationMembers.userId }).from(conversationMembers).where(and(eq(conversationMembers.conversationId, conversationId), eq(conversationMembers.userId, user.id), isNull(conversationMembers.leftAt))).limit(1);
+  if (!member) return { error: "Tu ne fais pas partie de ce groupe" };
+
+  const memberIds = [...new Set(fd.getAll("memberIds").map((v) => Number(v)).filter((n) => Number.isInteger(n) && n !== user.id))];
+  if (memberIds.length === 0) return { error: "Choisis au moins une personne" };
+  const candidates = await db.select({ id: users.id, status: users.status }).from(users).where(inArray(users.id, memberIds));
+  const valid = candidates.filter((c) => c.status === "active").map((c) => c.id);
+  if (valid.length === 0) return { error: "Personne introuvable" };
+
+  const existing = await db.select({ userId: conversationMembers.userId }).from(conversationMembers).where(and(eq(conversationMembers.conversationId, conversationId), inArray(conversationMembers.userId, valid)));
+  const existingIds = new Set(existing.map((e) => e.userId));
+  const toAdd = valid.filter((id) => !existingIds.has(id));
+  const toRevive = valid.filter((id) => existingIds.has(id));
+
+  if (toAdd.length) await db.insert(conversationMembers).values(toAdd.map((id) => ({ conversationId, userId: id })));
+  if (toRevive.length) await db.update(conversationMembers).set({ leftAt: null }).where(and(eq(conversationMembers.conversationId, conversationId), inArray(conversationMembers.userId, toRevive)));
+
+  revalidatePath(`/messages/${conversationId}`);
+  return { ok: "Ajouté·e au groupe" };
+}
+
 /** Quitte un groupe : ne reçoit plus les messages, disparaît de sa liste. L'historique reste visible aux autres. */
 export async function leaveGroup(fd: FormData) {
   const user = await requireUser();
