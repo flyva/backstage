@@ -22,7 +22,7 @@ export default async function LogbookPrintPage({ searchParams }: PageProps<"/alt
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between print:hidden">
-        <Link href={`/alternance/carnet?m=${month}`} className="text-sm text-muted hover:text-fg">← Carnet de compétences</Link>
+        <Link href={`/alternance/carnet?m=${month}`} className="text-sm text-muted hover:text-fg">← Journal de bord</Link>
         <PrintButton />
       </div>
       <header className="border-b border-line pb-3">

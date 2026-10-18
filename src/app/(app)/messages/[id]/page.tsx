@@ -11,6 +11,7 @@ import { concludeListing, setListingStatus } from "@/lib/listing-actions";
 import { deleteConversation } from "@/lib/message-actions";
 import { hydrateMessages, isMuted, isParticipant, messageCountsBySender, personalNoteAbout, ratingSummary, sharedImages } from "@/lib/messaging";
 import { lastSeenLabel } from "@/lib/relative-time";
+import { isOnline } from "@/lib/presence";
 import { emitEvent } from "@/lib/message-bus";
 import { Avatar } from "@/components/people-forms";
 import { AutoRefresh } from "@/components/AutoRefresh";
@@ -85,7 +86,7 @@ export default async function ConversationPage({ params }: PageProps<"/messages/
       {!conv.listingId && (
         <ConversationShell
           conversationId={id} meId={user.id} otherId={otherId} otherName={other?.name ?? "L'autre personne"}
-          otherAvatar={avatarUrl(other?.avatar) ?? null} otherVisible={!!other?.visible}
+          otherAvatar={avatarUrl(other?.avatar) ?? null} otherOnline={isOnline(otherId)} otherVisible={!!other?.visible}
           otherReadAt={otherReadAt ? otherReadAt.toISOString() : null} lastSeen={other?.lastSeenAt ? lastSeenLabel(other.lastSeenAt) : null}
           muted={muted} initialNote={note} media={media} initial={liveThread}
         />

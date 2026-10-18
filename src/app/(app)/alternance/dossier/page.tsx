@@ -52,7 +52,7 @@ export default async function MonthlyFilePage({ searchParams }: PageProps<"/alte
       </header>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold">Carnet de compétences</h2>
+        <h2 className="text-lg font-semibold">Journal de bord</h2>
         {skills.length > 0 && <p className="text-sm">Compétences : {skills.join(", ")}</p>}
         {logs.length === 0 && <p className="text-sm text-muted">Aucune entrée ce mois-ci.</p>}
         {logs.map((l) => (

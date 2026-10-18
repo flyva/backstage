@@ -6,6 +6,7 @@ import { Menu, Search, User } from "lucide-react";
 import { AssistantFab } from "@/components/AssistantFab";
 import { Footer } from "@/components/Footer";
 import { PageViewTracker } from "@/components/PageViewTracker";
+import { OnlinePing } from "@/components/OnlinePing";
 
 type Person = { id: number; name: string; avatar: string | null; email3is: string | null; phone: string | null };
 
@@ -67,6 +68,7 @@ export function AppShell({ sidebar, messages, bell, menu, children }: { sidebar:
   return (
     <div className="flex min-h-screen bg-bg text-fg print:block">
       <PageViewTracker />
+      <OnlinePing />
       {menuOpen && <div className="fixed inset-0 z-30 bg-black/50 md:hidden print:hidden" onClick={() => setMenuFor(null)} aria-hidden />}
       <aside
         className={`fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 flex-col bg-side transition-transform md:sticky md:top-0 md:h-screen md:translate-x-0 print:hidden ${menuOpen ? "translate-x-0" : "-translate-x-full"}`}

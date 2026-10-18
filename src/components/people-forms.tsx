@@ -18,12 +18,26 @@ function Feedback({ state }: { state: FormState }) {
   return null;
 }
 
-export function Avatar({ name, url, size = 48 }: { name: string; url: string | null; size?: number }) {
-  // eslint-disable-next-line @next/next/no-img-element
-  if (url) return <img src={url} alt="" width={size} height={size} className="shrink-0 rounded-full object-cover" style={{ width: size, height: size }} />;
+export function Avatar({ name, url, size = 48, online }: { name: string; url: string | null; size?: number; online?: boolean }) {
+  const dot = online && (
+    <span
+      className="absolute rounded-full bg-[#28a745] ring-2 ring-surface"
+      style={{ width: Math.max(8, size * 0.28), height: Math.max(8, size * 0.28), right: 0, bottom: 0 }}
+      aria-label="En ligne"
+      title="En ligne"
+    />
+  );
   return (
-    <span className="grid shrink-0 place-items-center rounded-full bg-accent font-bold text-accent-fg" style={{ width: size, height: size, fontSize: size * 0.36 }} aria-hidden>
-      {initialsOf(name)}
+    <span className="relative inline-block shrink-0" style={{ width: size, height: size }}>
+      {url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={url} alt="" width={size} height={size} className="rounded-full object-cover" style={{ width: size, height: size }} />
+      ) : (
+        <span className="grid place-items-center rounded-full bg-accent font-bold text-accent-fg" style={{ width: size, height: size, fontSize: size * 0.36 }} aria-hidden>
+          {initialsOf(name)}
+        </span>
+      )}
+      {dot}
     </span>
   );
 }

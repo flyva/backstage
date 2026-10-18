@@ -10,7 +10,7 @@ import { deleteLog } from "@/lib/alternance-actions";
 import { LogForm } from "@/components/alternance-forms";
 import { Markdown } from "@/components/Markdown";
 
-export const metadata = { title: "Carnet de compétences" };
+export const metadata = { title: "Journal de bord" };
 
 export default async function LogbookPage({ searchParams }: PageProps<"/alternance/carnet">) {
   const user = await requireUser();

@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { classes, tracks, userLinks, users } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { avatarUrl } from "@/lib/avatar-files";
+import { onlineUserIds } from "@/lib/presence";
 import { school3isEmail } from "@/lib/people-shared";
 import { Directory, type Person } from "@/components/Directory";
 
@@ -18,10 +19,12 @@ export default async function AnnuairePage() {
   const links = rows.length ? await db.select().from(userLinks).where(inArray(userLinks.userId, rows.map((r) => r.id))).orderBy(asc(userLinks.sortOrder)) : [];
   const trackName = new Map(allTracks.map((t) => [t.id, t.name]));
   const className = new Map(allClasses.map((c) => [c.id, c.name]));
+  const online = onlineUserIds(rows.map((u) => u.id));
   const people: Person[] = rows.map((u) => ({
     id: u.id,
     name: u.name,
     avatar: avatarUrl(u.avatarFile),
+    online: online.has(u.id),
     trackId: u.trackId,
     track: u.trackId ? trackName.get(u.trackId) ?? null : null,
     classId: u.classId,

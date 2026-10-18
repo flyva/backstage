@@ -7,9 +7,9 @@ import { ConversationSidebar, type SharedMedia } from "@/components/Conversation
 import type { LiveMessage } from "@/lib/message-bus";
 
 export function ConversationShell({
-  conversationId, meId, otherId, otherName, otherAvatar, otherVisible, otherReadAt, lastSeen, muted, initialNote, media, initial, isGroup, participantNames,
+  conversationId, meId, otherId, otherName, otherAvatar, otherOnline, otherVisible, otherReadAt, lastSeen, muted, initialNote, media, initial, isGroup, participantNames,
 }: {
-  conversationId: number; meId: number; otherId: number | null; otherName: string; otherAvatar: string | null; otherVisible: boolean;
+  conversationId: number; meId: number; otherId: number | null; otherName: string; otherAvatar: string | null; otherOnline?: boolean; otherVisible: boolean;
   otherReadAt: string | null; lastSeen: string | null; muted: boolean; initialNote: string; media: SharedMedia[]; initial: LiveMessage[];
   isGroup?: boolean; participantNames?: Record<number, string>;
 }) {
@@ -36,7 +36,7 @@ export function ConversationShell({
       </section>
       {showInfo && (
         <ConversationSidebar
-          conversationId={conversationId} otherId={otherId} otherName={otherName} otherAvatar={otherAvatar} otherVisible={otherVisible}
+          conversationId={conversationId} otherId={otherId} otherName={otherName} otherAvatar={otherAvatar} otherOnline={otherOnline} otherVisible={otherVisible}
           lastSeen={lastSeen} muted={muted} initialNote={initialNote} media={media} onSearch={setSearchQuery}
         />
       )}

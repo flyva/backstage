@@ -12,6 +12,7 @@ export type Person = {
   id: number;
   name: string;
   avatar: string | null;
+  online: boolean;
   trackId: number | null;
   track: string | null;
   classId: number | null;
@@ -66,7 +67,7 @@ export function Directory({ people, tracks, classes }: { people: Person[]; track
       <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {shown.map((p) => (
           <li key={p.id} className="card flex gap-3 p-4">
-            <Link href={`/annuaire/${p.id}`} aria-label={`Ouvrir la fiche de ${p.name}`}><Avatar name={p.name} url={p.avatar} size={52} /></Link>
+            <Link href={`/annuaire/${p.id}`} aria-label={`Ouvrir la fiche de ${p.name}`}><Avatar name={p.name} url={p.avatar} size={52} online={p.online} /></Link>
             <div className="min-w-0 flex-1 space-y-1">
               <div className="truncate font-semibold"><Link href={`/annuaire/${p.id}`} className="hover:text-accent">{p.name}</Link></div>
               <span className="flex flex-wrap items-center gap-1.5">

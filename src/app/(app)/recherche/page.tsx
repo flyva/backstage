@@ -108,7 +108,7 @@ export default async function SearchPage({ searchParams }: PageProps<"/recherche
     push("Fichiers joints", Paperclip, files.map((f) => ({ key: `f${f.id}`, title: f.name, sub: f.personalOf !== null ? "Mon kanban" : f.project, href: f.cardId !== null ? kanbanHref(f.personalOf, f.projectId) : `/projets/${f.projectId}/fiches` })));
     push("Conduite", ListChecks, cueRows.map((c) => ({ key: `q${c.id}`, title: c.title, sub: `${c.project}${c.notes ? " · " + snippet(c.notes, q) : ""}`, href: `/projets/${c.projectId}/conduite` })));
     push("Checklists", ListChecks, checkRows.map((c) => ({ key: `ck${c.id}`, title: c.label, sub: `${c.project} · ${c.list}`, href: `/projets/${c.projectId}` })));
-    push("Mon carnet de liaison", NotebookPen, logs.map((l) => ({ key: `lg${l.id}`, title: l.day, sub: snippet(l.mission, q), href: `/alternance/carnet?m=${l.day.slice(0, 7)}` })));
+    push("Mon journal de bord", NotebookPen, logs.map((l) => ({ key: `lg${l.id}`, title: l.day, sub: snippet(l.mission, q), href: `/alternance/carnet?m=${l.day.slice(0, 7)}` })));
     push("Bibliothèque", Library, [
       ...fixtures.map((f) => ({ key: `fx${f.id}`, title: f.name, sub: f.mode ?? "Appareil", href: `/bibliotheque?q=${encodeURIComponent(f.name)}` })),
       ...memories.map((m) => ({ key: `mm${m.id}`, title: m.title, sub: [m.console, m.number].filter(Boolean).join(" · ") || (m.notes ? snippet(m.notes, q) : undefined), href: `/bibliotheque/memoires?q=${encodeURIComponent(m.title)}` })),

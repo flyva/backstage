@@ -77,7 +77,7 @@ export default async function ProfilPage({ searchParams }: PageProps<"/profil">)
           </div>
           <div className="card space-y-2">
             <h2 className="font-semibold">Mes données</h2>
-            <p className="text-sm text-muted">Télécharge un fichier avec tes données personnelles : profil, carnet de compétences, pointeuse, messages envoyés, avis.</p>
+            <p className="text-sm text-muted">Télécharge un fichier avec tes données personnelles : profil, journal de bord, pointeuse, messages envoyés, avis, notes de frais.</p>
             <a href="/api/rgpd/export" className="btn-ghost w-fit"><Download size={15} aria-hidden /> Exporter mes données</a>
             <p className="text-xs text-muted"><Link href="/cgu" className="underline">CGU</Link> · <Link href="/mentions-legales" className="underline">Mentions légales</Link></p>
           </div>

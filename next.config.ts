@@ -1,6 +1,12 @@
+import { execFileSync } from "node:child_process";
 import type { NextConfig } from "next";
 
+// Commit court (affiché en bas de page) : capturé une fois à la compilation (sur le PC), pas à chaque requête sur le Pi.
+const gitOut = (args: string[], fallback: string) => { try { return execFileSync("git", args).toString().trim(); } catch { return fallback; } };
+const APP_VERSION = gitOut(["rev-parse", "--short", "HEAD"], "dev");
+
 const nextConfig: NextConfig = {
+  env: { APP_VERSION },
   // Build autonome, à compiler sur le PC puis copier sur le Raspberry Pi.
   output: "standalone",
   // Développement : le navigateur intégré ouvre le site sur 127.0.0.1 (sinon Next bloque l'hydratation).

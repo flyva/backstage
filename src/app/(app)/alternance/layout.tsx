@@ -3,7 +3,7 @@ import { ProjectTabs } from "@/components/ProjectTabs";
 
 const TABS = [
   { slug: "", label: "Planning" },
-  { slug: "carnet", label: "Carnet de compétences" },
+  { slug: "carnet", label: "Journal de bord" },
   { slug: "pointeuse", label: "Pointeuse" },
   { slug: "stats", label: "Statistiques" },
   { slug: "notes-de-frais", label: "Notes de frais" },
