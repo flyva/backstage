@@ -25,7 +25,8 @@ export default async function ExpenseNotePage({ params }: PageProps<"/alternance
     <div className="max-w-lg space-y-4">
       <p className="text-sm"><Link href="/alternance/notes-de-frais" className="inline-flex items-center gap-1 text-muted hover:text-fg"><ArrowLeft size={14} /> Notes de frais</Link></p>
       <header>
-        <h1 className="text-2xl font-bold">{note.place}</h1>
+        <h1 className="text-2xl font-bold">{note.placeName || note.place}</h1>
+        {note.place && note.placeName && <p className="text-sm text-muted">{note.place}</p>}
         <p className="text-sm text-muted">{dateFmt.format(new Date(`${note.date}T12:00:00`))} à {note.time} · <span className="font-semibold text-fg">{fmtEuros(note.priceCents)}</span></p>
       </header>
 

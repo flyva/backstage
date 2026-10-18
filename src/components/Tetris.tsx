@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Pause, Play } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowRight, ChevronsDown, Pause, Play, RotateCw } from "lucide-react";
 import { saveDetenteScore } from "@/lib/detente-actions";
 
 const COLS = 10;
 const ROWS = 20;
 const CELL = 24;
+const PREVIEW_CELL = 18;
 
 type Cell = string | null;
 type Board = Cell[][];
@@ -61,6 +62,24 @@ function collides(board: Board, piece: Piece, dx = 0, dy = 0, cells = piece.cell
 
 const LINE_SCORE = [0, 100, 300, 500, 800];
 
+/** Petit aperçu de la prochaine pièce, dans son coin. */
+function NextPiece({ kind }: { kind: string | null }) {
+  if (!kind) return null;
+  const s = SHAPES[kind];
+  const maxX = Math.max(...s.cells.map((c) => c[0]));
+  const maxY = Math.max(...s.cells.map((c) => c[1]));
+  return (
+    <div className="space-y-1 text-center">
+      <p className="text-xs text-muted">Suivante</p>
+      <div className="relative mx-auto rounded-lg border border-line bg-bg" style={{ width: (maxX + 1) * PREVIEW_CELL, height: (maxY + 1) * PREVIEW_CELL }}>
+        {s.cells.map(([x, y], i) => (
+          <div key={i} className="absolute rounded-sm" style={{ left: x * PREVIEW_CELL + 1, top: y * PREVIEW_CELL + 1, width: PREVIEW_CELL - 2, height: PREVIEW_CELL - 2, background: s.color }} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function Tetris() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const boardRef = useRef<Board>(emptyBoard());
@@ -74,22 +93,28 @@ export function Tetris() {
   const [score, setScore] = useState(0);
   const [lines, setLines] = useState(0);
   const [running, setRunning] = useState(false);
+  const [paused, setPaused] = useState(false);
   const [over, setOver] = useState(false);
+  const [nextKind, setNextKind] = useState<string | null>(null);
 
   const nextFromBag = useCallback(() => {
     if (bagRef.current.length === 0) bagRef.current = shuffledBag();
-    return bagRef.current.shift()!;
+    const kind = bagRef.current.shift()!;
+    setNextKind(bagRef.current[0] ?? null);
+    return kind;
   }, []);
 
   const reset = useCallback(() => {
     boardRef.current = emptyBoard();
     bagRef.current = shuffledBag();
     pieceRef.current = spawn(bagRef.current.shift()!);
+    setNextKind(bagRef.current[0] ?? null);
     dropTimer.current = 0;
     savedRef.current = false;
     setScore(0);
     setLines(0);
     setOver(false);
+    setPaused(false);
   }, []);
 
   const draw = useCallback(() => {
@@ -186,43 +211,70 @@ export function Tetris() {
 
   useEffect(() => { draw(); }, [draw]);
 
+  const act = useCallback((fn: () => void) => { if (!running) return; fn(); draw(); }, [running, draw]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!running) return;
       if (["ArrowLeft", "ArrowRight", "ArrowDown", "ArrowUp", " ", "Spacebar"].includes(e.key)) e.preventDefault();
-      if (e.key === "ArrowLeft") move(-1, 0);
-      else if (e.key === "ArrowRight") move(1, 0);
-      else if (e.key === "ArrowDown") { if (move(0, 1)) setScore((s) => s + 1); }
-      else if (e.key === "ArrowUp") rotate();
-      else if (e.key === " " || e.key === "Spacebar") hardDrop();
-      else return;
-      draw();
+      if (e.key === "ArrowLeft") act(() => move(-1, 0));
+      else if (e.key === "ArrowRight") act(() => move(1, 0));
+      else if (e.key === "ArrowDown") act(() => { if (move(0, 1)) setScore((s) => s + 1); });
+      else if (e.key === "ArrowUp") act(rotate);
+      else if (e.key === " " || e.key === "Spacebar") act(hardDrop);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [running, move, rotate, hardDrop, draw]);
+  }, [running, move, rotate, hardDrop, draw, act]);
 
   const start = () => { reset(); setRunning(true); };
+  const resume = () => { setPaused(false); setRunning(true); };
+  const pause = () => { setPaused(true); setRunning(false); };
+
+  const showOverlay = !running;
+  const overlayMode = over ? "over" : paused ? "paused" : "start";
 
   return (
     <div className="flex flex-col items-center gap-3">
-      <div className="relative">
-        <canvas ref={canvasRef} width={COLS * CELL} height={ROWS * CELL} className="rounded-lg border border-line" />
-        {!running && (
-          <div className="absolute inset-0 grid place-items-center rounded-lg bg-black/70 text-center text-white">
-            <div className="space-y-3 p-4">
-              {over && <p className="text-lg font-semibold">Perdu ! Score : {score}</p>}
-              <button type="button" onClick={start} className="btn"><Play size={15} /> {over ? "Rejouer" : "Jouer"}</button>
-              {!over && <p className="text-xs text-white/70">Flèches pour bouger/tourner, Espace pour tout lâcher</p>}
+      <div className="flex items-start gap-3">
+        <div className="relative">
+          <canvas ref={canvasRef} width={COLS * CELL} height={ROWS * CELL} className="touch-none rounded-lg border border-line" />
+          {showOverlay && (
+            <div className="absolute inset-0 grid place-items-center rounded-lg bg-black/80 text-center text-white">
+              <div className="space-y-3 p-4">
+                {overlayMode === "over" && <p className="text-lg font-semibold">Game Over</p>}
+                {overlayMode === "paused" && <p className="text-lg font-semibold">Pause</p>}
+                <p className="text-2xl font-bold tabular-nums">{score}</p>
+                {overlayMode === "paused" ? (
+                  <button type="button" onClick={resume} className="btn"><Play size={15} /> Reprendre</button>
+                ) : (
+                  <button type="button" onClick={start} className="btn"><Play size={15} /> {overlayMode === "over" ? "Rejouer" : "Jouer"}</button>
+                )}
+                {overlayMode === "start" && <p className="text-xs text-white/70">Flèches pour bouger/tourner, Espace pour tout lâcher</p>}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
+        <NextPiece kind={running ? nextKind : null} />
       </div>
-      <div className="flex items-center gap-4 text-sm">
-        <span>Score : <strong className="tabular-nums">{score}</strong></span>
-        <span>Lignes : <strong className="tabular-nums">{lines}</strong></span>
-        {running && <button type="button" onClick={() => setRunning(false)} className="btn-ghost text-xs"><Pause size={13} /> Pause</button>}
+
+      <div className="flex items-center gap-2 rounded-xl border border-line bg-bg px-3 py-2 text-sm">
+        <span className="text-muted">Score</span> <strong className="text-base tabular-nums">{score}</strong>
+        <span className="mx-1 text-line">·</span>
+        <span className="text-muted">Lignes</span> <strong className="tabular-nums">{lines}</strong>
+        {running && <button type="button" onClick={pause} className="btn-ghost ml-2 text-xs"><Pause size={13} /> Pause</button>}
       </div>
+
+      {/* Commandes tactiles : visibles sur mobile comme sur PC (ne gênent pas, pratiques aussi à la souris). */}
+      {running && (
+        <div className="grid grid-cols-4 gap-2 sm:hidden">
+          <button type="button" onClick={() => act(() => move(-1, 0))} className="btn-ghost p-3" aria-label="Gauche"><ArrowLeft size={18} /></button>
+          <button type="button" onClick={() => act(rotate)} className="btn-ghost p-3" aria-label="Tourner"><RotateCw size={18} /></button>
+          <button type="button" onClick={() => act(() => move(0, 1))} className="btn-ghost p-3" aria-label="Descendre doucement"><ArrowDown size={18} /></button>
+          <button type="button" onClick={() => act(() => move(1, 0))} className="btn-ghost p-3" aria-label="Droite"><ArrowRight size={18} /></button>
+          <button type="button" onClick={() => act(hardDrop)} className="btn-ghost col-span-4 p-2 text-xs"><ChevronsDown size={15} /> Tout lâcher</button>
+        </div>
+      )}
     </div>
   );
 }

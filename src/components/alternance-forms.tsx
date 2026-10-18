@@ -91,14 +91,17 @@ export function ExpenseNoteForm({ today, now }: { today: string; now: string }) 
     <form action={action} className="space-y-4">
       <div>
         <label className="label" htmlFor="exp-photo">Photo du reçu</label>
-        <input id="exp-photo" name="photo" type="file" accept="image/jpeg,image/png" capture="environment" required className="input" />
+        <input id="exp-photo" name="photo" type="file" accept="image/jpeg,image/png" required className="input" />
+        <p className="mt-1 text-xs text-muted">Sur téléphone : prendre une photo ou en choisir une depuis la pellicule.</p>
       </div>
       <div className="grid gap-3 sm:grid-cols-3">
         <div><label className="label" htmlFor="exp-date">Date</label><input id="exp-date" name="date" type="date" defaultValue={today} required className="input" /></div>
         <div><label className="label" htmlFor="exp-time">Heure</label><input id="exp-time" name="time" type="time" defaultValue={now} required className="input" /></div>
         <div><label className="label" htmlFor="exp-price">Prix (€)</label><input id="exp-price" name="price" type="number" step="0.01" min="0.01" required className="input" placeholder="12,50" /></div>
       </div>
-      <AddressField id="exp-place" name="place" label="Lieu" placeholder="Nom et adresse du lieu" />
+      <div><label className="label" htmlFor="exp-name">Nom du lieu</label><input id="exp-name" name="placeName" required maxLength={120} className="input" placeholder="Ex. Décathlon, restaurant Chez Mimi…" /></div>
+      <AddressField id="exp-place" name="place" label="Adresse" placeholder="Adresse du lieu" />
+      <div><label className="label" htmlFor="exp-comment">Commentaire (facultatif)</label><textarea id="exp-comment" name="comment" rows={2} maxLength={500} className="input" placeholder="Précision à ajouter au commentaire généré" /></div>
       <Feedback state={state} />
       <button className="btn" disabled={pending}><Receipt size={15} /> {pending ? "Enregistrement…" : "Enregistrer la note de frais"}</button>
     </form>

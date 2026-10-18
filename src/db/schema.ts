@@ -734,7 +734,8 @@ export const expenseNotes = mysqlTable(
     photoFile: varchar("photo_file", { length: 60 }).notNull(),
     date: date("date", { mode: "string" }).notNull(),
     time: varchar("time", { length: 5 }).notNull(), // "HH:MM"
-    place: varchar("place", { length: 200 }).notNull(),
+    placeName: varchar("place_name", { length: 120 }).notNull().default(""), // nom du commerce/lieu (ex. "Décathlon")
+    place: varchar("place", { length: 200 }).notNull(), // adresse
     priceCents: int("price_cents").notNull(),
     comment: text("comment").notNull(),
     createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),

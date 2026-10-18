@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { desc, eq } from "drizzle-orm";
-import { Plus, Receipt } from "lucide-react";
+import { Download, Plus, Receipt, Trash2 } from "lucide-react";
 import { db } from "@/db";
 import { expenseNotes } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
+import { deleteExpenseNote } from "@/lib/expense-actions";
+import { ConfirmButton } from "@/components/ConfirmButton";
+import { CopyButton } from "@/components/people-forms";
 
 export const metadata = { title: "Notes de frais" };
 
@@ -29,18 +32,28 @@ export default async function ExpenseNotesPage() {
 
       <ul className="space-y-2">
         {notes.map((n) => (
-          <li key={n.id}>
-            <Link href={`/alternance/notes-de-frais/${n.id}`} className="card flex items-center gap-3 p-4 hover:border-accent">
+          <li key={n.id} className="card flex items-center gap-3 p-4">
+            <Link href={`/alternance/notes-de-frais/${n.id}`} className="flex min-w-0 flex-1 items-center gap-3 hover:opacity-80">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={`/api/alternance/notes-de-frais/${n.id}/photo`} alt="" className="size-14 shrink-0 rounded-lg border border-line object-cover" loading="lazy" />
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className="truncate font-medium">{n.place}</span>
+                  <span className="truncate font-medium">{n.placeName || n.place}</span>
                   <span className="shrink-0 font-semibold tabular-nums">{fmtEuros(n.priceCents)}</span>
                 </div>
                 <div className="text-sm text-muted">{dateFmt.format(new Date(`${n.date}T12:00:00`))} à {n.time}</div>
               </div>
             </Link>
+            <div className="flex shrink-0 items-center gap-1">
+              <CopyButton value={n.comment} label="" />
+              <a href={`/api/alternance/notes-de-frais/${n.id}/photo?dl=1`} className="rounded-lg p-2 text-muted hover:bg-bg hover:text-fg" aria-label="Télécharger la photo"><Download size={16} /></a>
+              <form action={deleteExpenseNote}>
+                <input type="hidden" name="id" value={n.id} />
+                <ConfirmButton message="Supprimer définitivement cette note de frais ?" className="rounded-lg p-2 text-muted hover:bg-bg hover:text-danger">
+                  <Trash2 size={16} aria-label="Supprimer" />
+                </ConfirmButton>
+              </form>
+            </div>
           </li>
         ))}
       </ul>

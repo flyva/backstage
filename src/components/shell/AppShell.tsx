@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Menu, Search, User } from "lucide-react";
 import { AssistantFab } from "@/components/AssistantFab";
+import { Footer } from "@/components/Footer";
 
 type Person = { id: number; name: string; avatar: string | null; email3is: string | null; phone: string | null };
 
@@ -150,6 +151,7 @@ export function AppShell({ sidebar, messages, bell, menu, children }: { sidebar:
           </div>
         </header>
         <main className="min-w-0 flex-1 p-4 md:p-6 print:p-0">{children}</main>
+        <Footer />
       </div>
       <AssistantFab />
     </div>

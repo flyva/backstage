@@ -5,6 +5,7 @@ import { changePassword, login, register, saveRequestNote, updateProfile, saveSe
 import { PasswordField } from "@/components/PasswordField";
 import { EmailField } from "@/components/EmailField";
 import { AddressField } from "@/components/AddressField";
+import { MarkdownField } from "@/components/MarkdownField";
 
 function Feedback({ state }: { state: FormState }) {
   if (state?.error) return <p className="text-sm text-danger" role="alert">{state.error}</p>;
@@ -142,18 +143,13 @@ export function SettingsForm({ values }: { values: Record<string, string> }) {
 }
 
 /** Texte des CGU et des mentions légales (markdown), affichés sur /cgu et /mentions-legales (public, pas besoin de compte). */
-export function LegalTextsForm({ cguBody, mentionsBody }: { cguBody: string; mentionsBody: string }) {
+export function LegalTextsForm({ cguBody, mentionsBody, privacyBody }: { cguBody: string; mentionsBody: string; privacyBody: string }) {
   const [state, action, pending] = useActionState(saveSettings, undefined);
   return (
-    <form action={action} className="space-y-4">
-      <div>
-        <label className="label" htmlFor="cgu_body">CGU (markdown)</label>
-        <textarea id="cgu_body" name="cgu_body" rows={10} defaultValue={cguBody} className="input font-mono text-xs" />
-      </div>
-      <div>
-        <label className="label" htmlFor="mentions_legales_body">Mentions légales (markdown)</label>
-        <textarea id="mentions_legales_body" name="mentions_legales_body" rows={10} defaultValue={mentionsBody} className="input font-mono text-xs" />
-      </div>
+    <form action={action} className="space-y-5">
+      <MarkdownField name="cgu_body" defaultValue={cguBody} rows={10} label="CGU" placeholder="Conditions générales d'utilisation…" />
+      <MarkdownField name="mentions_legales_body" defaultValue={mentionsBody} rows={10} label="Mentions légales" placeholder="Éditeur, hébergeur…" />
+      <MarkdownField name="politique_confidentialite_body" defaultValue={privacyBody} rows={10} label="Politique de confidentialité" placeholder="Données collectées, finalités, durée de conservation…" />
       <Feedback state={state} />
       <button className="btn" disabled={pending}>{pending ? "Enregistrement…" : "Enregistrer"}</button>
     </form>

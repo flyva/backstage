@@ -7,6 +7,7 @@ import { allowedDomainsFromEnv } from "@/lib/email-domain";
 import { LoginForm } from "@/components/forms";
 import { MicrosoftButton } from "@/components/MicrosoftButton";
 import { GoogleButton } from "@/components/GoogleButton";
+import { Footer } from "@/components/Footer";
 
 export const metadata = { title: "Connexion" };
 
@@ -73,9 +74,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
           Pas encore de compte ? <Link href="/register" className="font-medium text-fg underline">S&apos;inscrire</Link>
         </p>
       )}
-      <p className="text-center text-xs text-muted">
-        <Link href="/cgu" className="underline">CGU</Link> · <Link href="/mentions-legales" className="underline">Mentions légales</Link>
-      </p>
+      <Footer />
     </main>
   );
 }

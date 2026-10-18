@@ -19,6 +19,7 @@ export const SETTING_KEYS = [
   "instagram_feed_url", // flux JSON public (ex. Behold), voir /instagram
   "cgu_body", // conditions générales d'utilisation (markdown), voir /cgu
   "mentions_legales_body", // mentions légales (markdown), voir /mentions-legales
+  "politique_confidentialite_body", // politique de confidentialité (markdown), voir /politique-de-confidentialite
 ] as const;
 export type SettingKey = (typeof SETTING_KEYS)[number];
 

@@ -3,9 +3,6 @@ import { and, eq, inArray, lte, or } from "drizzle-orm";
 import { db } from "@/db";
 import { equipmentItems, loans, roles, users, workDays } from "@/db/schema";
 import { daysBetween, todayParis } from "@/lib/equipment";
-import { unreadConversations } from "@/lib/messaging";
-import { mailEnabled, publicBaseUrl, sendMail } from "@/lib/mail";
-import { renderMail } from "@/lib/mail-template";
 import { notifyUser } from "@/lib/push";
 import { cardHref, dueCards } from "@/lib/reminders";
 
@@ -70,35 +67,7 @@ async function run(req: Request) {
     planned += await notifyUser(p.userId, { title: "Demain", body: p.kind === "ecole" ? "Demain : journée à l'école." : "Demain : journée en entreprise.", url: "/alternance", tag: `plan-${p.userId}` }, "reminders");
   }
 
-  // Résumé hebdomadaire par e-mail, chaque lundi seulement : tâches de la semaine, prêts à rendre, messages non lus.
-  // Catégorie "updates" (déjà utilisée pour les notifications push « Nouveautés ») : pas de nouvelle préférence à créer.
-  let emailed = 0;
-  if (new Date(`${today}T12:00:00Z`).getUTCDay() === 1 && mailEnabled() && publicBaseUrl()) {
-    const weekAhead = new Date(`${today}T12:00:00Z`);
-    weekAhead.setUTCDate(weekAhead.getUTCDate() + 7);
-    const weekLimit = weekAhead.toISOString().slice(0, 10);
-    const weekCards = await dueCards(weekLimit);
-    const weekCardsByUser = Map.groupBy(weekCards, (c) => c.userId);
-    const weekLoansByUser = Map.groupBy(due.filter((l) => l.dueDate <= weekLimit), (l) => l.userId);
-
-    const recipients = await db.select({ id: users.id, name: users.name, email: users.email }).from(users).innerJoin(roles, eq(roles.id, users.roleId)).where(and(eq(users.status, "active"), eq(users.notifyUpdates, true)));
-    for (const r of recipients) {
-      const tasks = weekCardsByUser.get(r.id) ?? [];
-      const loansOut = weekLoansByUser.get(r.id) ?? [];
-      const unread = await unreadConversations(r.id);
-      if (tasks.length === 0 && loansOut.length === 0 && unread === 0) continue; // rien à dire cette semaine : pas de mail
-      const paragraphs = [
-        `Salut ${r.name.split(" ")[0]}, voici ton résumé de la semaine sur Backstage :`,
-        tasks.length ? `📋 ${tasks.length} tâche(s) à finir cette semaine : ${tasks.slice(0, 5).map((c) => c.title).join(", ")}${tasks.length > 5 ? "…" : ""}` : "",
-        loansOut.length ? `📦 ${loansOut.length} prêt(s) de matériel à rendre cette semaine.` : "",
-        unread > 0 ? `💬 ${unread} conversation(s) avec des messages non lus.` : "",
-      ].filter(Boolean);
-      const html = renderMail({ preview: "Ton résumé de la semaine", title: "Ton résumé de la semaine", paragraphs, button: { label: "Ouvrir Backstage", url: `${publicBaseUrl()}/` }, note: "Tu reçois ce résumé chaque lundi. Pour ne plus le recevoir : Paramètres → Notifications → désactive « Nouveautés »." });
-      if (await sendMail(r.email, "Ton résumé de la semaine · Backstage", paragraphs.join("\n\n"), html)) emailed++;
-    }
-  }
-
-  return Response.json({ ok: true, remindedTasks: reminded, remindedPlanning: planned, loansConcerned: due.length, overdue, notifiedBorrowers: borrowers, notifiedManagers: managers, weeklyDigestsSent: emailed });
+  return Response.json({ ok: true, remindedTasks: reminded, remindedPlanning: planned, loansConcerned: due.length, overdue, notifiedBorrowers: borrowers, notifiedManagers: managers });
 }
 
 export const GET = run;

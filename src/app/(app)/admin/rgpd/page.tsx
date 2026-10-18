@@ -13,9 +13,9 @@ export default async function RgpdAdminPage() {
   return (
     <div className="space-y-5">
       <section className="card space-y-3">
-        <h2 className="flex items-center gap-2 font-semibold"><ShieldCheck size={18} className="text-accent" /> CGU et mentions légales</h2>
-        <p className="text-sm text-muted">Affichées publiquement sur <Link href="/cgu" className="text-accent underline">/cgu</Link> et <Link href="/mentions-legales" className="text-accent underline">/mentions-legales</Link>, accessibles sans compte (liées depuis la connexion et l&apos;inscription).</p>
-        <LegalTextsForm cguBody={settings.cgu_body ?? ""} mentionsBody={settings.mentions_legales_body ?? ""} />
+        <h2 className="flex items-center gap-2 font-semibold"><ShieldCheck size={18} className="text-accent" /> CGU, mentions légales et confidentialité</h2>
+        <p className="text-sm text-muted">Affichées publiquement sur <Link href="/cgu" className="text-accent underline">/cgu</Link>, <Link href="/mentions-legales" className="text-accent underline">/mentions-legales</Link> et <Link href="/politique-de-confidentialite" className="text-accent underline">/politique-de-confidentialite</Link>, accessibles sans compte (liées depuis le pied de page, la connexion et l&apos;inscription).</p>
+        <LegalTextsForm cguBody={settings.cgu_body ?? ""} mentionsBody={settings.mentions_legales_body ?? ""} privacyBody={settings.politique_confidentialite_body ?? ""} />
       </section>
 
       <section className="card space-y-2">

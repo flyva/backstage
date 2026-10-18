@@ -1,0 +1,1 @@
+ALTER TABLE `expense_notes` ADD `place_name` varchar(120) DEFAULT '' NOT NULL;

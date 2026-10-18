@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
-  BookOpen, BookUser, Bot, Briefcase, Calculator, Car, ChevronRight, CalendarDays, Camera, CircleHelp, Clock, Cog, Gamepad2, Home, Images, Lightbulb, Link2, Network, Newspaper, PartyPopper, School, NotebookPen, ShieldCheck, SquareKanban, TramFront, Users, Contact, Megaphone, CalendarClock, Zap, BarChart3,
+  BookOpen, BookUser, Bot, Briefcase, Calculator, Car, ChevronRight, CalendarDays, Camera, CircleHelp, Clock, Cog, FileDown, Gamepad2, Home, Images, Lightbulb, Link2, Network, Newspaper, PartyPopper, Receipt, School, NotebookPen, ShieldCheck, SquareKanban, TramFront, Users, Contact, Megaphone, CalendarClock, Zap, BarChart3,
   type LucideIcon,
 } from "lucide-react";
 
@@ -30,6 +30,8 @@ const GROUPS: Group[] = [
       { href: "/alternance/carnet", label: "Carnet de compétences", icon: NotebookPen },
       { href: "/alternance/pointeuse", label: "Pointeuse", icon: Clock },
       { href: "/alternance/stats", label: "Statistiques", icon: BarChart3 },
+      { href: "/alternance/notes-de-frais", label: "Notes de frais", icon: Receipt },
+      { href: "/alternance/dossier", label: "Dossier complet (PDF)", icon: FileDown },
     ],
   },
   {

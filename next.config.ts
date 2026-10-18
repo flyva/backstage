@@ -9,6 +9,11 @@ const nextConfig: NextConfig = {
   images: { unoptimized: true },
   // Lecture des calendriers PDF (pdfjs) : chargé tel quel côté serveur, avec son fichier « worker » inclus dans le build autonome.
   serverExternalPackages: ["pdfjs-dist"],
+  // Par défaut, une Server Action refuse tout corps de requête au-delà de 1 Mo : une photo de téléphone (notes de
+  // frais, messages, tickets, fichiers de projet) dépasse presque toujours cette taille et échoue silencieusement
+  // (erreur générique du navigateur, pas le message d'erreur de l'action). Aligné sur la plus grosse limite de fichier
+  // utilisée dans le code (15 Mo), avec une marge pour le reste du formulaire.
+  experimental: { serverActions: { bodySizeLimit: "20mb" } },
   // Le dossier dist/ (anciens paquets) et les caches ne doivent jamais se retrouver dans le paquet de déploiement.
   outputFileTracingIncludes: { "/api/alternance/calendar": ["./node_modules/pdfjs-dist/legacy/build/**"] },
 };
