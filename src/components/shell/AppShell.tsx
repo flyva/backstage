@@ -71,7 +71,7 @@ export function AppShell({ sidebar, messages, bell, menu, children }: { sidebar:
       <OnlinePing />
       {menuOpen && <div className="fixed inset-0 z-30 bg-black/50 md:hidden print:hidden" onClick={() => setMenuFor(null)} aria-hidden />}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 flex-col bg-side transition-transform md:sticky md:top-0 md:h-screen md:translate-x-0 print:hidden ${menuOpen ? "translate-x-0" : "-translate-x-full"}`}
+        className={`fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 flex-col bg-side bg-gradient-to-b from-[color-mix(in_srgb,var(--side)_100%,white_4%)] to-[color-mix(in_srgb,var(--side)_100%,black_12%)] shadow-[2px_0_16px_-6px_rgba(0,0,0,0.25)] transition-transform md:sticky md:top-0 md:h-screen md:translate-x-0 print:hidden ${menuOpen ? "translate-x-0" : "-translate-x-full"}`}
         aria-label="Menu principal"
       >
         {sidebar}

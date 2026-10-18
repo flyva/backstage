@@ -138,16 +138,19 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
 
 @layer components {
   .card {
-    @apply rounded-2xl border border-line bg-surface p-5 shadow-[0_1px_2px_rgba(16,24,40,0.06)];
+    @apply rounded-2xl border border-line bg-surface p-5 shadow-[0_1px_2px_rgba(16,24,40,0.05),0_8px_20px_-12px_rgba(16,24,40,0.12)] transition-shadow duration-200;
+  }
+  a.card:hover, button.card:hover {
+    @apply shadow-[0_2px_4px_rgba(16,24,40,0.06),0_14px_28px_-12px_rgba(16,24,40,0.18)];
   }
   .input {
-    @apply w-full rounded-xl border border-line bg-bg px-3 py-2 text-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/30;
+    @apply w-full rounded-xl border border-line bg-bg px-3 py-2 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/30;
   }
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2 text-sm font-medium text-accent-fg transition hover:opacity-90 disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2 text-sm font-medium text-accent-fg shadow-[0_1px_2px_rgba(16,24,40,0.05),0_4px_10px_-4px_color-mix(in_srgb,var(--accent)_55%,transparent)] transition hover:-translate-y-px hover:opacity-90 hover:shadow-[0_2px_4px_rgba(16,24,40,0.06),0_8px_16px_-4px_color-mix(in_srgb,var(--accent)_60%,transparent)] active:translate-y-0 disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none;
   }
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-line px-3 py-2 text-sm transition hover:bg-bg;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-line px-3 py-2 text-sm transition hover:border-accent/40 hover:bg-bg;
   }
   .prose-wiki { @apply text-sm leading-relaxed; }
   .prose-wiki > * + * { @apply mt-3; }
@@ -189,3 +192,14 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
 .anim-route-in { animation: route-in 0.18s ease-out both; }
 .route-logo { animation: route-spin 0.9s linear infinite; }
 @media (prefers-reduced-motion: reduce) { .anim-route-in, .route-logo { animation: none; } }
+
+/* Apparition en cascade des tuiles d'accueil (coup d'oeil, cartes du tableau de bord) : un leger decalage par
+   enfant, pose via --rise-delay, donne du mouvement sans ralentir la lecture. */
+@keyframes rise-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.anim-rise-in { animation: rise-in 0.42s cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: var(--rise-delay, 0ms); }
+@media (prefers-reduced-motion: reduce) { .anim-rise-in { animation: none; } }
+
+/* Icone meteo du bandeau d'accueil : leger mouvement pour casser le statisme d'une icone fixe. */
+@keyframes icon-float { 0%, 100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-3px) rotate(4deg); } }
+.anim-icon-float { animation: icon-float 4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .anim-icon-float { animation: none; } }

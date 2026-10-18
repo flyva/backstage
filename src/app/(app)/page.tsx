@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { and, desc, eq, inArray } from "drizzle-orm";
-import { AlertTriangle, Bike, Briefcase, Clock, ExternalLink, GraduationCap, Mail, MapPin, Package, TramFront, type LucideIcon } from "lucide-react";
+import { AlertTriangle, Bike, Briefcase, Clock, ExternalLink, GraduationCap, Mail, MapPin, Moon, Package, Sun, TramFront, type LucideIcon } from "lucide-react";
 import { db } from "@/db";
 import { equipmentItems, loans, newsPosts } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
@@ -25,6 +25,10 @@ export default async function HomePage() {
   const user = await requireUser();
   const s = await getSettings();
   const today = todayParis();
+  const hourParis = Number(new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", hour: "2-digit", hourCycle: "h23" }).format(new Date()));
+  const isDay = hourParis >= 7 && hourParis < 19;
+  const greeting = hourParis < 6 ? "Bonne nuit" : hourParis < 12 ? "Bonjour" : hourParis < 18 ? "Salut" : "Bonsoir";
+  const dayLabelLong = dateFmt.format(new Date());
 
   const home = user.homeLat != null && user.homeLng != null ? { lat: user.homeLat, lng: user.homeLng } : null;
 
@@ -94,10 +98,17 @@ export default async function HomePage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">Salut {user.firstName || user.name.split(" ")[0]} 👋</h1>
-          <p className="text-sm text-muted">Ton hub 3IS : cours, transports, matériel et actus.</p>
+      <header className="card flex flex-wrap items-center justify-between gap-4 border-l-4 border-accent">
+        <div className="flex items-center gap-4">
+          <span
+            className={`anim-icon-float grid size-14 shrink-0 place-items-center rounded-full ${isDay ? "bg-amber-400/15 text-amber-500" : "bg-indigo-400/15 text-indigo-400"}`}
+          >
+            {isDay ? <Sun size={28} /> : <Moon size={28} />}
+          </span>
+          <div>
+            <h1 className="text-2xl font-bold capitalize">{greeting} {user.firstName || user.name.split(" ")[0]} 👋</h1>
+            <p className="text-sm text-muted capitalize">{dayLabelLong} · Ton hub 3IS : cours, transports, matériel et actus.</p>
+          </div>
         </div>
         {shortcuts.length > 0 && (
           <div className="flex flex-wrap gap-2">
@@ -125,8 +136,11 @@ export default async function HomePage() {
       />
 
       <section className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4" aria-label="En un coup d'œil">
-        {stats.map((st) => (
-          <Link key={st.label} href={st.href} className="card block hover:border-accent" style={{ borderLeft: `4px solid ${st.color}` }}>
+        {stats.map((st, i) => (
+          <Link
+            key={st.label} href={st.href} className="card anim-rise-in block hover:-translate-y-0.5 hover:border-accent"
+            style={{ borderLeft: `4px solid ${st.color}`, "--rise-delay": `${i * 60}ms` } as React.CSSProperties}
+          >
             <span className="grid size-11 place-items-center rounded-xl" style={{ background: `color-mix(in srgb, ${st.color} 16%, transparent)`, color: st.color }}><st.icon size={22} /></span>
             <div className="mt-4 text-sm text-muted">{st.label}</div>
             <div className="mt-1 text-3xl font-bold">{st.value}</div>
