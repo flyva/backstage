@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { and, eq, gt, inArray, isNull, or } from "drizzle-orm";
 import { db } from "@/db";
-import { conversationMembers, conversations, listings, messageAttachments, messages, reviews, users } from "@/db/schema";
+import { conversationMembers, conversationMutes, conversations, listings, messageAttachments, messages, personalNotes, reviews, users } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { activeGroupMemberIds, hydrateMessages, isParticipant, messageCountsBySender } from "@/lib/messaging";
 import { emitEvent, emitMessage, isPresent, setPresent } from "@/lib/message-bus";
@@ -17,10 +17,34 @@ import type { FormState } from "@/lib/actions";
 
 const body = (fd: FormData) => String(fd.get("body") ?? "").trim().slice(0, 2000);
 
-// Pas de notification push si la personne a déjà la conversation ouverte sous les yeux (flux en direct connecté et onglet visible).
+// Pas de notification push si la personne a déjà la conversation ouverte sous les yeux (flux en direct connecté et
+// onglet visible), ni si elle a mis la conversation en sourdine.
 async function pushNew(toUserId: number, fromName: string, subtitle: string, conversationId: number, text: string) {
   if (isPresent(conversationId, toUserId)) return;
+  const [muted] = await db.select({ userId: conversationMutes.userId }).from(conversationMutes).where(and(eq(conversationMutes.conversationId, conversationId), eq(conversationMutes.userId, toUserId))).limit(1);
+  if (muted) return;
   await notifyUser(toUserId, { title: subtitle ? `${fromName} · ${subtitle}` : fromName, body: text.length > 120 ? `${text.slice(0, 117)}…` : text, url: `/messages/${conversationId}`, tag: `conv-${conversationId}` }, "messages").catch(() => 0);
+}
+
+/** Active ou coupe les notifications pour cette conversation (l'historique reste visible normalement). */
+export async function toggleMute(fd: FormData) {
+  const user = await requireUser();
+  const conversationId = Number(fd.get("conversationId"));
+  const [conv] = await db.select({ id: conversations.id, kind: conversations.kind, buyerId: conversations.buyerId, sellerId: conversations.sellerId }).from(conversations).where(eq(conversations.id, conversationId)).limit(1);
+  if (!conv || !(await isParticipant(conv, user.id))) return;
+  const [existing] = await db.select().from(conversationMutes).where(and(eq(conversationMutes.conversationId, conversationId), eq(conversationMutes.userId, user.id))).limit(1);
+  if (existing) await db.delete(conversationMutes).where(and(eq(conversationMutes.conversationId, conversationId), eq(conversationMutes.userId, user.id)));
+  else await db.insert(conversationMutes).values({ conversationId, userId: user.id });
+  revalidatePath(`/messages/${conversationId}`);
+}
+
+/** Enregistre (ou efface) la note privée que la personne connectée garde sur quelqu'un d'autre : jamais visible par lui. */
+export async function savePersonalNote(aboutUserId: number, note: string) {
+  const user = await requireUser();
+  if (aboutUserId === user.id) return;
+  const text = note.trim().slice(0, 1000);
+  if (!text) { await db.delete(personalNotes).where(and(eq(personalNotes.authorId, user.id), eq(personalNotes.aboutUserId, aboutUserId))); return; }
+  await db.insert(personalNotes).values({ authorId: user.id, aboutUserId, note: text }).onDuplicateKeyUpdate({ set: { note: text, updatedAt: new Date() } });
 }
 
 /** Déclaré présent (ou absent) par le fil en direct d'une conversation : voir message-bus.ts. */

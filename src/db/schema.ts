@@ -1118,6 +1118,29 @@ export const messageAttachments = mysqlTable(
   (t) => [index("ma_message_idx").on(t.messageId)],
 );
 
+// Conversations en sourdine : aucune notification push tant qu'elle y figure (l'historique reste visible normalement).
+export const conversationMutes = mysqlTable(
+  "conversation_mutes",
+  {
+    conversationId: int("conversation_id").notNull().references(() => conversations.id, { onDelete: "cascade" }),
+    userId: int("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.conversationId, t.userId] })],
+);
+
+// Note privée qu'une personne garde sur une autre (ex. depuis une conversation) : jamais visible par la personne concernée.
+export const personalNotes = mysqlTable(
+  "personal_notes",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    authorId: int("author_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    aboutUserId: int("about_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    note: text("note").notNull(),
+    updatedAt: datetime("updated_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [uniqueIndex("pn_author_about_idx").on(t.authorId, t.aboutUserId)],
+);
+
 // Avis sur une personne à la suite d'une vente (ou d'un échange) : note de 1 à 5 et commentaire.
 // L'annonce peut disparaître : son titre est conservé ici pour que l'avis reste lisible.
 export const reviews = mysqlTable(

@@ -519,6 +519,13 @@
       "when": 1792269867761,
       "tag": "0073_lean_wrecker",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "5",
+      "when": 1792329215694,
+      "tag": "0074_faulty_logan",
+      "breakpoints": true
     }
   ]
 }

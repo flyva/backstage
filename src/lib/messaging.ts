@@ -1,7 +1,7 @@
 import "server-only";
-import { and, avg, count, eq, inArray, isNull, lt, ne, or } from "drizzle-orm";
+import { and, avg, count, desc, eq, inArray, isNull, lt, ne, or } from "drizzle-orm";
 import { db } from "@/db";
-import { conversationMembers, conversations, messageAttachments, messages, reviews } from "@/db/schema";
+import { conversationMembers, conversationMutes, conversations, messageAttachments, messages, personalNotes, reviews } from "@/db/schema";
 import { toLive, type LiveMessage } from "@/lib/message-bus";
 
 type Conv = { id: number; kind: "listing" | "dm" | "group"; buyerId: number; sellerId: number };
@@ -12,6 +12,27 @@ export async function isParticipant(conv: Conv, userId: number): Promise<boolean
   const [row] = await db.select({ id: conversationMembers.id }).from(conversationMembers)
     .where(and(eq(conversationMembers.conversationId, conv.id), eq(conversationMembers.userId, userId), isNull(conversationMembers.leftAt))).limit(1);
   return !!row;
+}
+
+/** Images partagées dans une conversation (vignettes de la barre latérale), la plus récente d'abord. */
+export async function sharedImages(conversationId: number, limit = 9) {
+  const rows = await db.select({ id: messageAttachments.id, mime: messageAttachments.mime, name: messageAttachments.originalName })
+    .from(messageAttachments).innerJoin(messages, eq(messages.id, messageAttachments.messageId))
+    .where(eq(messages.conversationId, conversationId))
+    .orderBy(desc(messageAttachments.id)).limit(50);
+  return rows.filter((r) => r.mime.startsWith("image/")).slice(0, limit).map((r) => ({ id: r.id, name: r.name, url: `/api/messages/${conversationId}/files/${r.id}` }));
+}
+
+/** Cette conversation est-elle en sourdine pour cette personne ? */
+export async function isMuted(conversationId: number, userId: number): Promise<boolean> {
+  const [row] = await db.select({ userId: conversationMutes.userId }).from(conversationMutes).where(and(eq(conversationMutes.conversationId, conversationId), eq(conversationMutes.userId, userId))).limit(1);
+  return !!row;
+}
+
+/** Note privée que `authorId` garde sur `aboutUserId` (jamais visible par la personne concernée). */
+export async function personalNoteAbout(authorId: number, aboutUserId: number): Promise<string> {
+  const [row] = await db.select({ note: personalNotes.note }).from(personalNotes).where(and(eq(personalNotes.authorId, authorId), eq(personalNotes.aboutUserId, aboutUserId))).limit(1);
+  return row?.note ?? "";
 }
 
 /** Membres actifs (n'ont pas quitté) d'un groupe, hors `exceptUserId` si fourni. */

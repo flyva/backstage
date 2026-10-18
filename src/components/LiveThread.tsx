@@ -44,9 +44,9 @@ const TYPING_MS = 4000; // « écrit… » disparaît 4 s après le dernier sign
  * l'indication « est en train d'écrire » et « Vu » sous ton dernier message. Si le flux est coupé (réseau, proxy), on interroge
  * le serveur toutes les 4 s en attendant qu'il revienne.
  */
-export function LiveThread({ conversationId, meId, otherName, otherReadAt, initial, onReply, isGroup = false, participantNames }: {
+export function LiveThread({ conversationId, meId, otherName, otherReadAt, initial, onReply, isGroup = false, participantNames, searchQuery = "" }: {
   conversationId: number; meId: number; otherName: string; otherReadAt: string | null; initial: LiveMessage[]; onReply?: (m: LiveMessage) => void;
-  isGroup?: boolean; participantNames?: Record<number, string>;
+  isGroup?: boolean; participantNames?: Record<number, string>; searchQuery?: string;
 }) {
   const nameOf = (userId: number) => (userId === meId ? "Toi" : (participantNames?.[userId] ?? otherName));
   const [items, setItems] = useState<LiveMessage[]>(initial);
@@ -138,8 +138,9 @@ export function LiveThread({ conversationId, meId, otherName, otherReadAt, initi
         {items.map((m) => {
           const mine = m.senderId === meId;
           const seen = mine && m.id === lastMineId && !!readAt && new Date(readAt).getTime() >= new Date(m.createdAt).getTime();
+          const matches = !searchQuery.trim() || m.body.toLowerCase().includes(searchQuery.trim().toLowerCase());
           return (
-            <li key={m.id} className={`group flex flex-col ${mine ? "items-end" : "items-start"} ${m.id > openedAtId ? "anim-msg-in" : ""}`}>
+            <li key={m.id} className={`group flex flex-col ${mine ? "items-end" : "items-start"} ${m.id > openedAtId ? "anim-msg-in" : ""} ${matches ? "" : "opacity-20"}`}>
               <div className={`flex items-end gap-1.5 ${mine ? "flex-row-reverse" : ""}`}>
                 <div className={`max-w-[85%] rounded-2xl px-4 py-2 text-sm ${mine ? "bg-accent text-accent-fg" : "border border-line bg-bg"}`}>
                   {isGroup && !mine && <p className="mb-0.5 text-xs font-semibold text-accent">{nameOf(m.senderId)}</p>}

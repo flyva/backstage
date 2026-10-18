@@ -9,12 +9,14 @@ import { avatarUrl } from "@/lib/avatar-files";
 import { LISTING_LABEL, LISTING_PHOTO_PREFIX, formatPrice } from "@/lib/listing-shared";
 import { concludeListing, setListingStatus } from "@/lib/listing-actions";
 import { deleteConversation } from "@/lib/message-actions";
-import { hydrateMessages, isParticipant, messageCountsBySender, ratingSummary } from "@/lib/messaging";
+import { hydrateMessages, isMuted, isParticipant, messageCountsBySender, personalNoteAbout, ratingSummary, sharedImages } from "@/lib/messaging";
+import { lastSeenLabel } from "@/lib/relative-time";
 import { emitEvent } from "@/lib/message-bus";
 import { Avatar } from "@/components/people-forms";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { ConversationPanel } from "@/components/ConversationPanel";
+import { ConversationShell } from "@/components/ConversationShell";
 import { LeaveGroupButton, ReviewForm } from "@/components/message-forms";
 import { RatingBadge, Stars } from "@/components/Stars";
 
@@ -31,13 +33,16 @@ export default async function ConversationPage({ params }: PageProps<"/messages/
 
   const iAmBuyer = conv.buyerId === user.id;
   const otherId = iAmBuyer ? conv.sellerId : conv.buyerId;
-  const [thread, [other], [listing], counts, ratings, [myReview]] = await Promise.all([
+  const [thread, [other], [listing], counts, ratings, [myReview], media, muted, note] = await Promise.all([
     db.select().from(messages).where(eq(messages.conversationId, id)).orderBy(asc(messages.id)),
-    db.select({ id: users.id, name: users.name, avatar: users.avatarFile, visible: users.showInDirectory }).from(users).where(eq(users.id, otherId)).limit(1),
+    db.select({ id: users.id, name: users.name, avatar: users.avatarFile, visible: users.showInDirectory, lastSeenAt: users.lastSeenAt }).from(users).where(eq(users.id, otherId)).limit(1),
     conv.listingId ? db.select().from(listings).where(eq(listings.id, conv.listingId)).limit(1) : Promise.resolve([]),
     messageCountsBySender(id),
     ratingSummary([otherId]),
     conv.listingId ? db.select().from(reviews).where(and(eq(reviews.authorId, user.id), eq(reviews.listingId, conv.listingId), eq(reviews.subjectId, otherId))).limit(1) : Promise.resolve([]),
+    sharedImages(id),
+    isMuted(id, user.id),
+    personalNoteAbout(user.id, otherId),
   ]);
 
   // Lu à l'ouverture : la date de lecture dépasse celle du dernier message, et l'autre personne voit « Vu ».
@@ -65,6 +70,7 @@ export default async function ConversationPage({ params }: PageProps<"/messages/
           <Avatar name={other?.name ?? "?"} url={avatarUrl(other?.avatar)} size={48} />
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-xl font-bold">{other?.visible ? <Link href={`/annuaire/${other.id}`} className="hover:text-accent">{other.name}</Link> : (other?.name ?? "Personne supprimée")}</h1>
+            {other?.lastSeenAt && <p className="text-xs text-muted">Vu {lastSeenLabel(other.lastSeenAt)}</p>}
             {rating && <RatingBadge avg={rating.avg} n={rating.n} />}
           </div>
           <form action={deleteConversation}>
@@ -76,7 +82,17 @@ export default async function ConversationPage({ params }: PageProps<"/messages/
         </div>
       </header>
 
-      <div className={`grid items-start gap-5 ${conv.listingId ? "lg:grid-cols-[1fr_20rem]" : "max-w-2xl"}`}>
+      {!conv.listingId && (
+        <ConversationShell
+          conversationId={id} meId={user.id} otherId={otherId} otherName={other?.name ?? "L'autre personne"}
+          otherAvatar={avatarUrl(other?.avatar) ?? null} otherVisible={!!other?.visible}
+          otherReadAt={otherReadAt ? otherReadAt.toISOString() : null} lastSeen={other?.lastSeenAt ? lastSeenLabel(other.lastSeenAt) : null}
+          muted={muted} initialNote={note} media={media} initial={liveThread}
+        />
+      )}
+
+      {conv.listingId && (
+      <div className="grid items-start gap-5 lg:grid-cols-[1fr_20rem]">
         {/* Discussion + avis */}
         <div className="min-w-0 space-y-5">
           <section className="card space-y-3" aria-label="Messages">
@@ -167,6 +183,7 @@ export default async function ConversationPage({ params }: PageProps<"/messages/
         </aside>
         )}
       </div>
+      )}
     </div>
   );
 }
@@ -180,14 +197,18 @@ async function GroupConversation({ conv, userId }: { conv: GroupConv; userId: nu
       .innerJoin(conversationMembers, eq(conversationMembers.userId, users.id))
       .where(and(eq(conversationMembers.conversationId, conv.id), isNull(conversationMembers.leftAt))),
   ]);
-  const liveThread = await hydrateMessages(conv.id, thread);
+  const [liveThread, media, muted] = await Promise.all([
+    hydrateMessages(conv.id, thread),
+    sharedImages(conv.id),
+    isMuted(conv.id, userId),
+  ]);
   const participantNames = Object.fromEntries(members.map((m) => [m.id, m.name]));
   const now = new Date();
   await db.update(conversationMembers).set({ readAt: now }).where(and(eq(conversationMembers.conversationId, conv.id), eq(conversationMembers.userId, userId)));
   const amCreator = conv.buyerId === userId;
 
   return (
-    <div className="max-w-2xl space-y-5">
+    <div className="max-w-4xl space-y-5">
       <AutoRefresh seconds={20} />
       <header className="space-y-2">
         <p className="text-sm"><Link href="/messages" className="text-muted underline">← Messages</Link></p>
@@ -210,12 +231,11 @@ async function GroupConversation({ conv, userId }: { conv: GroupConv; userId: nu
         </div>
       </header>
 
-      <section className="card space-y-3" aria-label="Messages">
-        <ConversationPanel
-          conversationId={conv.id} meId={userId} otherName="Le groupe" otherReadAt={null} initial={liveThread}
-          isGroup participantNames={participantNames}
-        />
-      </section>
+      <ConversationShell
+        conversationId={conv.id} meId={userId} otherId={null} otherName="Le groupe" otherAvatar={null} otherVisible={false}
+        otherReadAt={null} lastSeen={null} muted={muted} initialNote="" media={media} initial={liveThread}
+        isGroup participantNames={participantNames}
+      />
     </div>
   );
 }

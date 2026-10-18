@@ -37,6 +37,9 @@ async function sendTo(subs: Sub[], payload: PushPayload) {
         } catch (e) {
           const status = (e as { statusCode?: number }).statusCode;
           if (status === 404 || status === 410) dead.push(s.id); // abonnement expiré : on le retire
+          // Toute autre erreur (mauvaise clé VAPID, réseau, 4xx/5xx du service de push…) est journalisée : sans ça,
+          // un envoi qui échoue systématiquement ne laisse aucune trace et ressemble à « aucune notification jamais ».
+          else console.error(`[push] échec d'envoi (abonnement ${s.id}, statut ${status ?? "?"}) :`, e instanceof Error ? e.message : e);
         }
       }),
     );

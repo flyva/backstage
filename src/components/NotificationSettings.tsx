@@ -106,7 +106,7 @@ export function NotificationSettings({ publicKey, serverReady, initial }: { publ
           ["bde", "Nouveaux évènements du BDE"],
           ["loans", "Mes prêts de matériel (rappels de retour)"],
           ["reminders", "Rappels : échéances de mes tâches, jour en entreprise ou à l'école demain"],
-          ["messages", "Messages de mes annonces (nouveau message, vente validée, nouvel avis)"],
+          ["messages", "Messages (direct, groupe ou annonce) et avis"],
           ["listings", "Nouvelles annonces publiées par la promo"],
           ["updates", "Nouveautés de Backstage marquées importantes"],
         ] as const).map(([key, label]) => (

@@ -1,19 +1,22 @@
 // Service worker de Backstage.
 // Volontairement minimal : il ne met JAMAIS en cache les pages personnelles, les API ni les médias (ils dépendent de
-// la session). Seule exception, volontaire : les pages du wiki et le cours Habilitation électrique (connaissance
-// partagée par toute la promo, pas de donnée personnelle), mises en cache après une première visite en ligne, pour
-// rester lisibles hors connexion ensuite (mode avion, salle sans réseau…). Le reste du service worker gère
-// l'installation, les fichiers statiques immuables, les pages « hors ligne » (dont le Jour J) et les notifications push.
+// la session) — sauf l'Agenda, mis en cache malgré tout car c'est la page la plus utile hors ligne (la dernière vue
+// en ligne reste lisible). Autres exceptions, partagées par toute la promo (pas de donnée personnelle) : le wiki et
+// le cours Habilitation électrique. Mis en cache après une première visite en ligne, pour rester lisibles hors
+// connexion ensuite (mode avion, salle sans réseau…). Le reste du service worker gère l'installation, les fichiers
+// statiques immuables, les pages « hors ligne » (dont le Jour J) et les notifications push.
 const CACHE = "backstage-static-v3";
 const PAGES_CACHE = "backstage-pages-v1";
 const PRECACHE = ["/offline.html", "/jour-j-offline.html", "/icon-192.png"];
 
-// Lecture seule et partagée : le wiki (hors création/modification/historique/impression/export) et Habilitation électrique.
+// Lecture seule : le wiki et Habilitation électrique (hors création/modification/historique/impression/export,
+// jamais utiles hors ligne), et l'Agenda (personnel, mais le plus demandé hors connexion).
 function isOfflineReadable(pathname) {
   if (/^\/wiki\/nouveau/.test(pathname)) return false;
   if (/^\/wiki\/[^/]+\/(modifier|historique|imprimer|export)/.test(pathname)) return false;
   if (/^\/wiki(\/|$)/.test(pathname)) return true;
   if (/^\/habilitation(\/|$)/.test(pathname)) return true;
+  if (/^\/agenda(\/|$)/.test(pathname)) return true;
   return false;
 }
 
