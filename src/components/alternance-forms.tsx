@@ -72,7 +72,7 @@ export function LogForm({ today, id, day, endDay, place = "entreprise", mission 
       </div>
       <div>
         <label className="label">Missions réalisées</label>
-        <MarkdownField name="mission" defaultValue={mission} rows={4} maxLength={5000} label="Missions réalisées" placeholder="Ce que tu as fait, appris, les difficultés…" />
+        <MarkdownField name="mission" defaultValue={mission} rows={4} maxLength={5000} uploadUrl="/api/wiki/files" label="Missions réalisées" placeholder="Ce que tu as fait, appris, les difficultés…" />
       </div>
       <div>
         <label className="label" htmlFor={`ls${k}`}>Compétences travaillées</label>
