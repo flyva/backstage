@@ -1,13 +1,16 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { writeFile } from "node:fs/promises";
+import path from "node:path";
 import { and, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { workDays, workLogs, WORK_KINDS } from "@/db/schema";
+import { workDays, workLogFiles, workLogs, WORK_KINDS } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { todayParis } from "@/lib/equipment";
 import { KIND_CYCLE, addDays, isDay, isWeekend } from "@/lib/alternance";
+import { ensureWorkLogFilesDir, MAX_WORK_LOG_PHOTO_BYTES, MAX_WORK_LOG_PHOTOS, newWorkLogFileName, removeWorkLogPhoto, sniffWorkLogPhoto, workLogFilesDir } from "@/lib/work-log-files";
 import type { FormState } from "@/lib/actions";
 
 const refresh = () => {
@@ -98,6 +101,7 @@ const logSchema = z.object({
   day: z.string().refine(isDay, "Date invalide"),
   endDay: z.string().refine(isDay, "Date de fin invalide"),
   place: z.enum(["entreprise", "ecole"]),
+  title: z.string().trim().max(150),
   mission: z.string().trim().min(3, "Décris la mission").max(5000),
   skills: z.string().trim().max(300),
 });
@@ -110,21 +114,67 @@ const cleanSkills = (raw: string) => {
 export async function saveLog(_: FormState, fd: FormData): Promise<FormState> {
   const user = await requireUser();
   const today = todayParis();
-  const p = logSchema.safeParse({ day: fd.get("day"), endDay: fd.get("endDay") || fd.get("day"), place: fd.get("place"), mission: fd.get("mission"), skills: fd.get("skills") ?? "" });
+  const p = logSchema.safeParse({ day: fd.get("day"), endDay: fd.get("endDay") || fd.get("day"), place: fd.get("place"), title: fd.get("title") ?? "", mission: fd.get("mission"), skills: fd.get("skills") ?? "" });
   if (!p.success) return { error: p.error.issues[0].message };
   if (p.data.day > today || p.data.endDay > today) return { error: "Impossible d'ajouter une entrée dans le futur" };
   if (p.data.endDay < p.data.day) return { error: "La fin ne peut pas être avant le début" };
-  const values = { day: p.data.day, endDay: p.data.endDay, place: p.data.place, mission: p.data.mission, skills: cleanSkills(p.data.skills) };
+
   const raw = Number(fd.get("id") || 0);
+  const photos = fd.getAll("photos").filter((f): f is File => f instanceof File && f.size > 0);
+  if (photos.length) {
+    const [existingCount] = raw ? await db.select({ n: sql<number>`count(*)` }).from(workLogFiles).where(eq(workLogFiles.workLogId, raw)) : [{ n: 0 }];
+    if (Number(existingCount.n) + photos.length > MAX_WORK_LOG_PHOTOS) return { error: `${MAX_WORK_LOG_PHOTOS} photos maximum par entrée` };
+    const tooBig = photos.find((ph) => ph.size > MAX_WORK_LOG_PHOTO_BYTES);
+    if (tooBig) return { error: `« ${tooBig.name} » dépasse 15 Mo` };
+  }
+
+  const values = { day: p.data.day, endDay: p.data.endDay, place: p.data.place, title: p.data.title || null, mission: p.data.mission, skills: cleanSkills(p.data.skills) };
+  let workLogId = raw;
   if (raw) await db.update(workLogs).set(values).where(and(eq(workLogs.id, raw), eq(workLogs.userId, user.id)));
-  else await db.insert(workLogs).values({ ...values, userId: user.id });
+  else { const [res] = await db.insert(workLogs).values({ ...values, userId: user.id }); workLogId = res.insertId; }
+
+  if (photos.length) {
+    await ensureWorkLogFilesDir();
+    const names: string[] = [];
+    for (const photo of photos) {
+      const bytes = new Uint8Array(await photo.arrayBuffer());
+      const kind = sniffWorkLogPhoto(bytes);
+      if (!kind) return { error: "Les photos doivent être au format JPG ou PNG" };
+      const name = newWorkLogFileName(kind.ext);
+      await writeFile(path.join(workLogFilesDir(), name), bytes);
+      names.push(name);
+    }
+    await db.insert(workLogFiles).values(names.map((fileName) => ({ workLogId, fileName })));
+  }
+
   refresh();
   return { ok: raw ? "Entrée enregistrée" : "Entrée ajoutée" };
 }
 
 export async function deleteLog(fd: FormData) {
   const user = await requireUser();
-  await db.delete(workLogs).where(and(eq(workLogs.id, Number(fd.get("id"))), eq(workLogs.userId, user.id)));
+  const id = Number(fd.get("id"));
+  const [row] = await db.select({ userId: workLogs.userId }).from(workLogs).where(eq(workLogs.id, id)).limit(1);
+  if (!row || row.userId !== user.id) return;
+  const files = await db.select({ fileName: workLogFiles.fileName }).from(workLogFiles).where(eq(workLogFiles.workLogId, id));
+  for (const f of files) await removeWorkLogPhoto(f.fileName);
+  await db.delete(workLogs).where(eq(workLogs.id, id)); // efface aussi work_log_files (ON DELETE CASCADE)
+  refresh();
+}
+
+/** Retire une seule photo d'une entrée (sans toucher au reste). */
+export async function removeLogFile(fd: FormData) {
+  const user = await requireUser();
+  const fileId = Number(fd.get("fileId"));
+  const [row] = await db
+    .select({ fileName: workLogFiles.fileName, userId: workLogs.userId })
+    .from(workLogFiles)
+    .innerJoin(workLogs, eq(workLogs.id, workLogFiles.workLogId))
+    .where(eq(workLogFiles.id, fileId))
+    .limit(1);
+  if (!row || row.userId !== user.id) return;
+  await removeWorkLogPhoto(row.fileName);
+  await db.delete(workLogFiles).where(eq(workLogFiles.id, fileId));
   refresh();
 }
 

@@ -1,14 +1,15 @@
 "use client";
 
 import { useActionState, useRef, useState } from "react";
-import { Camera, Plus, Receipt, X } from "lucide-react";
+import { Camera, Plus, Receipt, Trash2, X } from "lucide-react";
 import type { FormState } from "@/lib/actions";
-import { applyRhythm, saveLog, setRange } from "@/lib/alternance-actions";
+import { applyRhythm, removeLogFile, saveLog, setRange } from "@/lib/alternance-actions";
 import { saveExpenseNote } from "@/lib/expense-actions";
 import { KIND_LABEL } from "@/lib/alternance";
 import { MarkdownField } from "@/components/MarkdownField";
 import { DateRangeField } from "@/components/DateRangeField";
 import { AddressField } from "@/components/AddressField";
+import { ConfirmButton } from "@/components/ConfirmButton";
 
 function Feedback({ state }: { state: FormState }) {
   if (state?.error) return <p className="text-sm text-danger" role="alert">{state.error}</p>;
@@ -54,12 +55,43 @@ export function RhythmForm({ today }: { today: string }) {
   );
 }
 
-export function LogForm({ today, id, day, endDay, place = "entreprise", mission = "", skills = "" }: { today: string; id?: number; day: string; endDay?: string; place?: string; mission?: string; skills?: string }) {
+let nextLogFileId = 0;
+type LogPending = { id: number; file: File; previewUrl: string };
+
+export function LogForm({
+  today, id, day, endDay, place = "entreprise", title = "", mission = "", skills = "", existingPhotos = [],
+}: {
+  today: string; id?: number; day: string; endDay?: string; place?: string; title?: string; mission?: string; skills?: string;
+  existingPhotos?: { id: number; url: string }[];
+}) {
   const [state, action, pending] = useActionState(saveLog, undefined);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [photos, setPhotos] = useState<LogPending[]>([]);
   const k = id ?? "new";
+
+  const addPhotos = (list: FileList | null) => {
+    if (!list) return;
+    const incoming = [...list];
+    setPhotos((cur) => [...cur, ...incoming.map((file) => ({ id: nextLogFileId++, file, previewUrl: URL.createObjectURL(file) }))]);
+  };
+  const removePhoto = (pid: number) => setPhotos((cur) => {
+    const hit = cur.find((p) => p.id === pid);
+    if (hit) URL.revokeObjectURL(hit.previewUrl);
+    return cur.filter((p) => p.id !== pid);
+  });
+  const onSubmit = () => {
+    const dt = new DataTransfer();
+    photos.forEach((p) => dt.items.add(p.file));
+    if (inputRef.current) inputRef.current.files = dt.files;
+  };
+
   return (
-    <form action={action} className="space-y-3" key={id ? `e${id}` : state?.ok ? "done" : "new"}>
+    <form action={action} onSubmit={onSubmit} className="space-y-3" key={id ? `e${id}` : state?.ok ? "done" : "new"}>
       {id && <input type="hidden" name="id" value={id} />}
+      <div>
+        <label className="label" htmlFor={`lt${k}`}>Titre (facultatif)</label>
+        <input id={`lt${k}`} name="title" defaultValue={title} maxLength={150} placeholder="Ex. Montage du festival, maintenance parc son…" className="input" />
+      </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label className="label" htmlFor={`ld${k}`}>Date</label>
@@ -77,6 +109,34 @@ export function LogForm({ today, id, day, endDay, place = "entreprise", mission 
       <div>
         <label className="label" htmlFor={`ls${k}`}>Compétences travaillées</label>
         <input id={`ls${k}`} name="skills" defaultValue={skills} maxLength={300} placeholder="patch DMX, câblage, conduite (séparées par des virgules)" className="input" />
+      </div>
+      <div>
+        <label className="label">Photos (à côté du texte, facultatif)</label>
+        {(existingPhotos.length > 0 || photos.length > 0) && (
+          <ul className="mb-2 flex flex-wrap gap-2">
+            {existingPhotos.map((p) => (
+              <li key={`e${p.id}`} className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={p.url} alt="" className="size-20 rounded-lg border border-line object-cover" />
+                <form action={removeLogFile} className="absolute -right-1.5 -top-1.5">
+                  <input type="hidden" name="fileId" value={p.id} />
+                  <ConfirmButton message="Retirer cette photo de l'entrée ?" className="grid size-5 place-items-center rounded-full bg-danger text-white shadow">
+                    <Trash2 size={11} />
+                  </ConfirmButton>
+                </form>
+              </li>
+            ))}
+            {photos.map((p) => (
+              <li key={p.id} className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={p.previewUrl} alt="" className="size-20 rounded-lg border border-line object-cover" />
+                <button type="button" onClick={() => removePhoto(p.id)} aria-label="Retirer cette photo" className="absolute -right-1.5 -top-1.5 grid size-5 place-items-center rounded-full bg-danger text-white shadow"><X size={12} /></button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <input ref={inputRef} name="photos" type="file" accept="image/jpeg,image/png" multiple hidden onChange={(e) => { addPhotos(e.target.files); e.target.value = ""; }} />
+        <button type="button" onClick={() => inputRef.current?.click()} className="btn-ghost text-sm"><Camera size={15} /> Ajouter une photo</button>
       </div>
       <Feedback state={state} />
       <button className="btn" disabled={pending}>{pending ? "Enregistrement…" : id ? "Enregistrer" : "Ajouter l'entrée"}</button>

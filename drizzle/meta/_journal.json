@@ -575,6 +575,13 @@
       "when": 1792443026618,
       "tag": "0081_odd_red_wolf",
       "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "5",
+      "when": 1792451129689,
+      "tag": "0082_complete_omega_red",
+      "breakpoints": true
     }
   ]
 }

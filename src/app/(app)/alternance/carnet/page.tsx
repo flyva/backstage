@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { and, desc, eq, like } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, like } from "drizzle-orm";
 import { ChevronLeft, ChevronRight, Download, Printer, Trash2 } from "lucide-react";
 import { db } from "@/db";
-import { workLogs } from "@/db/schema";
+import { workLogFiles, workLogs } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { todayParis } from "@/lib/equipment";
 import { addMonths, dayLabel, isMonth, monthLabel } from "@/lib/alternance";
@@ -23,6 +23,11 @@ export default async function LogbookPage({ searchParams }: PageProps<"/alternan
     .from(workLogs)
     .where(and(eq(workLogs.userId, user.id), like(workLogs.day, `${month}-%`)))
     .orderBy(desc(workLogs.day), desc(workLogs.id));
+  const files = logs.length
+    ? await db.select().from(workLogFiles).where(inArray(workLogFiles.workLogId, logs.map((l) => l.id))).orderBy(asc(workLogFiles.id))
+    : [];
+  const filesByLog = new Map<number, { id: number; url: string }[]>();
+  for (const f of files) filesByLog.set(f.workLogId, [...(filesByLog.get(f.workLogId) ?? []), { id: f.id, url: `/api/alternance/carnet/${f.workLogId}/photo/${f.id}` }]);
   const byPlace = (p: "entreprise" | "ecole") => logs.filter((l) => l.place === p).length;
   const skillCount = new Map<string, number>();
   for (const l of logs) for (const s of l.skills?.split(",") ?? []) skillCount.set(s, (skillCount.get(s) ?? 0) + 1);
@@ -66,22 +71,41 @@ export default async function LogbookPage({ searchParams }: PageProps<"/alternan
       <section className="space-y-2">
         <h2 className="font-semibold">Entrées ({logs.length})</h2>
         {logs.length === 0 && <p className="text-sm text-muted">Rien pour ce mois.</p>}
-        {logs.map((l) => (
-          <details key={l.id} className="card p-0">
-            <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 marker:hidden">
-              <span className="font-medium capitalize">{period(l)}</span>
-              <span className="rounded-full border border-line px-2 py-0.5 text-xs text-muted">{l.place === "ecole" ? "École" : "Entreprise"}</span>
-            </summary>
-            <div className="space-y-4 border-t border-line p-4">
-              <div className="text-sm"><Markdown breaks>{l.mission}</Markdown></div>
-              <LogForm today={today} id={l.id} day={l.day} endDay={l.endDay} place={l.place} mission={l.mission} skills={l.skills ?? ""} />
-              <form action={deleteLog} className="border-t border-line pt-3">
-                <input type="hidden" name="id" value={l.id} />
-                <button className="flex items-center gap-1 text-xs text-muted hover:text-danger"><Trash2 size={14} /> Supprimer l&apos;entrée</button>
-              </form>
-            </div>
-          </details>
-        ))}
+        {logs.map((l) => {
+          const photos = filesByLog.get(l.id) ?? [];
+          return (
+            <details key={l.id} className="card p-0">
+              <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 marker:hidden">
+                <span className="font-medium">{l.title || <span className="capitalize">{period(l)}</span>}</span>
+                {l.title && <span className="text-xs text-muted">{period(l)}</span>}
+                <span className="rounded-full border border-line px-2 py-0.5 text-xs text-muted">{l.place === "ecole" ? "École" : "Entreprise"}</span>
+                {photos.length > 0 && <span className="text-xs text-muted">{photos.length} photo{photos.length > 1 ? "s" : ""}</span>}
+              </summary>
+              <div className="space-y-4 border-t border-line p-4">
+                <div className="flex flex-wrap gap-4">
+                  <div className="min-w-0 flex-1 text-sm"><Markdown breaks>{l.mission}</Markdown></div>
+                  {photos.length > 0 && (
+                    <ul className="flex shrink-0 flex-wrap gap-2 sm:max-w-[9.5rem]">
+                      {photos.map((p) => (
+                        <li key={p.id}>
+                          <a href={`${p.url}?dl=1`} target="_blank" rel="noopener noreferrer">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={p.url} alt="" className="size-20 rounded-lg border border-line object-cover" loading="lazy" />
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                <LogForm today={today} id={l.id} day={l.day} endDay={l.endDay} place={l.place} title={l.title ?? ""} mission={l.mission} skills={l.skills ?? ""} existingPhotos={photos} />
+                <form action={deleteLog} className="border-t border-line pt-3">
+                  <input type="hidden" name="id" value={l.id} />
+                  <button className="flex items-center gap-1 text-xs text-muted hover:text-danger"><Trash2 size={14} /> Supprimer l&apos;entrée</button>
+                </form>
+              </div>
+            </details>
+          );
+        })}
       </section>
     </div>
   );

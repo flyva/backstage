@@ -758,11 +758,24 @@ export const workLogs = mysqlTable(
     day: date("day", { mode: "string" }).notNull(),
     endDay: date("end_day", { mode: "string" }).notNull(), // égal à « day » pour une seule journée
     place: mysqlEnum("place", ["entreprise", "ecole"]).notNull().default("entreprise"),
+    title: varchar("title", { length: 150 }), // facultatif : sinon la période fait office de titre dans la liste
     mission: text("mission").notNull(),
     skills: varchar("skills", { length: 300 }), // compétences travaillées, séparées par des virgules
     createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
   },
   (t) => [index("wl_user_day_idx").on(t.userId, t.day)],
+);
+
+// Photos d'une entrée du journal de bord (à côté du texte, pas mêlées dedans) : plusieurs par entrée.
+export const workLogFiles = mysqlTable(
+  "work_log_files",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    workLogId: int("work_log_id").notNull().references(() => workLogs.id, { onDelete: "cascade" }),
+    fileName: varchar("file_name", { length: 60 }).notNull(),
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [index("wlf_log_idx").on(t.workLogId)],
 );
 
 // Note de frais : photo du reçu + date/heure/lieu/prix, avec un commentaire prêt à copier-coller pour l'entreprise.
