@@ -52,6 +52,11 @@ export default async function ConversationPage({ params }: PageProps<"/messages/
   await db.update(conversations).set(iAmBuyer ? { buyerReadAt: now } : { sellerReadAt: now }).where(eq(conversations.id, id));
   emitEvent(id, { kind: "read", userId: user.id, at: now.toISOString() });
 
+  // « Vu » seulement si l'autre personne a vraiment lu ce dernier message (sa date de lecture le dépasse) : sinon,
+  // c'est juste sa dernière connexion à l'appli, pas une preuve qu'elle a lu quoi que ce soit ici.
+  const otherHasRead = !!otherReadAt && otherReadAt >= conv.lastMessageAt;
+  const seenLabel = otherHasRead ? lastSeenLabel(otherReadAt) : other?.lastSeenAt ? lastSeenLabel(other.lastSeenAt) : null;
+
   const liveThread = await hydrateMessages(id, thread);
 
   // Les avis ne suivent qu'une vente réelle : l'annonce doit avoir été conclue avec l'acheteur de cette conversation.
@@ -71,7 +76,7 @@ export default async function ConversationPage({ params }: PageProps<"/messages/
           <Avatar name={other?.name ?? "?"} url={avatarUrl(other?.avatar)} size={48} />
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-xl font-bold">{other?.visible ? <Link href={`/annuaire/${other.id}`} className="hover:text-accent">{other.name}</Link> : (other?.name ?? "Personne supprimée")}</h1>
-            {other?.lastSeenAt && <p className="text-xs text-muted">Vu {lastSeenLabel(other.lastSeenAt)}</p>}
+            {seenLabel && <p className="text-xs text-muted">{otherHasRead ? "Vu" : "Dernière connexion"} {seenLabel}</p>}
             {rating && <RatingBadge avg={rating.avg} n={rating.n} />}
           </div>
           <form action={deleteConversation}>
@@ -87,7 +92,7 @@ export default async function ConversationPage({ params }: PageProps<"/messages/
         <ConversationShell
           conversationId={id} meId={user.id} otherId={otherId} otherName={other?.name ?? "L'autre personne"}
           otherAvatar={avatarUrl(other?.avatar) ?? null} otherOnline={isOnline(otherId)} otherVisible={!!other?.visible}
-          otherReadAt={otherReadAt ? otherReadAt.toISOString() : null} lastSeen={other?.lastSeenAt ? lastSeenLabel(other.lastSeenAt) : null}
+          otherReadAt={otherReadAt ? otherReadAt.toISOString() : null} lastSeen={seenLabel} seen={otherHasRead}
           muted={muted} initialNote={note} media={media} initial={liveThread}
         />
       )}

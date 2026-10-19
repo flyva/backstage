@@ -9,10 +9,10 @@ import { Avatar } from "@/components/people-forms";
 export type SharedMedia = { id: number; url: string; name: string };
 
 export function ConversationSidebar({
-  conversationId, otherId, otherName, otherAvatar, otherOnline, otherVisible, lastSeen, muted, initialNote, media, onSearch,
+  conversationId, otherId, otherName, otherAvatar, otherOnline, otherVisible, lastSeen, seen, muted, initialNote, media, onSearch,
 }: {
   conversationId: number; otherId: number | null; otherName: string; otherAvatar: string | null; otherOnline?: boolean; otherVisible: boolean;
-  lastSeen: string | null; muted: boolean; initialNote: string; media: SharedMedia[]; onSearch: (q: string) => void;
+  lastSeen: string | null; seen?: boolean; muted: boolean; initialNote: string; media: SharedMedia[]; onSearch: (q: string) => void;
 }) {
   const [note, setNote] = useState(initialNote);
   const [saved, setSaved] = useState(true);
@@ -37,7 +37,7 @@ export function ConversationSidebar({
           <div className="flex justify-center"><Avatar name={otherName} url={otherAvatar} size={56} online={otherOnline} /></div>
           <div>
             {otherVisible ? <Link href={`/annuaire/${otherId}`} className="font-semibold hover:text-accent">{otherName}</Link> : <span className="font-semibold">{otherName}</span>}
-            {(otherOnline || lastSeen) && <p className="text-xs text-muted">{otherOnline ? "En ligne" : `Vu ${lastSeen}`}</p>}
+            {(otherOnline || lastSeen) && <p className="text-xs text-muted">{otherOnline ? "En ligne" : `${seen ? "Vu" : "Dernière connexion"} ${lastSeen}`}</p>}
           </div>
         </div>
       )}

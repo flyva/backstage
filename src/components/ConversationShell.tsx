@@ -7,10 +7,10 @@ import { ConversationSidebar, type SharedMedia } from "@/components/Conversation
 import type { LiveMessage } from "@/lib/message-bus";
 
 export function ConversationShell({
-  conversationId, meId, otherId, otherName, otherAvatar, otherOnline, otherVisible, otherReadAt, lastSeen, muted, initialNote, media, initial, isGroup, participantNames,
+  conversationId, meId, otherId, otherName, otherAvatar, otherOnline, otherVisible, otherReadAt, lastSeen, seen, muted, initialNote, media, initial, isGroup, participantNames,
 }: {
   conversationId: number; meId: number; otherId: number | null; otherName: string; otherAvatar: string | null; otherOnline?: boolean; otherVisible: boolean;
-  otherReadAt: string | null; lastSeen: string | null; muted: boolean; initialNote: string; media: SharedMedia[]; initial: LiveMessage[];
+  otherReadAt: string | null; lastSeen: string | null; seen?: boolean; muted: boolean; initialNote: string; media: SharedMedia[]; initial: LiveMessage[];
   isGroup?: boolean; participantNames?: Record<number, string>;
 }) {
   const [showInfo, setShowInfo] = useState(true);
@@ -37,7 +37,7 @@ export function ConversationShell({
       {showInfo && (
         <ConversationSidebar
           conversationId={conversationId} otherId={otherId} otherName={otherName} otherAvatar={otherAvatar} otherOnline={otherOnline} otherVisible={otherVisible}
-          lastSeen={lastSeen} muted={muted} initialNote={initialNote} media={media} onSearch={setSearchQuery}
+          lastSeen={lastSeen} seen={seen} muted={muted} initialNote={initialNote} media={media} onSearch={setSearchQuery}
         />
       )}
     </div>
