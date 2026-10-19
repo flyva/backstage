@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { ArrowLeft, Download, Printer, Trash2 } from "lucide-react";
 import { db } from "@/db";
-import { expenseNotes } from "@/db/schema";
+import { expenseFiles, expenseNotes } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { deleteExpenseNote } from "@/lib/expense-actions";
 import { ConfirmButton } from "@/components/ConfirmButton";
@@ -20,6 +20,8 @@ export default async function ExpenseNotePage({ params }: PageProps<"/alternance
   if (!Number.isInteger(id)) notFound();
   const [note] = await db.select().from(expenseNotes).where(and(eq(expenseNotes.id, id), eq(expenseNotes.userId, user.id))).limit(1);
   if (!note) notFound();
+  const extra = await db.select({ id: expenseFiles.id }).from(expenseFiles).where(eq(expenseFiles.expenseNoteId, id)).orderBy(asc(expenseFiles.id));
+  const photos = [{ src: `/api/alternance/notes-de-frais/${note.id}/photo`, dl: `/api/alternance/notes-de-frais/${note.id}/photo?dl=1` }, ...extra.map((f) => ({ src: `/api/alternance/notes-de-frais/${note.id}/photo/${f.id}`, dl: `/api/alternance/notes-de-frais/${note.id}/photo/${f.id}?dl=1` }))];
 
   return (
     <div className="max-w-lg space-y-4">
@@ -30,9 +32,13 @@ export default async function ExpenseNotePage({ params }: PageProps<"/alternance
         <p className="text-sm text-muted">{dateFmt.format(new Date(`${note.date}T12:00:00`))} à {note.time} · <span className="font-semibold text-fg">{fmtEuros(note.priceCents)}</span></p>
       </header>
 
-      <div className="card">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={`/api/alternance/notes-de-frais/${note.id}/photo`} alt="Reçu" className="w-full rounded-xl border border-line object-contain" />
+      <div className={`grid gap-3 ${photos.length > 1 ? "sm:grid-cols-2" : ""}`}>
+        {photos.map((p, i) => (
+          <div key={p.src} className="card p-0">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={p.src} alt={`Reçu ${i + 1}`} className="w-full rounded-xl object-contain" />
+          </div>
+        ))}
       </div>
 
       <div className="card space-y-3">
@@ -42,7 +48,11 @@ export default async function ExpenseNotePage({ params }: PageProps<"/alternance
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <a href={`/api/alternance/notes-de-frais/${note.id}/photo?dl=1`} className="btn-ghost"><Download size={15} /> Photo (JPG)</a>
+        {photos.map((p, i) => (
+          <a key={p.dl} href={p.dl} className="btn-ghost">
+            <Download size={15} /> {photos.length > 1 ? `Photo ${i + 1} (JPG)` : "Photo (JPG)"}
+          </a>
+        ))}
         <Link href={`/alternance/notes-de-frais/${note.id}/imprimer`} className="btn-ghost"><Printer size={15} /> PDF / Imprimer</Link>
         <form action={deleteExpenseNote} className="ml-auto">
           <input type="hidden" name="id" value={note.id} />

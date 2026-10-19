@@ -783,6 +783,19 @@ export const expenseNotes = mysqlTable(
   (t) => [index("exp_user_date_idx").on(t.userId, t.date)],
 );
 
+// Photos supplémentaires d'une note de frais (plusieurs reçus pour une même dépense) : la première reste dans
+// expenseNotes.photoFile (vignette de la liste, compat des liens existants), les suivantes sont ici.
+export const expenseFiles = mysqlTable(
+  "expense_files",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    expenseNoteId: int("expense_note_id").notNull().references(() => expenseNotes.id, { onDelete: "cascade" }),
+    fileName: varchar("file_name", { length: 60 }).notNull(),
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [index("expf_note_idx").on(t.expenseNoteId)],
+);
+
 // Scores de l'espace détente (Tetris pour l'instant, « game » laisse la place à d'autres mini-jeux plus tard).
 export const detenteScores = mysqlTable(
   "detente_scores",

@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { expenseNotes } from "@/db/schema";
+import { expenseFiles, expenseNotes } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { PrintButton } from "@/components/PrintButton";
 
@@ -18,6 +18,8 @@ export default async function ExpenseNotePrintPage({ params }: PageProps<"/alter
   if (!Number.isInteger(id)) notFound();
   const [note] = await db.select().from(expenseNotes).where(and(eq(expenseNotes.id, id), eq(expenseNotes.userId, user.id))).limit(1);
   if (!note) notFound();
+  const extra = await db.select({ id: expenseFiles.id }).from(expenseFiles).where(eq(expenseFiles.expenseNoteId, id)).orderBy(asc(expenseFiles.id));
+  const photoSrcs = [`/api/alternance/notes-de-frais/${note.id}/photo`, ...extra.map((f) => `/api/alternance/notes-de-frais/${note.id}/photo/${f.id}`)];
 
   return (
     <div className="max-w-xl space-y-5">
@@ -30,8 +32,10 @@ export default async function ExpenseNotePrintPage({ params }: PageProps<"/alter
         <p className="text-sm text-muted">{user.name} · {dateFmt.format(new Date(`${note.date}T12:00:00`))} à {note.time} · {fmtEuros(note.priceCents)}</p>
       </header>
       <p className="whitespace-pre-line text-sm">{note.comment}</p>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={`/api/alternance/notes-de-frais/${note.id}/photo`} alt="Reçu" className="w-full rounded-xl border border-line object-contain" />
+      {photoSrcs.map((src, i) => (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img key={src} src={src} alt={`Reçu ${i + 1}`} className="w-full rounded-xl border border-line object-contain" />
+      ))}
     </div>
   );
 }

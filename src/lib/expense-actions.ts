@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { expenseNotes } from "@/db/schema";
+import { expenseFiles, expenseNotes } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { ensureExpenseFilesDir, expenseFilesDir, MAX_EXPENSE_PHOTO_BYTES, newExpenseFileName, removeExpensePhoto, sniffExpensePhoto } from "@/lib/expense-files";
 import { allow } from "@/lib/rate-limit";
@@ -29,26 +29,34 @@ export async function saveExpenseNote(_: FormState, fd: FormData): Promise<FormS
   const place = String(fd.get("place") ?? "").trim();
   const extraComment = String(fd.get("comment") ?? "").trim().slice(0, 500);
   const euros = Number(String(fd.get("price") ?? "").replace(",", "."));
-  const photo = fd.get("photo");
+  const photos = fd.getAll("photos").filter((f): f is File => f instanceof File && f.size > 0);
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { error: "Date invalide" };
   if (!/^\d{2}:\d{2}$/.test(time)) return { error: "Heure invalide" };
   if (!placeName) return { error: "Indique le nom du lieu" };
   if (!Number.isFinite(euros) || euros <= 0 || euros > 100000) return { error: "Prix invalide" };
-  if (!(photo instanceof File) || photo.size === 0) return { error: "Ajoute une photo du reçu" };
-  if (photo.size > MAX_EXPENSE_PHOTO_BYTES) return { error: "Photo trop lourde (15 Mo max)" };
+  if (photos.length === 0) return { error: "Ajoute au moins une photo du reçu" };
+  if (photos.length > 10) return { error: "10 photos maximum par note" };
+  const tooBig = photos.find((p) => p.size > MAX_EXPENSE_PHOTO_BYTES);
+  if (tooBig) return { error: `« ${tooBig.name} » dépasse 15 Mo` };
   if (!allow(`expense:${user.id}`, 30, 60 * 60e3)) return { error: "Trop de notes de frais : réessaie plus tard." };
 
-  const bytes = new Uint8Array(await photo.arrayBuffer());
-  const kind = sniffExpensePhoto(bytes);
-  if (!kind) return { error: "La photo doit être au format JPG ou PNG" };
   await ensureExpenseFilesDir();
-  const name = newExpenseFileName(kind.ext);
-  await writeFile(path.join(expenseFilesDir(), name), bytes);
+  const names: string[] = [];
+  for (const photo of photos) {
+    const bytes = new Uint8Array(await photo.arrayBuffer());
+    const kind = sniffExpensePhoto(bytes);
+    if (!kind) return { error: "Les photos doivent être au format JPG ou PNG" };
+    const name = newExpenseFileName(kind.ext);
+    await writeFile(path.join(expenseFilesDir(), name), bytes);
+    names.push(name);
+  }
 
   const priceCents = Math.round(euros * 100);
   const comment = buildExpenseComment(user.name, date, time, placeName, place, priceCents, extraComment);
-  const [res] = await db.insert(expenseNotes).values({ userId: user.id, photoFile: name, date, time, placeName, place, priceCents, comment });
+  const [res] = await db.insert(expenseNotes).values({ userId: user.id, photoFile: names[0], date, time, placeName, place, priceCents, comment });
+  const extraNames = names.slice(1);
+  if (extraNames.length) await db.insert(expenseFiles).values(extraNames.map((fileName) => ({ expenseNoteId: res.insertId, fileName })));
 
   revalidatePath("/alternance/notes-de-frais");
   redirect(`/alternance/notes-de-frais/${res.insertId}`);
@@ -59,8 +67,10 @@ export async function deleteExpenseNote(fd: FormData) {
   const id = Number(fd.get("id"));
   const [row] = await db.select({ userId: expenseNotes.userId, photoFile: expenseNotes.photoFile }).from(expenseNotes).where(eq(expenseNotes.id, id)).limit(1);
   if (!row || row.userId !== user.id) return;
+  const extra = await db.select({ fileName: expenseFiles.fileName }).from(expenseFiles).where(eq(expenseFiles.expenseNoteId, id));
   await removeExpensePhoto(row.photoFile);
-  await db.delete(expenseNotes).where(eq(expenseNotes.id, id));
+  for (const f of extra) await removeExpensePhoto(f.fileName);
+  await db.delete(expenseNotes).where(eq(expenseNotes.id, id)); // efface aussi expenseFiles (ON DELETE CASCADE)
   revalidatePath("/alternance/notes-de-frais");
   redirect("/alternance/notes-de-frais");
 }

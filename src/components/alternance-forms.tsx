@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
-import { Receipt } from "lucide-react";
+import { useActionState, useRef, useState } from "react";
+import { Camera, Plus, Receipt, X } from "lucide-react";
 import type { FormState } from "@/lib/actions";
 import { applyRhythm, saveLog, setRange } from "@/lib/alternance-actions";
 import { saveExpenseNote } from "@/lib/expense-actions";
@@ -84,15 +84,62 @@ export function LogForm({ today, id, day, endDay, place = "entreprise", mission 
   );
 }
 
-/** Note de frais : photo du reçu, date/heure/lieu (auto-complété), prix. Le commentaire est généré côté serveur à l'enregistrement. */
+let nextExpFileId = 0;
+type ExpPending = { id: number; file: File; previewUrl: string };
+
+/** Note de frais : une ou plusieurs photos du reçu, date/heure/lieu (auto-complété), prix. Le commentaire est généré côté serveur à l'enregistrement. */
 export function ExpenseNoteForm({ today, now }: { today: string; now: string }) {
   const [state, action, pending] = useActionState(saveExpenseNote, undefined);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [files, setFiles] = useState<ExpPending[]>([]);
+  const [error, setError] = useState("");
+
+  const addFiles = (list: FileList | null) => {
+    if (!list) return;
+    setError("");
+    const incoming = [...list];
+    if (files.length + incoming.length > 10) { setError("10 photos maximum"); return; }
+    setFiles((cur) => [...cur, ...incoming.map((file) => ({ id: nextExpFileId++, file, previewUrl: URL.createObjectURL(file) }))]);
+  };
+  const removeFile = (id: number) => setFiles((cur) => {
+    const hit = cur.find((f) => f.id === id);
+    if (hit) URL.revokeObjectURL(hit.previewUrl);
+    return cur.filter((f) => f.id !== id);
+  });
+  // Juste avant l'envoi : reconstruit le FileList du vrai champ à partir des photos accumulées (chaque sélection
+  // via la caméra ou la pellicule les ajoute une à une, un <input> natif ne garde sinon que la dernière sélection).
+  const onSubmit = () => {
+    const dt = new DataTransfer();
+    files.forEach((f) => dt.items.add(f.file));
+    if (inputRef.current) inputRef.current.files = dt.files;
+  };
+
   return (
-    <form action={action} className="space-y-4">
+    <form action={action} onSubmit={onSubmit} className="space-y-4">
       <div>
-        <label className="label" htmlFor="exp-photo">Photo du reçu</label>
-        <input id="exp-photo" name="photo" type="file" accept="image/jpeg,image/png" required className="input" />
-        <p className="mt-1 text-xs text-muted">Sur téléphone : prendre une photo ou en choisir une depuis la pellicule.</p>
+        <label className="label">Photos du reçu</label>
+        <input
+          ref={inputRef} name="photos" type="file" accept="image/jpeg,image/png" multiple hidden
+          onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }}
+        />
+        {files.length > 0 && (
+          <ul className="mb-2 flex flex-wrap gap-2">
+            {files.map((f) => (
+              <li key={f.id} className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={f.previewUrl} alt="" className="size-20 rounded-lg border border-line object-cover" />
+                <button type="button" onClick={() => removeFile(f.id)} aria-label="Retirer cette photo" className="absolute -right-1.5 -top-1.5 grid size-5 place-items-center rounded-full bg-danger text-white shadow"><X size={12} /></button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => inputRef.current?.click()} className="btn-ghost text-sm">
+            {files.length === 0 ? <Camera size={15} /> : <Plus size={15} />} {files.length === 0 ? "Prendre ou choisir une photo" : "Ajouter une autre photo"}
+          </button>
+        </div>
+        {error && <p className="mt-1 text-xs text-danger" role="alert">{error}</p>}
+        <p className="mt-1 text-xs text-muted">Sur téléphone : prendre une photo ou en choisir depuis la pellicule. Plusieurs photos possibles (plusieurs reçus pour une même dépense).</p>
       </div>
       <div className="grid gap-3 sm:grid-cols-3">
         <div><label className="label" htmlFor="exp-date">Date</label><input id="exp-date" name="date" type="date" defaultValue={today} required className="input" /></div>
@@ -103,7 +150,7 @@ export function ExpenseNoteForm({ today, now }: { today: string; now: string }) 
       <AddressField id="exp-place" name="place" label="Adresse" placeholder="Adresse du lieu" />
       <div><label className="label" htmlFor="exp-comment">Commentaire (facultatif)</label><textarea id="exp-comment" name="comment" rows={2} maxLength={500} className="input" placeholder="Précision à ajouter au commentaire généré" /></div>
       <Feedback state={state} />
-      <button className="btn" disabled={pending}><Receipt size={15} /> {pending ? "Enregistrement…" : "Enregistrer la note de frais"}</button>
+      <button className="btn" disabled={pending || files.length === 0}><Receipt size={15} /> {pending ? "Enregistrement…" : "Enregistrer la note de frais"}</button>
     </form>
   );
 }

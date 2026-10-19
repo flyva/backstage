@@ -568,6 +568,13 @@
       "when": 1792338169238,
       "tag": "0080_fixed_texas_twister",
       "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "5",
+      "when": 1792443026618,
+      "tag": "0081_odd_red_wolf",
+      "breakpoints": true
     }
   ]
 }
