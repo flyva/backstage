@@ -87,10 +87,17 @@ export default async function LogbookPage({ searchParams }: PageProps<"/alternan
                   {photos.length > 0 && (
                     <ul className="flex shrink-0 flex-wrap gap-2 sm:max-w-[9.5rem]">
                       {photos.map((p) => (
-                        <li key={p.id}>
-                          <a href={`${p.url}?dl=1`} target="_blank" rel="noopener noreferrer">
+                        <li key={p.id} className="relative">
+                          <a href={p.url} target="_blank" rel="noopener noreferrer">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img src={p.url} alt="" className="size-20 rounded-lg border border-line object-cover" loading="lazy" />
+                          </a>
+                          <a
+                            href={`${p.url}?dl=1`} download
+                            className="absolute -right-1.5 -top-1.5 grid size-6 place-items-center rounded-full bg-accent text-accent-fg shadow hover:opacity-90"
+                            aria-label="Télécharger cette photo" title="Télécharger"
+                          >
+                            <Download size={13} />
                           </a>
                         </li>
                       ))}
