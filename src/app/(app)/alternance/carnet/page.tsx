@@ -75,11 +75,13 @@ export default async function LogbookPage({ searchParams }: PageProps<"/alternan
           const photos = filesByLog.get(l.id) ?? [];
           return (
             <details key={l.id} className="card p-0">
-              <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 marker:hidden">
-                <span className="font-medium">{l.title || <span className="capitalize">{period(l)}</span>}</span>
-                {l.title && <span className="text-xs text-muted">{period(l)}</span>}
-                <span className="rounded-full border border-line px-2 py-0.5 text-xs text-muted">{l.place === "ecole" ? "École" : "Entreprise"}</span>
-                {photos.length > 0 && <span className="text-xs text-muted">{photos.length} photo{photos.length > 1 ? "s" : ""}</span>}
+              <summary className="flex cursor-pointer list-none flex-col gap-1 px-4 py-3 marker:hidden">
+                <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span className="capitalize text-muted">{period(l)}</span>
+                  <span className="rounded-full border border-line px-2 py-0.5 text-xs text-muted">{l.place === "ecole" ? "École" : "Entreprise"}</span>
+                  {photos.length > 0 && <span className="text-xs text-muted">{photos.length} photo{photos.length > 1 ? "s" : ""}</span>}
+                </span>
+                {l.title && <span className="font-medium">{l.title}</span>}
               </summary>
               <div className="space-y-4 border-t border-line p-4">
                 <div className="flex flex-wrap gap-4">
