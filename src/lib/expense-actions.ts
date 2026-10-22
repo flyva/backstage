@@ -5,8 +5,9 @@ import path from "node:path";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
+import { z } from "zod";
 import { db } from "@/db";
-import { expenseFiles, expenseNotes } from "@/db/schema";
+import { expenseFiles, expenseNotes, users } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { ensureExpenseFilesDir, expenseFilesDir, MAX_EXPENSE_PHOTO_BYTES, newExpenseFileName, removeExpensePhoto, sniffExpensePhoto } from "@/lib/expense-files";
 import { allow } from "@/lib/rate-limit";
@@ -25,6 +26,7 @@ export async function saveExpenseNote(_: FormState, fd: FormData): Promise<FormS
   const user = await requireUser();
   const date = String(fd.get("date") ?? "");
   const time = String(fd.get("time") ?? "");
+  const moment = fd.get("moment") === "soir" ? "soir" : "midi";
   const placeName = String(fd.get("placeName") ?? "").trim();
   const place = String(fd.get("place") ?? "").trim();
   const extraComment = String(fd.get("comment") ?? "").trim().slice(0, 500);
@@ -54,7 +56,7 @@ export async function saveExpenseNote(_: FormState, fd: FormData): Promise<FormS
 
   const priceCents = Math.round(euros * 100);
   const comment = buildExpenseComment(user.name, date, time, placeName, place, priceCents, extraComment);
-  const [res] = await db.insert(expenseNotes).values({ userId: user.id, photoFile: names[0], date, time, placeName, place, priceCents, comment });
+  const [res] = await db.insert(expenseNotes).values({ userId: user.id, photoFile: names[0], date, time, moment, placeName, place, priceCents, comment });
   const extraNames = names.slice(1);
   if (extraNames.length) await db.insert(expenseFiles).values(extraNames.map((fileName) => ({ expenseNoteId: res.insertId, fileName })));
 
@@ -73,4 +75,30 @@ export async function deleteExpenseNote(fd: FormData) {
   await db.delete(expenseNotes).where(eq(expenseNotes.id, id)); // efface aussi expenseFiles (ON DELETE CASCADE)
   revalidatePath("/alternance/notes-de-frais");
   redirect("/alternance/notes-de-frais");
+}
+
+// ---------- Réglages restauration (propres à chaque personne : contrat/plafonds différents selon l'entreprise) ----------
+
+const restoSettingsSchema = z.object({
+  maxDay: z.preprocess((v) => (v === "" || v == null ? null : Number(v)), z.number().min(0).max(1000).nullable()),
+  maxMeal: z.preprocess((v) => (v === "" || v == null ? null : Number(v)), z.number().min(0).max(1000).nullable()),
+  tr: z.preprocess((v) => (v === "" || v == null ? null : Number(v)), z.number().min(0).max(1000).nullable()),
+  trMoment: z.enum(["midi", "soir", "les_deux"]),
+});
+
+export async function saveRestoSettings(_: FormState, fd: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const p = restoSettingsSchema.safeParse({
+    maxDay: fd.get("maxDay"), maxMeal: fd.get("maxMeal"), tr: fd.get("tr"), trMoment: fd.get("trMoment"),
+  });
+  if (!p.success) return { error: p.error.issues[0].message };
+  await db.update(users).set({
+    restoMaxDayCents: p.data.maxDay === null ? null : Math.round(p.data.maxDay * 100),
+    restoMaxMealCents: p.data.maxMeal === null ? null : Math.round(p.data.maxMeal * 100),
+    restoTrCents: p.data.tr === null ? null : Math.round(p.data.tr * 100),
+    restoTrMoment: p.data.trMoment,
+  }).where(eq(users.id, user.id));
+  revalidatePath("/profil");
+  revalidatePath("/alternance/notes-de-frais");
+  return { ok: "Réglages enregistrés" };
 }

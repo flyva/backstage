@@ -29,7 +29,11 @@ export default async function ExpenseNotePage({ params }: PageProps<"/alternance
       <header>
         <h1 className="text-2xl font-bold">{note.placeName || note.place}</h1>
         {note.place && note.placeName && <p className="text-sm text-muted">{note.place}</p>}
-        <p className="text-sm text-muted">{dateFmt.format(new Date(`${note.date}T12:00:00`))} à {note.time} · <span className="font-semibold text-fg">{fmtEuros(note.priceCents)}</span></p>
+        <p className="text-sm text-muted">
+          {dateFmt.format(new Date(`${note.date}T12:00:00`))} à {note.time}
+          {" · "}<span className="rounded-full border border-line px-2 py-0.5 text-xs">{note.moment === "soir" ? "Soir" : "Midi"}</span>
+          {" · "}<span className="font-semibold text-fg">{fmtEuros(note.priceCents)}</span>
+        </p>
       </header>
 
       <div className={`grid gap-3 ${photos.length > 1 ? "sm:grid-cols-2" : ""}`}>

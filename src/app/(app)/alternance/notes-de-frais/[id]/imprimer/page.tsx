@@ -29,12 +29,12 @@ export default async function ExpenseNotePrintPage({ params }: PageProps<"/alter
       </div>
       <header className="border-b border-line pb-3">
         <h1 className="text-2xl font-bold">Note de frais — {note.placeName || note.place}</h1>
-        <p className="text-sm text-muted">{user.name} · {dateFmt.format(new Date(`${note.date}T12:00:00`))} à {note.time} · {fmtEuros(note.priceCents)}</p>
+        <p className="text-sm text-muted">{user.name} · {dateFmt.format(new Date(`${note.date}T12:00:00`))} à {note.time} ({note.moment === "soir" ? "soir" : "midi"}) · {fmtEuros(note.priceCents)}</p>
       </header>
       <p className="whitespace-pre-line text-sm">{note.comment}</p>
       {photoSrcs.map((src, i) => (
         // eslint-disable-next-line @next/next/no-img-element
-        <img key={src} src={src} alt={`Reçu ${i + 1}`} className="w-full rounded-xl border border-line object-contain" />
+        <img key={src} src={src} alt={`Reçu ${i + 1}`} className="max-h-[70vh] w-full rounded-xl border border-line object-contain print:max-h-[22cm]" />
       ))}
     </div>
   );

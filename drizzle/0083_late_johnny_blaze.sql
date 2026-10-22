@@ -1,0 +1,1 @@
+ALTER TABLE `expense_notes` ADD `moment` enum('midi','soir') DEFAULT 'midi' NOT NULL;

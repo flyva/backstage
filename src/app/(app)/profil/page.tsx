@@ -8,6 +8,7 @@ import { classes, tracks, userLinks, users } from "@/db/schema";
 import { ProfileForm } from "@/components/forms";
 import { AvatarForm, CardPanel, DeleteMyAccountForm, FeedPanel, FicheForm, LinksEditor } from "@/components/people-forms";
 import { TimeSettingsForm } from "@/components/time-forms";
+import { RestoSettingsForm } from "@/components/alternance-forms";
 import { avatarUrl } from "@/lib/avatar-files";
 import { absoluteUrl } from "@/lib/base-url";
 
@@ -144,6 +145,17 @@ async function AlternanceTab({ user }: { user: User }) {
         <p className="text-sm text-muted">La durée standard sert à calculer tes heures sup. Le référent voit ta pointeuse et tes statistiques en lecture seule.</p>
       </div>
       <TimeSettingsForm standardHours={user.standardWorkMinutes / 60} workDaysPerWeek={user.workDaysPerWeek} tutorUserId={user.tutorUserId} colleagues={colleagues} />
+
+      <div className="border-t border-line pt-4">
+        <h2 className="font-semibold">Restauration</h2>
+        <p className="text-sm text-muted">Propre à toi : chaque contrat a ses propres plafonds. Utilisé pour calculer le remboursement dans les notes de frais.</p>
+      </div>
+      <RestoSettingsForm
+        maxDay={user.restoMaxDayCents === null ? null : user.restoMaxDayCents / 100}
+        maxMeal={user.restoMaxMealCents === null ? null : user.restoMaxMealCents / 100}
+        tr={user.restoTrCents === null ? null : user.restoTrCents / 100}
+        trMoment={user.restoTrMoment}
+      />
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { useActionState, useRef, useState } from "react";
 import { Camera, Images, Plus, Receipt, Trash2, X } from "lucide-react";
 import type { FormState } from "@/lib/actions";
 import { applyRhythm, removeLogFile, saveLog, setRange } from "@/lib/alternance-actions";
-import { saveExpenseNote } from "@/lib/expense-actions";
+import { saveExpenseNote, saveRestoSettings } from "@/lib/expense-actions";
 import { KIND_LABEL } from "@/lib/alternance";
 import { MarkdownField } from "@/components/MarkdownField";
 import { DateRangeField } from "@/components/DateRangeField";
@@ -179,7 +179,7 @@ let nextExpFileId = 0;
 type ExpPending = { id: number; file: File; previewUrl: string };
 
 /** Note de frais : une ou plusieurs photos du reçu, date/heure/lieu (auto-complété), prix. Le commentaire est généré côté serveur à l'enregistrement. */
-export function ExpenseNoteForm({ today, now }: { today: string; now: string }) {
+export function ExpenseNoteForm({ today, now, day = today, moment = "midi" }: { today: string; now: string; day?: string; moment?: "midi" | "soir" }) {
   const [state, action, pending] = useActionState(saveExpenseNote, undefined);
   const inputRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -234,8 +234,17 @@ export function ExpenseNoteForm({ today, now }: { today: string; now: string }) 
         {error && <p className="mt-1 text-xs text-danger" role="alert">{error}</p>}
         <p className="mt-1 text-xs text-muted">Plusieurs photos possibles (plusieurs reçus pour une même dépense).</p>
       </div>
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div><label className="label" htmlFor="exp-date">Date</label><input id="exp-date" name="date" type="date" defaultValue={today} required className="input" /></div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div><label className="label" htmlFor="exp-date">Date</label><input id="exp-date" name="date" type="date" defaultValue={day} required className="input" /></div>
+        <div>
+          <label className="label" htmlFor="exp-moment">Moment</label>
+          <select id="exp-moment" name="moment" defaultValue={moment} className="input">
+            <option value="midi">Midi</option>
+            <option value="soir">Soir</option>
+          </select>
+        </div>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
         <div><label className="label" htmlFor="exp-time">Heure</label><input id="exp-time" name="time" type="time" defaultValue={now} required className="input" /></div>
         <div><label className="label" htmlFor="exp-price">Prix (€)</label><input id="exp-price" name="price" type="number" step="0.01" min="0.01" required className="input" placeholder="12,50" /></div>
       </div>
@@ -244,6 +253,47 @@ export function ExpenseNoteForm({ today, now }: { today: string; now: string }) 
       <div><label className="label" htmlFor="exp-comment">Commentaire (facultatif)</label><textarea id="exp-comment" name="comment" rows={2} maxLength={500} className="input" placeholder="Précision à ajouter au commentaire généré" /></div>
       <Feedback state={state} />
       <button className="btn" disabled={pending || files.length === 0}><Receipt size={15} /> {pending ? "Enregistrement…" : "Enregistrer la note de frais"}</button>
+    </form>
+  );
+}
+
+/** Plafonds de remboursement repas, propres à chaque personne (contrat différent selon l'entreprise) : jamais un réglage général. */
+export function RestoSettingsForm({
+  maxDay, maxMeal, tr, trMoment,
+}: { maxDay: number | null; maxMeal: number | null; tr: number | null; trMoment: "midi" | "soir" | "les_deux" }) {
+  const [state, action, pending] = useActionState(saveRestoSettings, undefined);
+  return (
+    <form action={action} className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label className="label" htmlFor="rs-day">Plafond par jour (€)</label>
+          <input id="rs-day" name="maxDay" type="number" min={0} max={1000} step={0.01} defaultValue={maxDay ?? ""} className="input" placeholder="Ex. 34" />
+        </div>
+        <div>
+          <label className="label" htmlFor="rs-meal">Plafond par repas (€)</label>
+          <input id="rs-meal" name="maxMeal" type="number" min={0} max={1000} step={0.01} defaultValue={maxMeal ?? ""} className="input" placeholder="Ex. 17" />
+        </div>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label className="label" htmlFor="rs-tr">Titre-restaurant, part entreprise (€)</label>
+          <input id="rs-tr" name="tr" type="number" min={0} max={1000} step={0.01} defaultValue={tr ?? ""} className="input" placeholder="Ex. 4,36" />
+          <p className="mt-1 text-xs text-muted">Déduit du remboursement sur le(s) repas concerné(s), car déjà couvert par le ticket resto.</p>
+        </div>
+        <div>
+          <label className="label" htmlFor="rs-moment">Ticket resto déduit sur</label>
+          <select id="rs-moment" name="trMoment" defaultValue={trMoment} className="input">
+            <option value="midi">Midi seulement</option>
+            <option value="soir">Soir seulement</option>
+            <option value="les_deux">Midi et soir</option>
+          </select>
+        </div>
+      </div>
+      <p className="text-xs text-muted">Laisse les plafonds vides pour désactiver le calcul automatique dans les notes de frais.</p>
+      <div className="flex items-center gap-3">
+        <button className="btn" disabled={pending}>{pending ? "…" : "Enregistrer"}</button>
+        <Feedback state={state} />
+      </div>
     </form>
   );
 }

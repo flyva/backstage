@@ -30,6 +30,17 @@ export const addMonths = (month: string, n: number) => {
 export const weekday = (day: string) => (at(day).getUTCDay() + 6) % 7;
 export const isWeekend = (day: string) => weekday(day) >= 5;
 
+/** Semaine identifiée par le lundi (ex. "2026-10-19"). */
+export const isWeek = isDay;
+export const weekStart = (day: string) => addDays(day, -weekday(day));
+export const addWeeks = (weekMonday: string, n: number) => addDays(weekMonday, n * 7);
+export const weekDays = (weekMonday: string) => Array.from({ length: 7 }, (_, i) => addDays(weekMonday, i));
+export const weekLabel = (weekMonday: string) => {
+  const end = addDays(weekMonday, 6);
+  const fmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "UTC", day: "numeric", month: "short" });
+  return `${fmt.format(at(weekMonday))} – ${fmt.format(at(end))}`;
+};
+
 /** Jours affichés pour un mois : des semaines entières, du lundi au dimanche. */
 export function monthGrid(month: string): { day: string; inMonth: boolean }[] {
   const first = `${month}-01`;
@@ -45,6 +56,17 @@ export const monthLabel = (month: string) =>
   new Intl.DateTimeFormat("fr-FR", { timeZone: "UTC", month: "long", year: "numeric" }).format(at(`${month}-01`));
 export const dayLabel = (day: string) =>
   new Intl.DateTimeFormat("fr-FR", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long" }).format(at(day));
+
+export type RestoSettings = { maxDayCents: number | null; maxMealCents: number | null; trCents: number | null; trMoment: "midi" | "soir" | "les_deux" };
+
+/** Montant remboursé pour un repas : plafonné par repas, puis le ticket-restaurant (part entreprise) déduit s'il s'applique
+ * à ce moment-là. Renvoie null si le plafond par repas n'est pas configuré (calcul désactivé, propre à chaque personne). */
+export function restoMealRefund(priceCents: number, moment: "midi" | "soir", s: RestoSettings): number | null {
+  if (s.maxMealCents === null) return null;
+  const capped = Math.min(priceCents, s.maxMealCents);
+  const trApplies = s.trCents !== null && (s.trMoment === "les_deux" || s.trMoment === moment);
+  return Math.max(0, capped - (trApplies ? s.trCents! : 0));
+}
 
 export const fmtHours = (minutes: number) => {
   const h = Math.floor(minutes / 60);
