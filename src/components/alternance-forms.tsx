@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useRef, useState } from "react";
-import { Camera, Plus, Receipt, Trash2, X } from "lucide-react";
+import { Camera, Images, Plus, Receipt, Trash2, X } from "lucide-react";
 import type { FormState } from "@/lib/actions";
 import { applyRhythm, removeLogFile, saveLog, setRange } from "@/lib/alternance-actions";
 import { saveExpenseNote } from "@/lib/expense-actions";
@@ -10,6 +10,30 @@ import { MarkdownField } from "@/components/MarkdownField";
 import { DateRangeField } from "@/components/DateRangeField";
 import { AddressField } from "@/components/AddressField";
 import { ConfirmButton } from "@/components/ConfirmButton";
+
+// Les photos prises directement au téléphone pèsent souvent plusieurs Mo : les réduire dans le navigateur avant
+// l'envoi (upload sinon très lent, surtout en 4G) sans attendre d'y revenir côté serveur.
+async function compressImage(file: File, maxDim = 1600, quality = 0.82): Promise<File> {
+  if (!/^image\/(jpeg|png)$/.test(file.type)) return file;
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
+    if (scale === 1 && file.size < 1_500_000) return file;
+    const w = Math.round(bitmap.width * scale);
+    const h = Math.round(bitmap.height * scale);
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return file;
+    ctx.drawImage(bitmap, 0, 0, w, h);
+    const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
+    if (!blob || blob.size >= file.size) return file;
+    return new File([blob], file.name.replace(/\.\w+$/, ".jpg"), { type: "image/jpeg" });
+  } catch {
+    return file;
+  }
+}
 
 function Feedback({ state }: { state: FormState }) {
   if (state?.error) return <p className="text-sm text-danger" role="alert">{state.error}</p>;
@@ -66,12 +90,14 @@ export function LogForm({
 }) {
   const [state, action, pending] = useActionState(saveLog, undefined);
   const inputRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
   const [photos, setPhotos] = useState<LogPending[]>([]);
   const k = id ?? "new";
 
-  const addPhotos = (list: FileList | null) => {
+  const addPhotos = async (list: FileList | null) => {
     if (!list) return;
-    const incoming = [...list];
+    const incoming = await Promise.all([...list].map((file) => compressImage(file)));
     setPhotos((cur) => [...cur, ...incoming.map((file) => ({ id: nextLogFileId++, file, previewUrl: URL.createObjectURL(file) }))]);
   };
   const removePhoto = (pid: number) => setPhotos((cur) => {
@@ -135,8 +161,13 @@ export function LogForm({
             ))}
           </ul>
         )}
-        <input ref={inputRef} name="photos" type="file" accept="image/jpeg,image/png" multiple hidden onChange={(e) => { addPhotos(e.target.files); e.target.value = ""; }} />
-        <button type="button" onClick={() => inputRef.current?.click()} className="btn-ghost text-sm"><Camera size={15} /> Ajouter une photo</button>
+        <input ref={inputRef} name="photos" type="file" accept="image/jpeg,image/png" multiple hidden />
+        <input ref={cameraRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { addPhotos(e.target.files); e.target.value = ""; }} />
+        <input ref={galleryRef} type="file" accept="image/jpeg,image/png" multiple hidden onChange={(e) => { addPhotos(e.target.files); e.target.value = ""; }} />
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => cameraRef.current?.click()} className="btn-ghost text-sm"><Camera size={15} /> Prendre une photo</button>
+          <button type="button" onClick={() => galleryRef.current?.click()} className="btn-ghost text-sm"><Images size={15} /> Choisir depuis la pellicule</button>
+        </div>
       </div>
       <Feedback state={state} />
       <button className="btn" disabled={pending}>{pending ? "Enregistrement…" : id ? "Enregistrer" : "Ajouter l'entrée"}</button>
@@ -151,14 +182,16 @@ type ExpPending = { id: number; file: File; previewUrl: string };
 export function ExpenseNoteForm({ today, now }: { today: string; now: string }) {
   const [state, action, pending] = useActionState(saveExpenseNote, undefined);
   const inputRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<ExpPending[]>([]);
   const [error, setError] = useState("");
 
-  const addFiles = (list: FileList | null) => {
+  const addFiles = async (list: FileList | null) => {
     if (!list) return;
     setError("");
-    const incoming = [...list];
-    if (files.length + incoming.length > 10) { setError("10 photos maximum"); return; }
+    if (files.length + list.length > 10) { setError("10 photos maximum"); return; }
+    const incoming = await Promise.all([...list].map((file) => compressImage(file)));
     setFiles((cur) => [...cur, ...incoming.map((file) => ({ id: nextExpFileId++, file, previewUrl: URL.createObjectURL(file) }))]);
   };
   const removeFile = (id: number) => setFiles((cur) => {
@@ -178,10 +211,9 @@ export function ExpenseNoteForm({ today, now }: { today: string; now: string }) 
     <form action={action} onSubmit={onSubmit} className="space-y-4">
       <div>
         <label className="label">Photos du reçu</label>
-        <input
-          ref={inputRef} name="photos" type="file" accept="image/jpeg,image/png" multiple hidden
-          onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }}
-        />
+        <input ref={inputRef} name="photos" type="file" accept="image/jpeg,image/png" multiple hidden />
+        <input ref={cameraRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
+        <input ref={galleryRef} type="file" accept="image/jpeg,image/png" multiple hidden onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
         {files.length > 0 && (
           <ul className="mb-2 flex flex-wrap gap-2">
             {files.map((f) => (
@@ -194,12 +226,13 @@ export function ExpenseNoteForm({ today, now }: { today: string; now: string }) 
           </ul>
         )}
         <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => inputRef.current?.click()} className="btn-ghost text-sm">
-            {files.length === 0 ? <Camera size={15} /> : <Plus size={15} />} {files.length === 0 ? "Prendre ou choisir une photo" : "Ajouter une autre photo"}
+          <button type="button" onClick={() => cameraRef.current?.click()} className="btn-ghost text-sm"><Camera size={15} /> Prendre une photo</button>
+          <button type="button" onClick={() => galleryRef.current?.click()} className="btn-ghost text-sm">
+            {files.length === 0 ? <Images size={15} /> : <Plus size={15} />} Choisir depuis la pellicule
           </button>
         </div>
         {error && <p className="mt-1 text-xs text-danger" role="alert">{error}</p>}
-        <p className="mt-1 text-xs text-muted">Sur téléphone : prendre une photo ou en choisir depuis la pellicule. Plusieurs photos possibles (plusieurs reçus pour une même dépense).</p>
+        <p className="mt-1 text-xs text-muted">Plusieurs photos possibles (plusieurs reçus pour une même dépense).</p>
       </div>
       <div className="grid gap-3 sm:grid-cols-3">
         <div><label className="label" htmlFor="exp-date">Date</label><input id="exp-date" name="date" type="date" defaultValue={today} required className="input" /></div>
