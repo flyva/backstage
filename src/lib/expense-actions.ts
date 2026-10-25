@@ -24,12 +24,13 @@ function buildExpenseComment(name: string, date: string, time: string, placeName
 
 export async function saveExpenseNote(_: FormState, fd: FormData): Promise<FormState> {
   const user = await requireUser();
+  const id = Number(fd.get("id") || 0);
   const date = String(fd.get("date") ?? "");
   const time = String(fd.get("time") ?? "");
   const moment = fd.get("moment") === "soir" ? "soir" : "midi";
   const placeName = String(fd.get("placeName") ?? "").trim();
   const place = String(fd.get("place") ?? "").trim();
-  const extraComment = String(fd.get("comment") ?? "").trim().slice(0, 500);
+  const rawComment = String(fd.get("comment") ?? "").trim();
   const euros = Number(String(fd.get("price") ?? "").replace(",", "."));
   const photos = fd.getAll("photos").filter((f): f is File => f instanceof File && f.size > 0);
 
@@ -37,11 +38,18 @@ export async function saveExpenseNote(_: FormState, fd: FormData): Promise<FormS
   if (!/^\d{2}:\d{2}$/.test(time)) return { error: "Heure invalide" };
   if (!placeName) return { error: "Indique le nom du lieu" };
   if (!Number.isFinite(euros) || euros <= 0 || euros > 100000) return { error: "Prix invalide" };
-  if (photos.length === 0) return { error: "Ajoute au moins une photo du reçu" };
+  if (!id && photos.length === 0) return { error: "Ajoute au moins une photo du reçu" };
   if (photos.length > 10) return { error: "10 photos maximum par note" };
   const tooBig = photos.find((p) => p.size > MAX_EXPENSE_PHOTO_BYTES);
   if (tooBig) return { error: `« ${tooBig.name} » dépasse 15 Mo` };
-  if (!allow(`expense:${user.id}`, 30, 60 * 60e3)) return { error: "Trop de notes de frais : réessaie plus tard." };
+
+  let existing: { userId: number; photoFile: string } | undefined;
+  if (id) {
+    [existing] = await db.select({ userId: expenseNotes.userId, photoFile: expenseNotes.photoFile }).from(expenseNotes).where(eq(expenseNotes.id, id)).limit(1);
+    if (!existing || existing.userId !== user.id) return { error: "Note introuvable" };
+  } else if (!allow(`expense:${user.id}`, 30, 60 * 60e3)) {
+    return { error: "Trop de notes de frais : réessaie plus tard." };
+  }
 
   await ensureExpenseFilesDir();
   const names: string[] = [];
@@ -55,13 +63,50 @@ export async function saveExpenseNote(_: FormState, fd: FormData): Promise<FormS
   }
 
   const priceCents = Math.round(euros * 100);
-  const comment = buildExpenseComment(user.name, date, time, placeName, place, priceCents, extraComment);
+  const comment = buildExpenseComment(user.name, date, time, placeName, place, priceCents, rawComment.slice(0, 500));
+
+  if (existing) {
+    await db.update(expenseNotes).set({ date, time, moment, placeName, place, priceCents, comment }).where(eq(expenseNotes.id, id));
+    if (names.length) await db.insert(expenseFiles).values(names.map((fileName) => ({ expenseNoteId: id, fileName })));
+    revalidatePath("/alternance/notes-de-frais");
+    redirect(`/alternance/notes-de-frais/${id}`);
+  }
+
   const [res] = await db.insert(expenseNotes).values({ userId: user.id, photoFile: names[0], date, time, moment, placeName, place, priceCents, comment });
   const extraNames = names.slice(1);
   if (extraNames.length) await db.insert(expenseFiles).values(extraNames.map((fileName) => ({ expenseNoteId: res.insertId, fileName })));
 
   revalidatePath("/alternance/notes-de-frais");
   redirect(`/alternance/notes-de-frais/${res.insertId}`);
+}
+
+/** Retire une seule photo d'une note (la principale ou une photo supplémentaire) sans toucher au reste.
+ * Si c'est la principale qui part et qu'il en reste d'autres, la plus ancienne la remplace. Refuse de retirer
+ * la toute dernière photo de la note : une note de frais doit toujours garder au moins un reçu. */
+export async function removeExpenseFile(fd: FormData) {
+  const user = await requireUser();
+  const noteId = Number(fd.get("noteId"));
+  const kind = fd.get("kind") === "extra" ? "extra" : "main";
+  const [note] = await db.select({ userId: expenseNotes.userId, photoFile: expenseNotes.photoFile }).from(expenseNotes).where(eq(expenseNotes.id, noteId)).limit(1);
+  if (!note || note.userId !== user.id) return;
+  const extras = await db.select({ id: expenseFiles.id, fileName: expenseFiles.fileName }).from(expenseFiles).where(eq(expenseFiles.expenseNoteId, noteId)).orderBy(expenseFiles.id);
+
+  if (kind === "extra") {
+    const fileId = Number(fd.get("fileId"));
+    const hit = extras.find((f) => f.id === fileId);
+    if (!hit) return;
+    await removeExpensePhoto(hit.fileName);
+    await db.delete(expenseFiles).where(eq(expenseFiles.id, fileId));
+  } else {
+    if (extras.length === 0) return; // dernière photo de la note : on la garde
+    const [promoted] = extras;
+    await removeExpensePhoto(note.photoFile);
+    await db.update(expenseNotes).set({ photoFile: promoted.fileName }).where(eq(expenseNotes.id, noteId));
+    await db.delete(expenseFiles).where(eq(expenseFiles.id, promoted.id));
+  }
+  revalidatePath("/alternance/notes-de-frais");
+  revalidatePath(`/alternance/notes-de-frais/${noteId}`);
+  revalidatePath(`/alternance/notes-de-frais/${noteId}/modifier`);
 }
 
 export async function deleteExpenseNote(fd: FormData) {

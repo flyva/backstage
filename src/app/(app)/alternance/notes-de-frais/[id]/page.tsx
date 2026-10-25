@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { and, asc, eq } from "drizzle-orm";
-import { ArrowLeft, Download, Printer, Trash2 } from "lucide-react";
+import { ArrowLeft, Download, Pencil, Printer, Trash2 } from "lucide-react";
 import { db } from "@/db";
 import { expenseFiles, expenseNotes } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
@@ -57,6 +57,7 @@ export default async function ExpenseNotePage({ params }: PageProps<"/alternance
             <Download size={15} /> {photos.length > 1 ? `Photo ${i + 1} (JPG)` : "Photo (JPG)"}
           </a>
         ))}
+        <Link href={`/alternance/notes-de-frais/${note.id}/modifier`} className="btn-ghost"><Pencil size={15} /> Modifier</Link>
         <Link href={`/alternance/notes-de-frais/${note.id}/imprimer`} className="btn-ghost"><Printer size={15} /> PDF / Imprimer</Link>
         <form action={deleteExpenseNote} className="ml-auto">
           <input type="hidden" name="id" value={note.id} />

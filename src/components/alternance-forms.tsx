@@ -4,7 +4,7 @@ import { useActionState, useRef, useState } from "react";
 import { Camera, Images, Plus, Receipt, Trash2, X } from "lucide-react";
 import type { FormState } from "@/lib/actions";
 import { applyRhythm, removeLogFile, saveLog, setRange } from "@/lib/alternance-actions";
-import { saveExpenseNote, saveRestoSettings } from "@/lib/expense-actions";
+import { removeExpenseFile, saveExpenseNote, saveRestoSettings } from "@/lib/expense-actions";
 import { KIND_LABEL } from "@/lib/alternance";
 import { MarkdownField } from "@/components/MarkdownField";
 import { DateRangeField } from "@/components/DateRangeField";
@@ -112,34 +112,14 @@ export function LogForm({
   };
 
   return (
-    <form action={action} onSubmit={onSubmit} className="space-y-3" key={id ? `e${id}` : state?.ok ? "done" : "new"}>
-      {id && <input type="hidden" name="id" value={id} />}
-      <div>
-        <label className="label" htmlFor={`lt${k}`}>Titre (facultatif)</label>
-        <input id={`lt${k}`} name="title" defaultValue={title} maxLength={150} placeholder="Ex. Montage du festival, maintenance parc son…" className="input" />
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2">
+    // Les mini-formulaires de suppression de photo existante restent HORS du <form> principal : un <form> ne peut
+    // pas en contenir un autre (HTML l'interdit, ça casse l'hydratation et le bouton finit par soumettre le mauvais
+    // formulaire côté navigateur).
+    <div className="space-y-3">
+      {existingPhotos.length > 0 && (
         <div>
-          <label className="label" htmlFor={`ld${k}`}>Date</label>
-          <DateRangeField id={`ld${k}`} today={today} day={day} endDay={endDay ?? day} hint="Clique un jour, ou un autre jour pour une période (ex. une semaine de montage)." />
-        </div>
-        <div>
-          <label className="label" htmlFor={`lp${k}`}>Lieu</label>
-          <select id={`lp${k}`} name="place" defaultValue={place} className="input"><option value="entreprise">Entreprise</option><option value="ecole">École</option></select>
-        </div>
-      </div>
-      <div>
-        <label className="label">Missions réalisées</label>
-        <MarkdownField name="mission" defaultValue={mission} rows={4} maxLength={5000} uploadUrl="/api/wiki/files" label="Missions réalisées" placeholder="Ce que tu as fait, appris, les difficultés…" />
-      </div>
-      <div>
-        <label className="label" htmlFor={`ls${k}`}>Compétences travaillées</label>
-        <input id={`ls${k}`} name="skills" defaultValue={skills} maxLength={300} placeholder="patch DMX, câblage, conduite (séparées par des virgules)" className="input" />
-      </div>
-      <div>
-        <label className="label">Photos (à côté du texte, facultatif)</label>
-        {(existingPhotos.length > 0 || photos.length > 0) && (
-          <ul className="mb-2 flex flex-wrap gap-2">
+          <label className="label">Photos (à côté du texte, facultatif)</label>
+          <ul className="flex flex-wrap gap-2">
             {existingPhotos.map((p) => (
               <li key={`e${p.id}`} className="relative">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -152,34 +132,73 @@ export function LogForm({
                 </form>
               </li>
             ))}
-            {photos.map((p) => (
-              <li key={p.id} className="relative">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={p.previewUrl} alt="" className="size-20 rounded-lg border border-line object-cover" />
-                <button type="button" onClick={() => removePhoto(p.id)} aria-label="Retirer cette photo" className="absolute -right-1.5 -top-1.5 grid size-5 place-items-center rounded-full bg-danger text-white shadow"><X size={12} /></button>
-              </li>
-            ))}
           </ul>
-        )}
-        <input ref={inputRef} name="photos" type="file" accept="image/jpeg,image/png" multiple hidden />
-        <input ref={cameraRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { addPhotos(e.target.files); e.target.value = ""; }} />
-        <input ref={galleryRef} type="file" accept="image/jpeg,image/png" multiple hidden onChange={(e) => { addPhotos(e.target.files); e.target.value = ""; }} />
-        <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => cameraRef.current?.click()} className="btn-ghost text-sm"><Camera size={15} /> Prendre une photo</button>
-          <button type="button" onClick={() => galleryRef.current?.click()} className="btn-ghost text-sm"><Images size={15} /> Choisir depuis la pellicule</button>
         </div>
-      </div>
-      <Feedback state={state} />
-      <button className="btn" disabled={pending}>{pending ? "Enregistrement…" : id ? "Enregistrer" : "Ajouter l'entrée"}</button>
-    </form>
+      )}
+      <form action={action} onSubmit={onSubmit} className="space-y-3" key={id ? `e${id}` : state?.ok ? "done" : "new"}>
+        {id && <input type="hidden" name="id" value={id} />}
+        <div>
+          <label className="label" htmlFor={`lt${k}`}>Titre (facultatif)</label>
+          <input id={`lt${k}`} name="title" defaultValue={title} maxLength={150} placeholder="Ex. Montage du festival, maintenance parc son…" className="input" />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className="label" htmlFor={`ld${k}`}>Date</label>
+            <DateRangeField id={`ld${k}`} today={today} day={day} endDay={endDay ?? day} hint="Clique un jour, ou un autre jour pour une période (ex. une semaine de montage)." />
+          </div>
+          <div>
+            <label className="label" htmlFor={`lp${k}`}>Lieu</label>
+            <select id={`lp${k}`} name="place" defaultValue={place} className="input"><option value="entreprise">Entreprise</option><option value="ecole">École</option></select>
+          </div>
+        </div>
+        <div>
+          <label className="label">Missions réalisées</label>
+          <MarkdownField name="mission" defaultValue={mission} rows={4} maxLength={5000} uploadUrl="/api/wiki/files" label="Missions réalisées" placeholder="Ce que tu as fait, appris, les difficultés…" />
+        </div>
+        <div>
+          <label className="label" htmlFor={`ls${k}`}>Compétences travaillées</label>
+          <input id={`ls${k}`} name="skills" defaultValue={skills} maxLength={300} placeholder="patch DMX, câblage, conduite (séparées par des virgules)" className="input" />
+        </div>
+        <div>
+          <label className="label">{existingPhotos.length > 0 ? "Ajouter une photo" : "Photos (à côté du texte, facultatif)"}</label>
+          {photos.length > 0 && (
+            <ul className="mb-2 flex flex-wrap gap-2">
+              {photos.map((p) => (
+                <li key={p.id} className="relative">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={p.previewUrl} alt="" className="size-20 rounded-lg border border-line object-cover" />
+                  <button type="button" onClick={() => removePhoto(p.id)} aria-label="Retirer cette photo" className="absolute -right-1.5 -top-1.5 grid size-5 place-items-center rounded-full bg-danger text-white shadow"><X size={12} /></button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <input ref={inputRef} name="photos" type="file" accept="image/jpeg,image/png" multiple hidden />
+          <input ref={cameraRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { addPhotos(e.target.files); e.target.value = ""; }} />
+          <input ref={galleryRef} type="file" accept="image/jpeg,image/png" multiple hidden onChange={(e) => { addPhotos(e.target.files); e.target.value = ""; }} />
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => cameraRef.current?.click()} className="btn-ghost text-sm"><Camera size={15} /> Prendre une photo</button>
+            <button type="button" onClick={() => galleryRef.current?.click()} className="btn-ghost text-sm"><Images size={15} /> Choisir depuis la pellicule</button>
+          </div>
+        </div>
+        <Feedback state={state} />
+        <button className="btn" disabled={pending}>{pending ? "Enregistrement…" : id ? "Enregistrer" : "Ajouter l'entrée"}</button>
+      </form>
+    </div>
   );
 }
 
 let nextExpFileId = 0;
 type ExpPending = { id: number; file: File; previewUrl: string };
+export type ExpExistingPhoto = { key: string; url: string; kind: "main" | "extra"; fileId: number | null };
 
-/** Note de frais : une ou plusieurs photos du reçu, date/heure/lieu (auto-complété), prix. Le commentaire est généré côté serveur à l'enregistrement. */
-export function ExpenseNoteForm({ today, now, day = today, moment = "midi" }: { today: string; now: string; day?: string; moment?: "midi" | "soir" }) {
+/** Note de frais : une ou plusieurs photos du reçu, date/heure/lieu (auto-complété), prix. En création, le commentaire
+ * est généré côté serveur à partir des champs ; en édition, le commentaire déjà généré reste modifiable librement. */
+export function ExpenseNoteForm({
+  today, now, day = today, moment = "midi", id, time, price, placeName = "", place = "", comment = "", existingPhotos = [],
+}: {
+  today: string; now: string; day?: string; moment?: "midi" | "soir";
+  id?: number; time?: string; price?: number; placeName?: string; place?: string; comment?: string; existingPhotos?: ExpExistingPhoto[];
+}) {
   const [state, action, pending] = useActionState(saveExpenseNote, undefined);
   const inputRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -208,52 +227,83 @@ export function ExpenseNoteForm({ today, now, day = today, moment = "midi" }: { 
   };
 
   return (
-    <form action={action} onSubmit={onSubmit} className="space-y-4">
-      <div>
-        <label className="label">Photos du reçu</label>
-        <input ref={inputRef} name="photos" type="file" accept="image/jpeg,image/png" multiple hidden />
-        <input ref={cameraRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
-        <input ref={galleryRef} type="file" accept="image/jpeg,image/png" multiple hidden onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
-        {files.length > 0 && (
-          <ul className="mb-2 flex flex-wrap gap-2">
-            {files.map((f) => (
-              <li key={f.id} className="relative">
+    // Les mini-formulaires de suppression de photo existante restent HORS du <form> principal : un <form> ne peut
+    // pas en contenir un autre (HTML l'interdit, ça casse l'hydratation et le bouton finit par soumettre le mauvais
+    // formulaire côté navigateur).
+    <div className="space-y-4">
+      {existingPhotos.length > 0 && (
+        <div>
+          <label className="label">Photos du reçu</label>
+          <ul className="flex flex-wrap gap-2">
+            {existingPhotos.map((p) => (
+              <li key={p.key} className="relative">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={f.previewUrl} alt="" className="size-20 rounded-lg border border-line object-cover" />
-                <button type="button" onClick={() => removeFile(f.id)} aria-label="Retirer cette photo" className="absolute -right-1.5 -top-1.5 grid size-5 place-items-center rounded-full bg-danger text-white shadow"><X size={12} /></button>
+                <img src={p.url} alt="" className="size-20 rounded-lg border border-line object-cover" />
+                <form action={removeExpenseFile} className="absolute -right-1.5 -top-1.5">
+                  <input type="hidden" name="noteId" value={id} />
+                  <input type="hidden" name="kind" value={p.kind} />
+                  {p.fileId !== null && <input type="hidden" name="fileId" value={p.fileId} />}
+                  <ConfirmButton message="Retirer cette photo de la note ?" className="grid size-5 place-items-center rounded-full bg-danger text-white shadow">
+                    <X size={12} />
+                  </ConfirmButton>
+                </form>
               </li>
             ))}
           </ul>
-        )}
-        <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => cameraRef.current?.click()} className="btn-ghost text-sm"><Camera size={15} /> Prendre une photo</button>
-          <button type="button" onClick={() => galleryRef.current?.click()} className="btn-ghost text-sm">
-            {files.length === 0 ? <Images size={15} /> : <Plus size={15} />} Choisir depuis la pellicule
-          </button>
         </div>
-        {error && <p className="mt-1 text-xs text-danger" role="alert">{error}</p>}
-        <p className="mt-1 text-xs text-muted">Plusieurs photos possibles (plusieurs reçus pour une même dépense).</p>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div><label className="label" htmlFor="exp-date">Date</label><input id="exp-date" name="date" type="date" defaultValue={day} required className="input" /></div>
+      )}
+      <form action={action} onSubmit={onSubmit} className="space-y-4">
+        {id && <input type="hidden" name="id" value={id} />}
         <div>
-          <label className="label" htmlFor="exp-moment">Moment</label>
-          <select id="exp-moment" name="moment" defaultValue={moment} className="input">
-            <option value="midi">Midi</option>
-            <option value="soir">Soir</option>
-          </select>
+          <label className="label">{existingPhotos.length > 0 ? "Ajouter une photo" : "Photos du reçu"}</label>
+          <input ref={inputRef} name="photos" type="file" accept="image/jpeg,image/png" multiple hidden />
+          <input ref={cameraRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
+          <input ref={galleryRef} type="file" accept="image/jpeg,image/png" multiple hidden onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
+          {files.length > 0 && (
+            <ul className="mb-2 flex flex-wrap gap-2">
+              {files.map((f) => (
+                <li key={f.id} className="relative">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={f.previewUrl} alt="" className="size-20 rounded-lg border border-line object-cover" />
+                  <button type="button" onClick={() => removeFile(f.id)} aria-label="Retirer cette photo" className="absolute -right-1.5 -top-1.5 grid size-5 place-items-center rounded-full bg-danger text-white shadow"><X size={12} /></button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => cameraRef.current?.click()} className="btn-ghost text-sm"><Camera size={15} /> Prendre une photo</button>
+            <button type="button" onClick={() => galleryRef.current?.click()} className="btn-ghost text-sm">
+              {files.length === 0 && existingPhotos.length === 0 ? <Images size={15} /> : <Plus size={15} />} Choisir depuis la pellicule
+            </button>
+          </div>
+          {error && <p className="mt-1 text-xs text-danger" role="alert">{error}</p>}
+          <p className="mt-1 text-xs text-muted">Plusieurs photos possibles (plusieurs reçus pour une même dépense).</p>
         </div>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div><label className="label" htmlFor="exp-time">Heure</label><input id="exp-time" name="time" type="time" defaultValue={now} required className="input" /></div>
-        <div><label className="label" htmlFor="exp-price">Prix (€)</label><input id="exp-price" name="price" type="number" step="0.01" min="0.01" required className="input" placeholder="12,50" /></div>
-      </div>
-      <div><label className="label" htmlFor="exp-name">Nom du lieu</label><input id="exp-name" name="placeName" required maxLength={120} className="input" placeholder="Ex. Décathlon, restaurant Chez Mimi…" /></div>
-      <AddressField id="exp-place" name="place" label="Adresse" placeholder="Adresse du lieu" />
-      <div><label className="label" htmlFor="exp-comment">Commentaire (facultatif)</label><textarea id="exp-comment" name="comment" rows={2} maxLength={500} className="input" placeholder="Précision à ajouter au commentaire généré" /></div>
-      <Feedback state={state} />
-      <button className="btn" disabled={pending || files.length === 0}><Receipt size={15} /> {pending ? "Enregistrement…" : "Enregistrer la note de frais"}</button>
-    </form>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div><label className="label" htmlFor="exp-date">Date</label><input id="exp-date" name="date" type="date" defaultValue={day} required className="input" /></div>
+          <div>
+            <label className="label" htmlFor="exp-moment">Moment</label>
+            <select id="exp-moment" name="moment" defaultValue={moment} className="input">
+              <option value="midi">Midi</option>
+              <option value="soir">Soir</option>
+            </select>
+          </div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div><label className="label" htmlFor="exp-time">Heure</label><input id="exp-time" name="time" type="time" defaultValue={time ?? now} required className="input" /></div>
+          <div><label className="label" htmlFor="exp-price">Prix (€)</label><input id="exp-price" name="price" type="number" step="0.01" min="0.01" required className="input" defaultValue={price} placeholder="12,50" /></div>
+        </div>
+        <div><label className="label" htmlFor="exp-name">Nom du lieu</label><input id="exp-name" name="placeName" defaultValue={placeName} required maxLength={120} className="input" placeholder="Ex. Décathlon, restaurant Chez Mimi…" /></div>
+        <AddressField id="exp-place" name="place" label="Adresse" defaultValue={place} placeholder="Adresse du lieu" />
+        <div>
+          <label className="label" htmlFor="exp-comment">Commentaire (facultatif)</label>
+          <textarea id="exp-comment" name="comment" rows={2} maxLength={500} defaultValue={comment} className="input" placeholder="Précision à ajouter au commentaire généré" />
+          <p className="mt-1 text-xs text-muted">Le commentaire envoyé est régénéré à partir des champs ci-dessus, avec cette précision ajoutée à la fin.</p>
+        </div>
+        <Feedback state={state} />
+        <button className="btn" disabled={pending || (!id && files.length === 0)}><Receipt size={15} /> {pending ? "Enregistrement…" : id ? "Enregistrer" : "Enregistrer la note de frais"}</button>
+      </form>
+    </div>
   );
 }
 
