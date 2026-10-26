@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq, like, or } from "drizzle-orm";
+import { and, eq, inArray, like, or } from "drizzle-orm";
 import { db } from "@/db";
 import { ALT_COMPANY_STATUSES, altCompanies, altCompanySearches } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
@@ -25,14 +25,17 @@ export async function searchCompaniesByQuery(q: string): Promise<CompanyMatch[]>
   }));
 }
 
-/** Ajoute une entreprise déjà présente dans l'annuaire partagé à MON tableau de suivi (ligne vide, à moi). */
-export async function addToBoard(fd: FormData) {
+/** Ajoute plusieurs entreprises d'un coup à MON tableau (cases cochées dans l'annuaire), chacune avec une ligne de
+ * suivi vide. Ignore celles déjà présentes dans mon tableau. */
+export async function bulkAddToBoard(companyIds: number[]) {
   const user = await requireUser();
-  const companyId = Number(fd.get("companyId"));
-  if (!companyId) return;
-  const [existing] = await db.select({ id: altCompanySearches.id }).from(altCompanySearches)
-    .where(and(eq(altCompanySearches.companyId, companyId), eq(altCompanySearches.userId, user.id))).limit(1);
-  if (!existing) await db.insert(altCompanySearches).values({ companyId, userId: user.id });
+  const ids = [...new Set(companyIds.map(Number).filter((n) => Number.isInteger(n) && n > 0))];
+  if (ids.length === 0) return;
+  const existing = await db.select({ companyId: altCompanySearches.companyId }).from(altCompanySearches)
+    .where(and(eq(altCompanySearches.userId, user.id), inArray(altCompanySearches.companyId, ids)));
+  const already = new Set(existing.map((e) => e.companyId));
+  const toAdd = ids.filter((id) => !already.has(id));
+  if (toAdd.length) await db.insert(altCompanySearches).values(toAdd.map((companyId) => ({ companyId, userId: user.id })));
   refresh();
 }
 

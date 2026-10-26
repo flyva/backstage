@@ -1,9 +1,9 @@
 "use client";
 
 import { useActionState, useMemo, useRef, useState } from "react";
-import { FileUp, Mail, MapPin, Phone, Plus, Search, Trash2, X } from "lucide-react";
+import { CheckSquare, FileUp, Mail, MapPin, Phone, Plus, Search, Trash2, X } from "lucide-react";
 import type { FormState } from "@/lib/actions";
-import { addToBoard, createCompany, deleteCompany, importCompaniesCsv, removeFromBoard, searchCompaniesByQuery } from "@/lib/company-search-actions";
+import { bulkAddToBoard, createCompany, deleteCompany, importCompaniesCsv, removeFromBoard, searchCompaniesByQuery } from "@/lib/company-search-actions";
 import { TYPE_LABEL, TYPE_ORDER, type CompanyMatch } from "@/lib/company-search";
 import { TypeBadges } from "@/components/TypeBadges";
 import { ConfirmButton } from "@/components/ConfirmButton";
@@ -33,6 +33,20 @@ export function CompanyDirectory({ directory }: { directory: DirectoryRow[] }) {
   const [matches, setMatches] = useState<CompanyMatch[]>([]);
   const [matchedId, setMatchedId] = useState<number | null>(null);
   const lookupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [adding, setAdding] = useState(false);
+  const toggleSelected = (id: number, checked: boolean) => setSelected((cur) => {
+    const next = new Set(cur);
+    if (checked) next.add(id); else next.delete(id);
+    return next;
+  });
+  const addSelected = async () => {
+    setAdding(true);
+    await bulkAddToBoard([...selected]);
+    setSelected(new Set());
+    setAdding(false);
+  };
 
   const onLookupChange = (value: string) => {
     setLookup(value);
@@ -66,6 +80,15 @@ export function CompanyDirectory({ directory }: { directory: DirectoryRow[] }) {
         <button type="button" onClick={() => setShowAdd((v) => !v)} className="btn-ghost text-sm"><Plus size={15} /> Ajouter une entreprise</button>
         <button type="button" onClick={() => setShowImport((v) => !v)} className="btn-ghost text-sm"><FileUp size={15} /> Importer un CSV</button>
       </div>
+
+      {selected.size > 0 && (
+        <div className="sticky top-2 z-20 flex items-center gap-3 rounded-xl border border-accent bg-surface p-3 shadow-lg">
+          <CheckSquare size={16} className="text-accent" />
+          <p className="flex-1 text-sm">{selected.size} entreprise{selected.size > 1 ? "s" : ""} sélectionnée{selected.size > 1 ? "s" : ""}</p>
+          <button type="button" onClick={() => setSelected(new Set())} className="btn-ghost text-xs">Annuler</button>
+          <button type="button" onClick={addSelected} disabled={adding} className="btn text-sm">{adding ? "Ajout…" : "Ajouter au tableau"}</button>
+        </div>
+      )}
 
       {showImport && (
         <form action={importAction} className="card space-y-2">
@@ -128,6 +151,13 @@ export function CompanyDirectory({ directory }: { directory: DirectoryRow[] }) {
           <li key={c.id} className="card p-0">
             <details>
               <summary className="flex cursor-pointer list-none flex-wrap items-center gap-3 p-3 marker:hidden">
+                {!c.inBoard && (
+                  <input
+                    type="checkbox" checked={selected.has(c.id)} onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => toggleSelected(c.id, e.target.checked)}
+                    aria-label={`Sélectionner ${c.name}`} className="size-4 shrink-0 accent-[var(--accent)]"
+                  />
+                )}
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">{c.name} {c.city && <span className="font-normal text-muted">· {c.city}</span>}</p>
                   <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted">
@@ -135,15 +165,10 @@ export function CompanyDirectory({ directory }: { directory: DirectoryRow[] }) {
                     <TypeBadges types={c.types} />
                   </p>
                 </div>
-                {c.inBoard ? (
+                {c.inBoard && (
                   <form action={removeFromBoard} onClick={(e) => e.stopPropagation()}>
                     <input type="hidden" name="companyId" value={c.id} />
                     <button className="btn-ghost text-xs text-danger"><X size={13} /> Retirer de mon tableau</button>
-                  </form>
-                ) : (
-                  <form action={addToBoard} onClick={(e) => e.stopPropagation()}>
-                    <input type="hidden" name="companyId" value={c.id} />
-                    <button className="btn-ghost text-xs"><Plus size={13} /> Ajouter à mon tableau</button>
                   </form>
                 )}
               </summary>
