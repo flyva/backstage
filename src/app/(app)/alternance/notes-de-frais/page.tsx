@@ -44,6 +44,8 @@ export default async function ExpenseNotesPage({ searchParams }: PageProps<"/alt
     const refund = resto.maxDayCents === null ? refundRaw : Math.min(refundRaw, resto.maxDayCents);
     dayStats.set(day, { price, refundRaw, refund, overCap: resto.maxDayCents !== null && refundRaw > resto.maxDayCents });
   }
+  const weekRefund = [...dayStats.values()].reduce((s, d) => s + d.refund, 0);
+  const weekCharge = total - weekRefund;
 
   return (
     <div className="max-w-2xl space-y-5">
@@ -60,6 +62,19 @@ export default async function ExpenseNotesPage({ searchParams }: PageProps<"/alt
         <h2 className="w-48 text-center text-sm font-semibold capitalize text-muted">Semaine du {weekLabel(week)}</h2>
         <Link href={`?w=${addWeeks(week, 1)}`} className="btn-ghost px-2" aria-label="Semaine suivante"><ChevronRight size={16} /></Link>
       </div>
+
+      {restoConfigured && total > 0 && (
+        <div className="card grid grid-cols-2 gap-3 text-center sm:grid-cols-2">
+          <div>
+            <p className="text-xs text-muted">Remboursé cette semaine</p>
+            <p className="text-xl font-bold tabular-nums">{fmtEuros(weekRefund)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted">Non remboursé</p>
+            <p className={`text-xl font-bold tabular-nums ${weekCharge > 0 ? "text-danger" : ""}`}>{fmtEuros(weekCharge)}</p>
+          </div>
+        </div>
+      )}
 
       <ul className="space-y-2">
         {days.map((day) => {
