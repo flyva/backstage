@@ -1277,3 +1277,53 @@ export const calcSupplyLists = mysqlTable("calc_supply_lists", {
   items: mediumtext("items").notNull().default("[]"), // JSON : [{ name, watts, qty }]
   updatedAt: datetime("updated_at").notNull().$defaultFn(() => new Date()),
 });
+
+// Recherche d'entreprises (alternance) : annuaire PARTAGÉ entre tous (les infos générales d'une entreprise ne
+// dépendent de personne en particulier), alimenté par les ajouts manuels et les imports CSV de tout le monde.
+export const altCompanies = mysqlTable(
+  "alt_companies",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    name: varchar("name", { length: 200 }).notNull(),
+    nameKey: varchar("name_key", { length: 220 }).notNull(), // nom + ville normalisés (minuscules, sans accents) : évite les doublons entre imports de personnes différentes
+    city: varchar("city", { length: 120 }).notNull().default(""),
+    department: varchar("department", { length: 20 }).notNull().default(""),
+    sector: varchar("sector", { length: 150 }).notNull().default(""), // ex. "Prestation", "Parc d'attraction"… libre
+    address: varchar("address", { length: 300 }).notNull().default(""),
+    types: varchar("types", { length: 40 }).notNull().default(""), // sous-ensemble de son,lumiere,video séparés par virgule
+    salary: varchar("salary", { length: 120 }).notNull().default(""),
+    sources: varchar("sources", { length: 200 }).notNull().default(""),
+    perks: varchar("perks", { length: 300 }).notNull().default(""), // "avantage"
+    contactTitle: varchar("contact_title", { length: 120 }).notNull().default(""),
+    contactName: varchar("contact_name", { length: 150 }).notNull().default(""),
+    phone: varchar("phone", { length: 60 }).notNull().default(""),
+    email: varchar("email", { length: 300 }).notNull().default(""), // peut contenir plusieurs adresses séparées par ;
+    createdByUserId: int("created_by_user_id").references((): AnyMySqlColumn => users.id, { onDelete: "set null" }),
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [uniqueIndex("alt_companies_name_key").on(t.nameKey), index("alt_companies_city_idx").on(t.city)],
+);
+
+export const ALT_COMPANY_STATUSES = [
+  "a_contacter", "cv_envoye", "relance", "rappeler", "entretien_prevu", "en_cours", "valider", "refuser", "refuse_apres_entretien", "annuler",
+] as const;
+
+// Suivi de candidature d'UNE personne pour UNE entreprise : « ajouter à mon tableau » crée cette ligne, vide au
+// départ (sauf import CSV, qui la remplit directement). Jamais partagé : chacun voit et édite seulement les siennes.
+export const altCompanySearches = mysqlTable(
+  "alt_company_searches",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    companyId: int("company_id").notNull().references(() => altCompanies.id, { onDelete: "cascade" }),
+    userId: int("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    kind: mysqlEnum("kind", ["offre", "spontanee"]),
+    status: mysqlEnum("status", ALT_COMPANY_STATUSES),
+    priority: mysqlEnum("priority", ["faible", "moyenne", "haute"]),
+    lastContactDate: date("last_contact_date", { mode: "string" }),
+    interviewDate: date("interview_date", { mode: "string" }),
+    delayDays: int("delay_days"),
+    note: text("note").notNull().default(""),
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [uniqueIndex("alt_search_company_user").on(t.companyId, t.userId), index("alt_search_user_idx").on(t.userId)],
+);
