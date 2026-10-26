@@ -1,10 +1,10 @@
 import {
-  BookOpen, BookUser, Bot, Briefcase, Building2, Calculator, Car, CalendarDays, Camera, CircleHelp, Clock, Cog, Gamepad2, Home, Images, Lightbulb, Link2, Network, Newspaper, PartyPopper, Receipt, School, NotebookPen, ShieldCheck, SquareKanban, TramFront, Users, Contact, Megaphone, CalendarClock, Zap, BarChart3,
+  BookOpen, BookUser, Bot, Briefcase, Building2, Calculator, Car, CalendarDays, Camera, CircleHelp, ClipboardList, Clock, Cog, Gamepad2, Home, Images, Lightbulb, Link2, Network, Newspaper, PartyPopper, Receipt, School, NotebookPen, ShieldCheck, SquareKanban, TramFront, Users, Contact, Megaphone, CalendarClock, Zap, BarChart3,
   type LucideIcon,
 } from "lucide-react";
 
 export type Badge = "loans";
-export type Item = { href?: string; label: string; icon: LucideIcon; badge?: Badge; adminOnly?: boolean; module?: string; children?: Item[] };
+export type Item = { href?: string; label: string; icon: LucideIcon; badge?: Badge; adminOnly?: boolean; module?: string; children?: Item[]; variant?: "button" };
 export type Group = { id: string; title: string; items: Item[] };
 
 // Six groupes par thème, dépliés UN SEUL à la fois (accordéon) dans Nav.tsx. Source unique : réutilisée par l'admin
@@ -34,7 +34,13 @@ export const GROUPS: Group[] = [
       { href: "/projets", label: "Projets", icon: Briefcase },
       { href: "/kanban", label: "Mon kanban", icon: SquareKanban },
       { href: "/reseau", label: "Carnet de réseau", icon: Contact },
-      { href: "/recherche-entreprises", label: "Recherche entreprises", icon: Building2 },
+      {
+        label: "Recherche entreprises", icon: Building2,
+        children: [
+          { href: "/recherche-entreprises", label: "Mon tableau", icon: ClipboardList },
+          { href: "/recherche-entreprises/annuaire", label: "Annuaire", icon: Building2, variant: "button" },
+        ],
+      },
       { href: "/calculettes", label: "Calculettes", icon: Calculator },
       {
         label: "Cours", icon: NotebookPen,

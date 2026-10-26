@@ -1,20 +1,20 @@
-import { Building2 } from "lucide-react";
-import { asc, eq } from "drizzle-orm";
+import Link from "next/link";
+import { ClipboardList } from "lucide-react";
+import { eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { altCompanies, altCompanySearches } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
-import { CompanyBoard, type BoardRow, type DirectoryRow } from "@/components/CompanyBoard";
+import { MyBoardTable, type BoardRow } from "@/components/MyBoardTable";
 
-export const metadata = { title: "Recherche entreprises" };
+export const metadata = { title: "Mon tableau · Recherche entreprises" };
 
-export default async function CompanySearchPage() {
+export default async function MyBoardPage() {
   const user = await requireUser();
-  const [companies, mySearches] = await Promise.all([
-    db.select().from(altCompanies).orderBy(asc(altCompanies.name)),
-    db.select().from(altCompanySearches).where(eq(altCompanySearches.userId, user.id)),
-  ]);
+  const mySearches = await db.select().from(altCompanySearches).where(eq(altCompanySearches.userId, user.id));
+  const companies = mySearches.length
+    ? await db.select().from(altCompanies).where(inArray(altCompanies.id, mySearches.map((s) => s.companyId)))
+    : [];
   const companyById = new Map(companies.map((c) => [c.id, c]));
-  const searchByCompanyId = new Map(mySearches.map((s) => [s.companyId, s]));
 
   const board: BoardRow[] = mySearches
     .map((s) => {
@@ -30,20 +30,15 @@ export default async function CompanySearchPage() {
     .filter((r): r is BoardRow => r !== null)
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  const directory: DirectoryRow[] = companies.map((c) => ({
-    id: c.id, name: c.name, city: c.city, department: c.department, sector: c.sector, types: c.types, address: c.address,
-    contactName: c.contactName, phone: c.phone, email: c.email, inBoard: searchByCompanyId.has(c.id),
-  }));
-
   return (
     <div className="space-y-5">
       <header>
-        <h1 className="flex items-center gap-2 text-2xl font-bold"><Building2 size={22} className="text-accent" /> Recherche d&apos;entreprises</h1>
+        <h1 className="flex items-center gap-2 text-2xl font-bold"><ClipboardList size={22} className="text-accent" /> Mon tableau</h1>
         <p className="text-sm text-muted">
-          Un annuaire d&apos;entreprises partagé avec toute la promo, et ton propre tableau de suivi de candidatures (statut, priorité, relances…), rien que pour toi.
+          Ton suivi de candidatures (statut, priorité, relances…), rien que pour toi. Ajoute des entreprises depuis l&apos;<Link href="/recherche-entreprises/annuaire" className="text-accent underline">annuaire</Link>.
         </p>
       </header>
-      <CompanyBoard board={board} directory={directory} />
+      <MyBoardTable board={board} />
     </div>
   );
 }

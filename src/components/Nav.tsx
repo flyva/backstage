@@ -21,7 +21,8 @@ const GROUP_COLOR: Record<string, string> = {
 // Six groupes par thème, dépliés UN SEUL à la fois (accordéon) : le menu ne dépasse jamais la hauteur de l'écran, donc il ne défile pas.
 // Le groupe de la page en cours est ouvert ; un clic sur un titre ouvre ce groupe (et referme l'autre).
 // « / » et « /alternance » sont aussi le préfixe d'autres items (Planning a des pages sœurs comme /alternance/carnet) : correspondance exacte pour eux.
-const isActive = (pathname: string, href: string) => (href === "/" || href === "/alternance" ? pathname === href : pathname.startsWith(href));
+const EXACT_ONLY = new Set(["/", "/alternance", "/recherche-entreprises"]);
+const isActive = (pathname: string, href: string) => (EXACT_ONLY.has(href) ? pathname === href : pathname.startsWith(href));
 const itemActive = (pathname: string, i: Item): boolean => (i.href ? isActive(pathname, i.href) : false) || !!i.children?.some((c) => itemActive(pathname, c));
 const itemVisible = (i: Item, isAdmin: boolean, views: Record<string, boolean>, hidden: Set<string>) =>
   (!i.adminOnly || isAdmin) && (!i.module || views[i.module]) && !(i.href && hidden.has(i.href));
@@ -46,6 +47,21 @@ export function Nav({ isAdmin, loanBadge, views, hiddenPages }: { isAdmin: boole
 
   const renderLink = (i: Item, count: number, color: string) => {
     const active = i.href ? isActive(pathname, i.href) : false;
+    if (i.variant === "button") {
+      return (
+        <Link
+          href={i.href!}
+          aria-current={active ? "page" : undefined}
+          style={active ? { background: color, borderColor: color } : { borderColor: `color-mix(in srgb, ${color} 50%, transparent)`, color }}
+          className={`flex items-center justify-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+            active ? "text-white" : "hover:bg-side-hover"
+          }`}
+        >
+          <i.icon size={15} />
+          {i.label}
+        </Link>
+      );
+    }
     return (
       <Link
         href={i.href!}
