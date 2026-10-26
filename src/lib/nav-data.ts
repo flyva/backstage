@@ -35,7 +35,7 @@ export const GROUPS: Group[] = [
       { href: "/kanban", label: "Mon kanban", icon: SquareKanban },
       { href: "/reseau", label: "Carnet de réseau", icon: Contact },
       {
-        label: "Recherche entreprises", icon: Building2,
+        label: "Recherche entreprises", icon: Building2, module: "rechercheEntreprises",
         children: [
           { href: "/recherche-entreprises", label: "Mon tableau", icon: ClipboardList },
           { href: "/recherche-entreprises/annuaire", label: "Annuaire", icon: Building2, variant: "button" },

@@ -6,6 +6,11 @@ export type CompanyPriority = "faible" | "moyenne" | "haute";
 export type CompanyKind = "offre" | "spontanee";
 export type CompanyType = "son" | "lumiere" | "video";
 
+export type CompanyMatch = {
+  id: number; name: string; city: string; department: string; sector: string; address: string; types: string;
+  salary: string; sources: string; perks: string; contactTitle: string; contactName: string; phone: string; email: string;
+};
+
 export const TYPE_LABEL: Record<CompanyType, string> = { son: "Son", lumiere: "Lumière", video: "Vidéo" };
 export const TYPE_ORDER: CompanyType[] = ["son", "lumiere", "video"];
 

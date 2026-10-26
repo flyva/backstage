@@ -16,6 +16,7 @@ export type RoleFlags = {
   viewPromo: boolean;
   viewVie: boolean;
   viewDetente: boolean;
+  viewRechercheEntreprises: boolean;
   courseTags: string | null;
   // Pages individuelles masquées pour ce rôle (hors pages à niveau Voir/Gérer et pages de Cours, déjà couvertes
   // ailleurs) : liste de hrefs séparés par des virgules. Vide ou absent = rien de masqué (comportement par défaut).
@@ -23,7 +24,7 @@ export type RoleFlags = {
 };
 
 export type Module = "materiel" | "bde" | "actus" | "galerie";
-export type Section = "savoirs" | "promo" | "vie" | "detente";
+export type Section = "savoirs" | "promo" | "vie" | "detente" | "rechercheEntreprises";
 
 /** Pages du sous-menu « Cours » (dans Travail). D'autres s'ajouteront avec le temps : chacune a une clé stable, à cocher
  * ou non par rôle, sans toucher à la base (elles sont stockées comme une liste de clés dans `courseTags`). */
@@ -78,6 +79,7 @@ export function permsOf(r: RoleFlags | null | undefined): Perms {
       promo: a || (r ? !!r.viewPromo : true),
       vie: a || (r ? !!r.viewVie : true),
       detente: a || (r ? !!r.viewDetente : true),
+      rechercheEntreprises: a || (r ? !!r.viewRechercheEntreprises : true),
     },
     courses: courseAccess(a, r?.courseTags ?? null),
     hiddenPages: a ? [] : (r?.hiddenPages ? r.hiddenPages.split(",").map((h) => h.trim()).filter(Boolean) : []),
@@ -96,6 +98,7 @@ export const SECTION_FIELDS = [
   { key: "promo", field: "viewPromo", label: "Promo", hint: "Actualités, annuaire, annonces, disponibilités, covoiturage." },
   { key: "vie", field: "viewVie", label: "Vie étudiante", hint: "BDE, galerie, Instagram." },
   { key: "detente", field: "viewDetente", label: "Détente", hint: "Espace jeu (Tetris), scores et joueurs en direct." },
+  { key: "rechercheEntreprises", field: "viewRechercheEntreprises", label: "Recherche entreprises", hint: "Mon tableau de candidatures et l'annuaire d'entreprises partagé." },
 ] as const;
 
 /** Domaines à trois niveaux (Aucun / Voir / Gérer). */

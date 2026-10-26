@@ -1,15 +1,16 @@
 "use client";
 
 import { useActionState, useMemo, useRef, useState } from "react";
-import { FileUp, Plus, X } from "lucide-react";
+import { FileUp, Mail, MapPin, Phone, Plus, Search, X } from "lucide-react";
 import type { FormState } from "@/lib/actions";
-import { addToBoard, createCompany, importCompaniesCsv, removeFromBoard } from "@/lib/company-search-actions";
-import { TYPE_LABEL, TYPE_ORDER } from "@/lib/company-search";
+import { addToBoard, createCompany, importCompaniesCsv, removeFromBoard, searchCompaniesByQuery } from "@/lib/company-search-actions";
+import { TYPE_LABEL, TYPE_ORDER, type CompanyMatch } from "@/lib/company-search";
 import { TypeBadges } from "@/components/TypeBadges";
 
 export type DirectoryRow = {
   id: number; name: string; city: string; department: string; sector: string; types: string; address: string;
-  contactName: string; phone: string; email: string; inBoard: boolean;
+  salary: string; sources: string; perks: string;
+  contactTitle: string; contactName: string; phone: string; email: string; inBoard: boolean;
 };
 
 function Feedback({ state }: { state: FormState }) {
@@ -23,8 +24,33 @@ export function CompanyDirectory({ directory }: { directory: DirectoryRow[] }) {
   const [showImport, setShowImport] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const addFormRef = useRef<HTMLFormElement>(null);
   const [importState, importAction, importPending] = useActionState(importCompaniesCsv, undefined);
   const [addState, addAction, addPending] = useActionState(createCompany, undefined);
+
+  const [lookup, setLookup] = useState("");
+  const [matches, setMatches] = useState<CompanyMatch[]>([]);
+  const [matchedId, setMatchedId] = useState<number | null>(null);
+  const lookupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const onLookupChange = (value: string) => {
+    setLookup(value);
+    setMatchedId(null);
+    if (lookupTimer.current) clearTimeout(lookupTimer.current);
+    if (value.trim().length < 2) { setMatches([]); return; }
+    lookupTimer.current = setTimeout(async () => setMatches(await searchCompaniesByQuery(value)), 300);
+  };
+  const applyMatch = (c: CompanyMatch) => {
+    setMatchedId(c.id);
+    setLookup(c.name);
+    setMatches([]);
+    const f = addFormRef.current;
+    if (!f) return;
+    const set = (name: string, value: string) => { const el = f.elements.namedItem(name) as HTMLInputElement | null; if (el) el.value = value; };
+    set("name", c.name); set("city", c.city); set("sector", c.sector); set("contactTitle", c.contactTitle);
+    set("contactName", c.contactName); set("phone", c.phone); set("email", c.email);
+    for (const t of TYPE_ORDER) { const el = f.elements.namedItem(`type_${t}`) as HTMLInputElement | null; if (el) el.checked = c.types.includes(t); }
+  };
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -55,7 +81,27 @@ export function CompanyDirectory({ directory }: { directory: DirectoryRow[] }) {
       )}
 
       {showAdd && (
-        <form action={addAction} className="card grid gap-3 sm:grid-cols-2">
+        <form ref={addFormRef} action={addAction} className="card grid gap-3 sm:grid-cols-2">
+          <div className="relative sm:col-span-2">
+            <label className="label" htmlFor="ca-lookup">Chercher une entreprise déjà connue (nom, téléphone, email)</label>
+            <div className="relative">
+              <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
+              <input id="ca-lookup" value={lookup} onChange={(e) => onLookupChange(e.target.value)} placeholder="Tape pour chercher…" className="input pl-8" autoComplete="off" />
+            </div>
+            {matches.length > 0 && (
+              <ul className="absolute z-10 mt-1 w-full overflow-hidden rounded-xl border border-line bg-surface shadow-lg">
+                {matches.map((c) => (
+                  <li key={c.id}>
+                    <button type="button" onClick={() => applyMatch(c)} className="block w-full px-3 py-2 text-left text-sm hover:bg-bg">
+                      <span className="font-medium">{c.name}</span> {c.city && <span className="text-muted">· {c.city}</span>}
+                      {(c.phone || c.email) && <span className="block text-xs text-muted">{[c.phone, c.email].filter(Boolean).join(" · ")}</span>}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {matchedId && <p className="mt-1 text-xs text-green-600 dark:text-green-400">Champs remplis depuis l&apos;annuaire — modifie-les si besoin avant d&apos;ajouter.</p>}
+          </div>
           <div><label className="label" htmlFor="ca-name">Nom de l&apos;entreprise</label><input id="ca-name" name="name" required maxLength={200} className="input" /></div>
           <div><label className="label" htmlFor="ca-city">Ville</label><input id="ca-city" name="city" maxLength={120} className="input" /></div>
           <div><label className="label" htmlFor="ca-sector">Secteur</label><input id="ca-sector" name="sector" maxLength={150} placeholder="Prestation, Parc d'attraction…" className="input" /></div>
@@ -78,25 +124,40 @@ export function CompanyDirectory({ directory }: { directory: DirectoryRow[] }) {
       <ul className="space-y-2">
         {filtered.length === 0 && <li className="card text-sm text-muted">Aucun résultat.</li>}
         {filtered.map((c) => (
-          <li key={c.id} className="card flex flex-wrap items-center gap-3 p-3">
-            <div className="min-w-0 flex-1">
-              <p className="font-medium">{c.name} {c.city && <span className="font-normal text-muted">· {c.city}</span>}</p>
-              <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted">
-                {c.sector}
-                <TypeBadges types={c.types} />
-              </p>
-            </div>
-            {c.inBoard ? (
-              <form action={removeFromBoard}>
-                <input type="hidden" name="companyId" value={c.id} />
-                <button className="btn-ghost text-xs text-danger"><X size={13} /> Retirer de mon tableau</button>
-              </form>
-            ) : (
-              <form action={addToBoard}>
-                <input type="hidden" name="companyId" value={c.id} />
-                <button className="btn-ghost text-xs"><Plus size={13} /> Ajouter à mon tableau</button>
-              </form>
-            )}
+          <li key={c.id} className="card p-0">
+            <details>
+              <summary className="flex cursor-pointer list-none flex-wrap items-center gap-3 p-3 marker:hidden">
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium">{c.name} {c.city && <span className="font-normal text-muted">· {c.city}</span>}</p>
+                  <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted">
+                    {c.sector}
+                    <TypeBadges types={c.types} />
+                  </p>
+                </div>
+                {c.inBoard ? (
+                  <form action={removeFromBoard} onClick={(e) => e.stopPropagation()}>
+                    <input type="hidden" name="companyId" value={c.id} />
+                    <button className="btn-ghost text-xs text-danger"><X size={13} /> Retirer de mon tableau</button>
+                  </form>
+                ) : (
+                  <form action={addToBoard} onClick={(e) => e.stopPropagation()}>
+                    <input type="hidden" name="companyId" value={c.id} />
+                    <button className="btn-ghost text-xs"><Plus size={13} /> Ajouter à mon tableau</button>
+                  </form>
+                )}
+              </summary>
+              {(c.address || c.contactTitle || c.contactName || c.phone || c.email || c.salary || c.sources || c.perks) && (
+                <div className="space-y-1.5 border-t border-line p-3 text-sm">
+                  {c.address && <p className="flex items-start gap-1.5 text-muted"><MapPin size={14} className="mt-0.5 shrink-0" /> {c.address}</p>}
+                  {(c.contactTitle || c.contactName) && <p>{c.contactTitle && <span className="text-muted">{c.contactTitle} · </span>}{c.contactName}</p>}
+                  {c.phone && <p className="flex items-center gap-1.5 text-muted"><Phone size={14} className="shrink-0" /> {c.phone}</p>}
+                  {c.email && <p className="flex items-center gap-1.5 text-muted"><Mail size={14} className="shrink-0" /> {c.email}</p>}
+                  {c.salary && <p><span className="text-muted">Salaire : </span>{c.salary}</p>}
+                  {c.perks && <p><span className="text-muted">Avantages : </span>{c.perks}</p>}
+                  {c.sources && <p><span className="text-muted">Source : </span>{c.sources}</p>}
+                </div>
+              )}
+            </details>
           </li>
         ))}
       </ul>

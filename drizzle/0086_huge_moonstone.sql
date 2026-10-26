@@ -1,0 +1,1 @@
+ALTER TABLE `roles` ADD `view_recherche_entreprises` boolean DEFAULT true NOT NULL;

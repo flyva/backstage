@@ -603,6 +603,13 @@
       "when": 1793056041216,
       "tag": "0085_fast_vindicator",
       "breakpoints": true
+    },
+    {
+      "idx": 86,
+      "version": "5",
+      "when": 1793057681498,
+      "tag": "0086_huge_moonstone",
+      "breakpoints": true
     }
   ]
 }

@@ -40,6 +40,7 @@ export const roles = mysqlTable("roles", {
   viewPromo: boolean("view_promo").notNull().default(true),
   viewVie: boolean("view_vie").notNull().default(true),
   viewDetente: boolean("view_detente").notNull().default(true),
+  viewRechercheEntreprises: boolean("view_recherche_entreprises").notNull().default(true),
   // Pages du sous-menu « Cours » visibles pour ce rôle : liste de clés séparées par des virgules (ex. "cours,habilitation").
   // Vide ou absent = toutes visibles (pas besoin de migration pour chaque nouvelle page ajoutée plus tard).
   courseTags: text("course_tags"),

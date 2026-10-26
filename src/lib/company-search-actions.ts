@@ -1,14 +1,29 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq } from "drizzle-orm";
+import { and, eq, like, or } from "drizzle-orm";
 import { db } from "@/db";
 import { ALT_COMPANY_STATUSES, altCompanies, altCompanySearches } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
-import { companyKey, parseCsv, parseDelay, parseFrDate, parseKind, parsePriority, parseStatus, parseTypes } from "@/lib/company-search";
+import { companyKey, parseCsv, parseDelay, parseFrDate, parseKind, parsePriority, parseStatus, parseTypes, type CompanyMatch } from "@/lib/company-search";
 import type { FormState } from "@/lib/actions";
 
 const refresh = () => revalidatePath("/recherche-entreprises");
+
+/** Recherche dans l'annuaire par nom, téléphone ou email, pour l'autocomplétion du formulaire « Ajouter une entreprise ». */
+export async function searchCompaniesByQuery(q: string): Promise<CompanyMatch[]> {
+  await requireUser();
+  const term = q.trim();
+  if (term.length < 2) return [];
+  const like_ = `%${term}%`;
+  const rows = await db.select().from(altCompanies)
+    .where(or(like(altCompanies.name, like_), like(altCompanies.phone, like_), like(altCompanies.email, like_)))
+    .limit(8);
+  return rows.map((c) => ({
+    id: c.id, name: c.name, city: c.city, department: c.department, sector: c.sector, address: c.address, types: c.types,
+    salary: c.salary, sources: c.sources, perks: c.perks, contactTitle: c.contactTitle, contactName: c.contactName, phone: c.phone, email: c.email,
+  }));
+}
 
 /** Ajoute une entreprise déjà présente dans l'annuaire partagé à MON tableau de suivi (ligne vide, à moi). */
 export async function addToBoard(fd: FormData) {

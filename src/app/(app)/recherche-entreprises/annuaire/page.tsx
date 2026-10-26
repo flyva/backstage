@@ -17,7 +17,8 @@ export default async function CompanyDirectoryPage() {
 
   const directory: DirectoryRow[] = companies.map((c) => ({
     id: c.id, name: c.name, city: c.city, department: c.department, sector: c.sector, types: c.types, address: c.address,
-    contactName: c.contactName, phone: c.phone, email: c.email, inBoard: inBoardIds.has(c.id),
+    salary: c.salary, sources: c.sources, perks: c.perks,
+    contactTitle: c.contactTitle, contactName: c.contactName, phone: c.phone, email: c.email, inBoard: inBoardIds.has(c.id),
   }));
 
   return (

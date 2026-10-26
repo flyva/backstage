@@ -64,6 +64,7 @@ export async function saveRole(_: FormState, fd: FormData): Promise<FormState> {
     viewPromo: fd.get("section_promo") !== "none",
     viewVie: fd.get("section_vie") !== "none",
     viewDetente: fd.get("section_detente") !== "none",
+    viewRechercheEntreprises: fd.get("section_rechercheEntreprises") !== "none",
     // null = tout visible, y compris les pages de Cours ajoutées plus tard ; une liste explicite ne fige que si quelque chose est vraiment décoché.
     courseTags: (() => {
       const kept = COURSE_PAGES.filter((c) => fd.get(`course_${c.key}`) !== "none").map((c) => c.key);
