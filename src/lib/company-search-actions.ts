@@ -45,6 +45,20 @@ export async function removeFromBoard(fd: FormData) {
   refresh();
 }
 
+/** Supprime une entreprise de l'annuaire PARTAGÉ (et donc du tableau de tout le monde) : seulement permis à la
+ * personne qui l'a ajoutée (ou un administrateur), pour éviter qu'on retire une fiche que d'autres utilisent. */
+export async function deleteCompany(fd: FormData) {
+  const user = await requireUser();
+  const companyId = Number(fd.get("companyId"));
+  if (!companyId) return;
+  const [company] = await db.select({ createdByUserId: altCompanies.createdByUserId }).from(altCompanies).where(eq(altCompanies.id, companyId)).limit(1);
+  if (!company) return;
+  if (company.createdByUserId !== user.id && !user.perms.admin) return;
+  await db.delete(altCompanies).where(eq(altCompanies.id, companyId)); // efface aussi alt_company_searches de tout le monde (ON DELETE CASCADE)
+  refresh();
+  revalidatePath("/recherche-entreprises/annuaire");
+}
+
 const EDITABLE_FIELDS = ["kind", "status", "priority", "lastContactDate", "interviewDate", "delayDays", "note"] as const;
 type EditableField = (typeof EDITABLE_FIELDS)[number];
 

@@ -19,6 +19,7 @@ export default async function CompanyDirectoryPage() {
     id: c.id, name: c.name, city: c.city, department: c.department, sector: c.sector, types: c.types, address: c.address,
     salary: c.salary, sources: c.sources, perks: c.perks,
     contactTitle: c.contactTitle, contactName: c.contactName, phone: c.phone, email: c.email, inBoard: inBoardIds.has(c.id),
+    canDelete: user.perms.admin || c.createdByUserId === user.id,
   }));
 
   return (

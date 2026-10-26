@@ -1,16 +1,17 @@
 "use client";
 
 import { useActionState, useMemo, useRef, useState } from "react";
-import { FileUp, Mail, MapPin, Phone, Plus, Search, X } from "lucide-react";
+import { FileUp, Mail, MapPin, Phone, Plus, Search, Trash2, X } from "lucide-react";
 import type { FormState } from "@/lib/actions";
-import { addToBoard, createCompany, importCompaniesCsv, removeFromBoard, searchCompaniesByQuery } from "@/lib/company-search-actions";
+import { addToBoard, createCompany, deleteCompany, importCompaniesCsv, removeFromBoard, searchCompaniesByQuery } from "@/lib/company-search-actions";
 import { TYPE_LABEL, TYPE_ORDER, type CompanyMatch } from "@/lib/company-search";
 import { TypeBadges } from "@/components/TypeBadges";
+import { ConfirmButton } from "@/components/ConfirmButton";
 
 export type DirectoryRow = {
   id: number; name: string; city: string; department: string; sector: string; types: string; address: string;
   salary: string; sources: string; perks: string;
-  contactTitle: string; contactName: string; phone: string; email: string; inBoard: boolean;
+  contactTitle: string; contactName: string; phone: string; email: string; inBoard: boolean; canDelete: boolean;
 };
 
 function Feedback({ state }: { state: FormState }) {
@@ -146,7 +147,7 @@ export function CompanyDirectory({ directory }: { directory: DirectoryRow[] }) {
                   </form>
                 )}
               </summary>
-              {(c.address || c.contactTitle || c.contactName || c.phone || c.email || c.salary || c.sources || c.perks) && (
+              {(c.address || c.contactTitle || c.contactName || c.phone || c.email || c.salary || c.sources || c.perks || c.canDelete) && (
                 <div className="space-y-1.5 border-t border-line p-3 text-sm">
                   {c.address && <p className="flex items-start gap-1.5 text-muted"><MapPin size={14} className="mt-0.5 shrink-0" /> {c.address}</p>}
                   {(c.contactTitle || c.contactName) && <p>{c.contactTitle && <span className="text-muted">{c.contactTitle} · </span>}{c.contactName}</p>}
@@ -155,6 +156,17 @@ export function CompanyDirectory({ directory }: { directory: DirectoryRow[] }) {
                   {c.salary && <p><span className="text-muted">Salaire : </span>{c.salary}</p>}
                   {c.perks && <p><span className="text-muted">Avantages : </span>{c.perks}</p>}
                   {c.sources && <p><span className="text-muted">Source : </span>{c.sources}</p>}
+                  {c.canDelete && (
+                    <form action={deleteCompany} className="pt-1">
+                      <input type="hidden" name="companyId" value={c.id} />
+                      <ConfirmButton
+                        message="Supprimer définitivement cette entreprise de l'annuaire ? Elle disparaîtra aussi du tableau de tous ceux qui l'ont ajoutée."
+                        className="flex items-center gap-1.5 text-xs text-muted hover:text-danger"
+                      >
+                        <Trash2 size={13} /> Supprimer de l&apos;annuaire
+                      </ConfirmButton>
+                    </form>
+                  )}
                 </div>
               )}
             </details>
