@@ -610,6 +610,13 @@
       "when": 1793057681498,
       "tag": "0086_huge_moonstone",
       "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "5",
+      "when": 1793059206158,
+      "tag": "0087_bent_black_knight",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,5 @@
 import {
-  BookOpen, BookUser, Bot, Briefcase, Building2, Calculator, Car, CalendarDays, Camera, CircleHelp, ClipboardList, Clock, Cog, Gamepad2, Home, Images, Lightbulb, Link2, Network, Newspaper, PartyPopper, Receipt, School, NotebookPen, ShieldCheck, SquareKanban, TramFront, Users, Contact, Megaphone, CalendarClock, Zap, BarChart3,
+  BookOpen, BookUser, Bot, Briefcase, Building2, Calculator, Car, CalendarDays, Camera, CircleHelp, ClipboardList, Clock, Cog, Gamepad2, Globe, Home, Images, Laptop, Lightbulb, Link2, Network, Newspaper, PartyPopper, Receipt, School, NotebookPen, ShieldCheck, SquareKanban, TramFront, Users, Contact, Megaphone, CalendarClock, Wrench, Zap, BarChart3,
   type LucideIcon,
 } from "lucide-react";
 
@@ -39,6 +39,11 @@ export const GROUPS: Group[] = [
         children: [
           { href: "/recherche-entreprises", label: "Mon tableau", icon: ClipboardList },
           { href: "/recherche-entreprises/annuaire", label: "Annuaire", icon: Building2, variant: "button" },
+          { href: "/recherche-entreprises/outils", label: "Outils & IA", icon: Wrench },
+          { href: "/recherche-entreprises/sites-ressources", label: "Sites ressources", icon: Globe },
+          { href: "/recherche-entreprises/jobboards", label: "Jobboards", icon: Laptop },
+          { href: "/recherche-entreprises/sites-carrieres", label: "Sites carrières", icon: Megaphone },
+          { href: "/faq", label: "FAQ", icon: CircleHelp, variant: "button" },
         ],
       },
       { href: "/calculettes", label: "Calculettes", icon: Calculator },

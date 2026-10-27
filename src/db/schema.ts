@@ -1328,3 +1328,31 @@ export const altCompanySearches = mysqlTable(
   },
   (t) => [uniqueIndex("alt_search_company_user").on(t.companyId, t.userId), index("alt_search_user_idx").on(t.userId)],
 );
+
+export const RESOURCE_CATEGORIES = ["outils", "sites_ressources", "jobboards", "sites_carrieres"] as const;
+
+// Liens utiles pour la recherche d'alternance (outils, sites ressources, jobboards, sites carrières) : liste
+// PARTAGÉE que n'importe qui peut compléter (un champ pour ajouter une autre page), avec juste un favori personnel
+// (pas de suivi détaillé comme pour les entreprises, un simple lien n'en a pas besoin).
+export const resourceLinks = mysqlTable(
+  "resource_links",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    category: mysqlEnum("category", RESOURCE_CATEGORIES).notNull(),
+    label: varchar("label", { length: 150 }).notNull(),
+    url: varchar("url", { length: 1000 }).notNull(),
+    description: varchar("description", { length: 300 }).notNull().default(""),
+    createdByUserId: int("created_by_user_id").references((): AnyMySqlColumn => users.id, { onDelete: "set null" }),
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [index("resource_links_category_idx").on(t.category)],
+);
+
+export const resourceFavorites = mysqlTable(
+  "resource_favorites",
+  {
+    resourceId: int("resource_id").notNull().references(() => resourceLinks.id, { onDelete: "cascade" }),
+    userId: int("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.resourceId, t.userId] })],
+);
