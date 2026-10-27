@@ -1312,9 +1312,19 @@ export const altCompanies = mysqlTable(
   (t) => [uniqueIndex("alt_companies_name_key").on(t.nameKey), index("alt_companies_city_idx").on(t.city)],
 );
 
-export const ALT_COMPANY_STATUSES = [
-  "a_contacter", "cv_envoye", "relance", "rappeler", "entretien_prevu", "en_cours", "valider", "refuser", "refuse_apres_entretien", "annuler",
-] as const;
+// Couleurs possibles pour un statut d'entreprise, gérées en admin : jeu fermé car Tailwind doit voir les classes
+// écrites en toutes lettres quelque part dans le code (lib/company-status.ts) pour les inclure au build.
+export const STATUS_COLORS = ["zinc", "slate", "red", "rose", "orange", "amber", "emerald", "teal", "sky", "blue", "indigo", "violet", "pink"] as const;
+
+// Statuts d'entreprise (recherche d'alternance) : liste gérée en admin (Admin > Statuts entreprises), avec une
+// couleur par statut qui colore toute la ligne dans le tableau de suivi.
+export const companyStatuses = mysqlTable("company_statuses", {
+  id: int("id").primaryKey().autoincrement(),
+  key: varchar("key", { length: 40 }).notNull().unique(),
+  label: varchar("label", { length: 60 }).notNull(),
+  color: mysqlEnum("color", STATUS_COLORS).notNull().default("zinc"),
+  position: int("position").notNull().default(0),
+});
 
 // Suivi de candidature d'UNE personne pour UNE entreprise : « ajouter à mon tableau » crée cette ligne, vide au
 // départ (sauf import CSV, qui la remplit directement). Jamais partagé : chacun voit et édite seulement les siennes.
@@ -1325,7 +1335,9 @@ export const altCompanySearches = mysqlTable(
     companyId: int("company_id").notNull().references(() => altCompanies.id, { onDelete: "cascade" }),
     userId: int("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
     kind: mysqlEnum("kind", ["offre", "spontanee"]),
-    status: mysqlEnum("status", ALT_COMPANY_STATUSES),
+    // Clé vers company_statuses.key (pas de FK : la liste des statuts est modifiable en admin, et un statut qu'on a
+    // supprimé ne doit pas empêcher de lire les anciennes lignes qui l'utilisaient encore).
+    status: varchar("status", { length: 40 }),
     priority: mysqlEnum("priority", ["faible", "moyenne", "haute"]),
     lastContactDate: date("last_contact_date", { mode: "string" }),
     interviewDate: date("interview_date", { mode: "string" }),

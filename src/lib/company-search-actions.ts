@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { and, eq, inArray, like, or } from "drizzle-orm";
 import { db } from "@/db";
-import { ALT_COMPANY_STATUSES, altCompanies, altCompanySearches } from "@/db/schema";
+import { altCompanies, altCompanySearches, companyStatuses } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { companyKey, parseCsv, parseDelay, parseFrDate, parseKind, parsePriority, parseStatus, parseTypes, type CompanyMatch } from "@/lib/company-search";
 import type { FormState } from "@/lib/actions";
@@ -93,7 +93,10 @@ export async function saveSearchField(fd: FormData) {
 
   let value: string | number | null = raw || null;
   if (field === "kind" && raw && !["offre", "spontanee"].includes(raw)) return;
-  if (field === "status" && raw && !(ALT_COMPANY_STATUSES as readonly string[]).includes(raw)) return;
+  if (field === "status" && raw) {
+    const [known] = await db.select({ key: companyStatuses.key }).from(companyStatuses).where(eq(companyStatuses.key, raw)).limit(1);
+    if (!known) return;
+  }
   if (field === "priority" && raw && !["faible", "moyenne", "haute"].includes(raw)) return;
   if (field === "delayDays") value = raw ? Math.round(Number(raw)) : null;
   if (field === "note") value = raw.slice(0, 2000);

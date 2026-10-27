@@ -4,17 +4,15 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { CheckSquare, Globe, Phone, Plus, Trash2 } from "lucide-react";
 import { publishCompanies, removeFromBoard, saveSearchField } from "@/lib/company-search-actions";
-import {
-  KIND_LABEL, PRIORITY_LABEL, STATUS_CLASS, STATUS_LABEL, STATUS_ORDER,
-  type CompanyKind, type CompanyPriority, type CompanyStatus,
-} from "@/lib/company-search";
+import { KIND_LABEL, PRIORITY_LABEL, type CompanyKind, type CompanyPriority } from "@/lib/company-search";
+import { STATUS_BADGE_CLASS, STATUS_ROW_CLASS, type CompanyStatusDef } from "@/lib/company-status";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { TypeBadges } from "@/components/TypeBadges";
 
 export type BoardRow = {
   searchId: number; companyId: number; name: string; city: string; sector: string; types: string; address: string;
   contactName: string; phone: string; email: string;
-  kind: CompanyKind | null; status: CompanyStatus | null; priority: CompanyPriority | null;
+  kind: CompanyKind | null; status: string | null; priority: CompanyPriority | null;
   lastContactDate: string | null; interviewDate: string | null; delayDays: number | null; note: string;
   published: boolean; canPublish: boolean;
 };
@@ -56,7 +54,8 @@ function NoteCell({ searchId, value }: { searchId: number; value: string }) {
   );
 }
 
-export function MyBoardTable({ board }: { board: BoardRow[] }) {
+export function MyBoardTable({ board, statuses }: { board: BoardRow[]; statuses: CompanyStatusDef[] }) {
+  const statusByKey = new Map(statuses.map((s) => [s.key, s]));
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [publishing, setPublishing] = useState(false);
@@ -120,8 +119,10 @@ export function MyBoardTable({ board }: { board: BoardRow[] }) {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((r) => (
-                <tr key={r.searchId} className="border-b border-line last:border-0 align-top">
+              {filtered.map((r) => {
+                const statusDef = r.status ? statusByKey.get(r.status) : undefined;
+                return (
+                <tr key={r.searchId} className={`border-b border-line last:border-0 align-top ${statusDef ? STATUS_ROW_CLASS[statusDef.color] : ""}`}>
                   <td className="p-2">
                     <p className="font-medium">{r.name}</p>
                     <p className="text-xs text-muted">{r.city}</p>
@@ -137,8 +138,8 @@ export function MyBoardTable({ board }: { board: BoardRow[] }) {
                   </td>
                   <td className="p-2"><EditCell searchId={r.searchId} field="kind" value={r.kind ?? ""} type="select" options={Object.entries(KIND_LABEL).map(([value, label]) => ({ value, label }))} /></td>
                   <td className="p-2">
-                    <EditCell searchId={r.searchId} field="status" value={r.status ?? ""} type="select" options={STATUS_ORDER.map((value) => ({ value, label: STATUS_LABEL[value] }))} />
-                    {r.status && <span className={`mt-1 block w-fit rounded-full px-1.5 py-0.5 text-[10px] ${STATUS_CLASS[r.status]}`}>{STATUS_LABEL[r.status]}</span>}
+                    <EditCell searchId={r.searchId} field="status" value={r.status ?? ""} type="select" options={statuses.map((s) => ({ value: s.key, label: s.label }))} />
+                    {statusDef && <span className={`mt-1 block w-fit rounded-full px-1.5 py-0.5 text-[10px] ${STATUS_BADGE_CLASS[statusDef.color]}`}>{statusDef.label}</span>}
                   </td>
                   <td className="p-2"><EditCell searchId={r.searchId} field="priority" value={r.priority ?? ""} type="select" options={Object.entries(PRIORITY_LABEL).map(([value, label]) => ({ value, label }))} /></td>
                   <td className="p-2"><EditCell searchId={r.searchId} field="lastContactDate" value={r.lastContactDate ?? ""} type="date" /></td>
@@ -170,7 +171,8 @@ export function MyBoardTable({ board }: { board: BoardRow[] }) {
                     </form>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         )}

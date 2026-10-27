@@ -1,7 +1,5 @@
 // Recherche d'entreprises (alternance) : constantes partagées serveur/client, sans dépendance serveur.
-import type { ALT_COMPANY_STATUSES } from "@/db/schema";
 
-export type CompanyStatus = (typeof ALT_COMPANY_STATUSES)[number];
 export type CompanyPriority = "faible" | "moyenne" | "haute";
 export type CompanyKind = "offre" | "spontanee";
 export type CompanyType = "son" | "lumiere" | "video";
@@ -13,34 +11,6 @@ export type CompanyMatch = {
 
 export const TYPE_LABEL: Record<CompanyType, string> = { son: "Son", lumiere: "Lumière", video: "Vidéo" };
 export const TYPE_ORDER: CompanyType[] = ["son", "lumiere", "video"];
-
-export const STATUS_LABEL: Record<CompanyStatus, string> = {
-  a_contacter: "À contacter",
-  cv_envoye: "CV envoyé",
-  relance: "Relancé",
-  rappeler: "À rappeler",
-  entretien_prevu: "Entretien prévu",
-  en_cours: "En cours",
-  valider: "Validé",
-  refuser: "Refusé",
-  refuse_apres_entretien: "Refusé après entretien",
-  annuler: "Annulé",
-};
-export const STATUS_ORDER: CompanyStatus[] = [
-  "a_contacter", "cv_envoye", "relance", "rappeler", "entretien_prevu", "en_cours", "valider", "refuser", "refuse_apres_entretien", "annuler",
-];
-export const STATUS_CLASS: Record<CompanyStatus, string> = {
-  a_contacter: "bg-zinc-500/20 text-zinc-700 dark:text-zinc-300",
-  cv_envoye: "bg-sky-500/20 text-sky-800 dark:text-sky-200",
-  relance: "bg-sky-500/20 text-sky-800 dark:text-sky-200",
-  rappeler: "bg-amber-500/20 text-amber-800 dark:text-amber-200",
-  entretien_prevu: "bg-violet-500/20 text-violet-800 dark:text-violet-200",
-  en_cours: "bg-blue-500/20 text-blue-800 dark:text-blue-200",
-  valider: "bg-emerald-500/20 text-emerald-800 dark:text-emerald-200",
-  refuser: "bg-rose-500/20 text-rose-800 dark:text-rose-200",
-  refuse_apres_entretien: "bg-rose-500/20 text-rose-800 dark:text-rose-200",
-  annuler: "bg-zinc-500/20 text-zinc-700 dark:text-zinc-300",
-};
 
 export const PRIORITY_LABEL: Record<CompanyPriority, string> = { faible: "Faible", moyenne: "Moyenne", haute: "Haute" };
 export const KIND_LABEL: Record<CompanyKind, string> = { offre: "Offre", spontanee: "Spontanée" };
@@ -58,8 +28,9 @@ export function parseTypes(raw: string): string {
   return found.join(",");
 }
 
-/** Statuts du tableur d'origine (parfois en majuscules, variantes) → l'un des statuts propres ci-dessus, ou null si rien ne correspond. */
-export function parseStatus(raw: string): CompanyStatus | null {
+/** Statuts du tableur d'origine (parfois en majuscules, variantes) → la clé d'un des statuts par défaut (voir
+ * db/seed.ts), ou null si rien ne correspond. Si ce statut a été supprimé en admin, la ligne retombe sur « aucun ». */
+export function parseStatus(raw: string): string | null {
   const s = raw.trim().toLowerCase();
   if (!s) return null;
   if (s.includes("refuse") && s.includes("entretien")) return "refuse_apres_entretien";

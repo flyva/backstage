@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { ClipboardList } from "lucide-react";
-import { eq, inArray } from "drizzle-orm";
+import { asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { altCompanies, altCompanySearches } from "@/db/schema";
+import { altCompanies, altCompanySearches, companyStatuses } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { MyBoardTable, type BoardRow } from "@/components/MyBoardTable";
 
@@ -10,7 +10,10 @@ export const metadata = { title: "Mon tableau · Recherche entreprises" };
 
 export default async function MyBoardPage() {
   const user = await requireUser();
-  const mySearches = await db.select().from(altCompanySearches).where(eq(altCompanySearches.userId, user.id));
+  const [mySearches, statuses] = await Promise.all([
+    db.select().from(altCompanySearches).where(eq(altCompanySearches.userId, user.id)),
+    db.select().from(companyStatuses).orderBy(asc(companyStatuses.position)),
+  ]);
   const companies = mySearches.length
     ? await db.select().from(altCompanies).where(inArray(altCompanies.id, mySearches.map((s) => s.companyId)))
     : [];
@@ -39,7 +42,7 @@ export default async function MyBoardPage() {
           Ton suivi de candidatures (statut, priorité, relances…), rien que pour toi. Ajoute des entreprises depuis l&apos;<Link href="/recherche-entreprises/annuaire" className="text-accent underline">annuaire</Link>.
         </p>
       </header>
-      <MyBoardTable board={board} />
+      <MyBoardTable board={board} statuses={statuses} />
     </div>
   );
 }

@@ -3,7 +3,7 @@ loadEnvConfig(process.cwd());
 
 async function main() {
   const { db } = await import("./index");
-  const { faqItems, usefulLinks, resourceLinks, altCompanies } = await import("./schema");
+  const { faqItems, usefulLinks, resourceLinks, altCompanies, companyStatuses } = await import("./schema");
   const { count, eq } = await import("drizzle-orm");
   const { companyKey, parseTypes } = await import("../lib/company-search");
 
@@ -20,6 +20,22 @@ async function main() {
     await db.insert(usefulLinks).values([
       { category: "Transports", label: "TBM", url: "https://www.infotbm.com", description: "Horaires et perturbations bus, tram, bateau" },
       { category: "Transports", label: "V³ (vélos en libre-service)", url: "https://www.infotbm.com/fr/velo-en-libre-service", description: "Stations et disponibilités" },
+    ]);
+  }
+
+  const [{ n: statusCount }] = await db.select({ n: count() }).from(companyStatuses);
+  if (statusCount === 0) {
+    await db.insert(companyStatuses).values([
+      { key: "a_contacter", label: "À contacter", color: "zinc", position: 0 },
+      { key: "cv_envoye", label: "CV envoyé", color: "sky", position: 1 },
+      { key: "relance", label: "Relancé", color: "sky", position: 2 },
+      { key: "rappeler", label: "À rappeler", color: "amber", position: 3 },
+      { key: "entretien_prevu", label: "Entretien prévu", color: "violet", position: 4 },
+      { key: "en_cours", label: "En cours", color: "blue", position: 5 },
+      { key: "valider", label: "Validé", color: "emerald", position: 6 },
+      { key: "refuser", label: "Refusé", color: "rose", position: 7 },
+      { key: "refuse_apres_entretien", label: "Refusé après entretien", color: "rose", position: 8 },
+      { key: "annuler", label: "Annulé", color: "zinc", position: 9 },
     ]);
   }
 
