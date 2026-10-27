@@ -1405,3 +1405,19 @@ export const resourceFavorites = mysqlTable(
   },
   (t) => [primaryKey({ columns: [t.resourceId, t.userId] })],
 );
+
+// Banque de mails PARTAGÉE (recherche d'alternance) : contacts utiles (RH, casting, prod…) avec leur email, pour
+// prospecter — filtrable par nom/email/catégorie. N'importe qui peut compléter, comme les autres listes partagées.
+export const emailBankEntries = mysqlTable(
+  "email_bank_entries",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    label: varchar("label", { length: 150 }).notNull(), // ex. "RH — Nom Entreprise"
+    email: varchar("email", { length: 300 }).notNull(),
+    category: varchar("category", { length: 80 }).notNull().default(""), // libre : "RH", "Casting", "Prod"…
+    note: varchar("note", { length: 300 }).notNull().default(""),
+    createdByUserId: int("created_by_user_id").references((): AnyMySqlColumn => users.id, { onDelete: "set null" }),
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [index("email_bank_category_idx").on(t.category)],
+);
