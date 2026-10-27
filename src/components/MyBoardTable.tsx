@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, CheckSquare, Globe, Phone, Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, CheckSquare, Globe, Info, Phone, Plus, Trash2 } from "lucide-react";
 import { publishCompanies, removeFromBoard, saveSearchField } from "@/lib/company-search-actions";
 import { KIND_LABEL, PRIORITY_LABEL, type CompanyKind, type CompanyPriority } from "@/lib/company-search";
 import { STATUS_BADGE_CLASS, STATUS_ROW_CLASS, type CompanyStatusDef } from "@/lib/company-status";
@@ -13,7 +13,7 @@ export type BoardRow = {
   searchId: number; companyId: number; name: string; city: string; sector: string; types: string; address: string;
   contactName: string; phone: string; email: string;
   kind: CompanyKind | null; status: string | null; priority: CompanyPriority | null;
-  lastContactDate: string | null; interviewDate: string | null; delayDays: number | null; note: string;
+  lastContactDate: string | null; nextInterviewDate: string | null; interviewCount: number; delayDays: number | null; note: string;
   published: boolean; canPublish: boolean; overdue: boolean;
 };
 
@@ -116,6 +116,7 @@ export function MyBoardTable({ board, statuses }: { board: BoardRow[]; statuses:
                 <th className="p-2 font-medium">Observation</th>
                 <th className="p-2 font-medium">Annuaire</th>
                 <th className="p-2"></th>
+                <th className="p-2"></th>
               </tr>
             </thead>
             <tbody>
@@ -145,7 +146,11 @@ export function MyBoardTable({ board, statuses }: { board: BoardRow[]; statuses:
                   </td>
                   <td className="p-2"><EditCell searchId={r.searchId} field="priority" value={r.priority ?? ""} type="select" options={Object.entries(PRIORITY_LABEL).map(([value, label]) => ({ value, label }))} /></td>
                   <td className="p-2"><EditCell searchId={r.searchId} field="lastContactDate" value={r.lastContactDate ?? ""} type="date" /></td>
-                  <td className="p-2"><EditCell searchId={r.searchId} field="interviewDate" value={r.interviewDate ?? ""} type="date" /></td>
+                  <td className="p-2 text-xs">
+                    <Link href={`/recherche-entreprises/suivi/${r.searchId}`} className="text-accent underline">
+                      {r.interviewCount === 0 ? "Aucun" : `${r.interviewCount} · ${r.nextInterviewDate ? new Date(`${r.nextInterviewDate}T12:00:00`).toLocaleDateString("fr-FR") : ""}`}
+                    </Link>
+                  </td>
                   <td className="p-2">
                     <EditCell searchId={r.searchId} field="delayDays" value={r.delayDays?.toString() ?? ""} type="number" />
                     {r.overdue && r.delayDays !== null && <p className="mt-0.5 text-[10px] text-danger">dépassé</p>}
@@ -166,6 +171,11 @@ export function MyBoardTable({ board, statuses }: { board: BoardRow[]; statuses:
                     ) : (
                       <span className="text-xs text-muted">Pas encore publiée</span>
                     )}
+                  </td>
+                  <td className="p-2">
+                    <Link href={`/recherche-entreprises/suivi/${r.searchId}`} className="rounded-lg p-1.5 text-muted hover:bg-bg hover:text-accent" title="Détails (entretiens, historique de contact)">
+                      <Info size={14} aria-label="Détails" />
+                    </Link>
                   </td>
                   <td className="p-2">
                     <form action={removeFromBoard}>

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ClipboardList } from "lucide-react";
 import { asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { altCompanies, altCompanySearches, companyStatuses } from "@/db/schema";
+import { altCompanies, altCompanySearches, companyInterviews, companyStatuses } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { addDays } from "@/lib/alternance";
 import { todayParis } from "@/lib/equipment";
@@ -20,6 +20,12 @@ export default async function MyBoardPage() {
     ? await db.select().from(altCompanies).where(inArray(altCompanies.id, mySearches.map((s) => s.companyId)))
     : [];
   const companyById = new Map(companies.map((c) => [c.id, c]));
+  const interviews = mySearches.length
+    ? await db.select({ searchId: companyInterviews.searchId, interviewDate: companyInterviews.interviewDate })
+        .from(companyInterviews).where(inArray(companyInterviews.searchId, mySearches.map((s) => s.id))).orderBy(asc(companyInterviews.interviewDate))
+    : [];
+  const interviewsBySearch = new Map<number, string[]>();
+  for (const it of interviews) interviewsBySearch.set(it.searchId, [...(interviewsBySearch.get(it.searchId) ?? []), it.interviewDate]);
   const today = todayParis();
 
   const board: BoardRow[] = mySearches
@@ -27,10 +33,12 @@ export default async function MyBoardPage() {
       const c = companyById.get(s.companyId);
       if (!c) return null;
       const overdue = !!(s.lastContactDate && s.delayDays && addDays(s.lastContactDate, s.delayDays) <= today);
+      const interviewDates = interviewsBySearch.get(s.id) ?? [];
       return {
         searchId: s.id, companyId: c.id, name: c.name, city: c.city, sector: c.sector, types: c.types, address: c.address,
         contactName: c.contactName, phone: c.phone, email: c.email,
-        kind: s.kind, status: s.status, priority: s.priority, lastContactDate: s.lastContactDate, interviewDate: s.interviewDate,
+        kind: s.kind, status: s.status, priority: s.priority, lastContactDate: s.lastContactDate,
+        nextInterviewDate: interviewDates.find((d) => d >= today) ?? interviewDates.at(-1) ?? null, interviewCount: interviewDates.length,
         delayDays: s.delayDays, note: s.note, overdue,
         published: c.published, canPublish: user.perms.admin || c.createdByUserId === user.id,
       };

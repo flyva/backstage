@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { and, eq, inArray, like, or } from "drizzle-orm";
 import { db } from "@/db";
-import { altCompanies, altCompanySearches, companyStatuses } from "@/db/schema";
+import { altCompanies, altCompanySearches, companyContacts, companyInterviews, companyStatuses, CONTACT_TYPES } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { companyKey, parseCsv, parseDelay, parseFrDate, parseKind, parsePriority, parseStatus, parseTypes, type CompanyMatch } from "@/lib/company-search";
 import type { FormState } from "@/lib/actions";
@@ -78,7 +78,7 @@ export async function deleteCompany(fd: FormData) {
   revalidatePath("/recherche-entreprises/annuaire");
 }
 
-const EDITABLE_FIELDS = ["kind", "status", "priority", "lastContactDate", "interviewDate", "delayDays", "note"] as const;
+const EDITABLE_FIELDS = ["kind", "status", "priority", "lastContactDate", "delayDays", "note"] as const;
 type EditableField = (typeof EDITABLE_FIELDS)[number];
 
 /** Modifie UN champ d'UNE ligne de suivi (cellule éditée dans le tableau, soumission auto au changement). */
@@ -100,7 +100,7 @@ export async function saveSearchField(fd: FormData) {
   if (field === "priority" && raw && !["faible", "moyenne", "haute"].includes(raw)) return;
   if (field === "delayDays") value = raw ? Math.round(Number(raw)) : null;
   if (field === "note") value = raw.slice(0, 2000);
-  if ((field === "lastContactDate" || field === "interviewDate") && raw && !/^\d{4}-\d{2}-\d{2}$/.test(raw)) return;
+  if (field === "lastContactDate" && raw && !/^\d{4}-\d{2}-\d{2}$/.test(raw)) return;
 
   const values: Record<string, string | number | null> = { [field]: value };
   // On touche à la date ou au délai : si un rappel était déjà parti pour l'ancienne échéance, on le rearme pour la nouvelle.
@@ -190,17 +190,88 @@ export async function importCompaniesCsv(_: FormState, fd: FormData): Promise<Fo
 
     const values = {
       kind: parseKind(get(13)), lastContactDate: parseFrDate(get(14)), status: parseStatus(get(15)),
-      priority: parsePriority(get(16)), interviewDate: parseFrDate(get(17)), note: get(18).slice(0, 2000), delayDays: parseDelay(get(19)),
+      priority: parsePriority(get(16)), note: get(18).slice(0, 2000), delayDays: parseDelay(get(19)),
     };
-    const searchId = searchByCompany.get(companyId);
+    let searchId = searchByCompany.get(companyId);
     if (searchId) await db.update(altCompanySearches).set(values).where(eq(altCompanySearches.id, searchId));
     else {
       const [res] = await db.insert(altCompanySearches).values({ companyId, userId: user.id, ...values });
-      searchByCompany.set(companyId, res.insertId);
+      searchId = res.insertId;
+      searchByCompany.set(companyId, searchId);
     }
+    const interviewDate = parseFrDate(get(17));
+    if (interviewDate) await db.insert(companyInterviews).values({ searchId, interviewDate });
     imported++;
   }
 
   refresh();
   return { ok: `${imported} entreprise(s) importée(s) dans ton tableau${newCompanies ? ` (${newCompanies} nouvelle(s), à publier toi-même dans l'annuaire si tu veux)` : ""}${skipped ? `, ${skipped} ligne(s) ignorée(s)` : ""}` };
+}
+
+/** Vérifie que la ligne de suivi `searchId` appartient bien à l'utilisateur connecté, et la renvoie. */
+async function myVerifiedSearch(searchId: number, userId: number) {
+  const [row] = await db.select({ id: altCompanySearches.id }).from(altCompanySearches)
+    .where(and(eq(altCompanySearches.id, searchId), eq(altCompanySearches.userId, userId))).limit(1);
+  return row;
+}
+
+const refreshDetail = (searchId: number) => revalidatePath(`/recherche-entreprises/suivi/${searchId}`);
+
+/** Ajoute une entrée à l'historique de contact (appel / mail / physique) d'une ligne de suivi : vrai CRM, avec
+ * commentaire. Met aussi à jour lastContactDate si cette date est plus récente, et réarme le rappel de délai. */
+export async function addContact(_: FormState, fd: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const searchId = Number(fd.get("searchId"));
+  const type = String(fd.get("type") ?? "");
+  const contactDate = String(fd.get("contactDate") ?? "").trim();
+  const comment = String(fd.get("comment") ?? "").trim().slice(0, 2000);
+  if (!searchId || !CONTACT_TYPES.includes(type as (typeof CONTACT_TYPES)[number])) return { error: "Champs invalides" };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(contactDate)) return { error: "Date invalide" };
+  if (!(await myVerifiedSearch(searchId, user.id))) return { error: "Introuvable" };
+
+  await db.insert(companyContacts).values({ searchId, type: type as (typeof CONTACT_TYPES)[number], contactDate, comment });
+  const [row] = await db.select({ lastContactDate: altCompanySearches.lastContactDate }).from(altCompanySearches).where(eq(altCompanySearches.id, searchId)).limit(1);
+  if (!row?.lastContactDate || contactDate > row.lastContactDate) {
+    await db.update(altCompanySearches).set({ lastContactDate: contactDate, delayAlertSentAt: null }).where(eq(altCompanySearches.id, searchId));
+  }
+  refresh();
+  refreshDetail(searchId);
+  return { ok: "Contact ajouté" };
+}
+
+/** Supprime une entrée de l'historique de contact (seulement la mienne). */
+export async function deleteContact(fd: FormData) {
+  const user = await requireUser();
+  const id = Number(fd.get("id"));
+  const searchId = Number(fd.get("searchId"));
+  if (!id || !searchId || !(await myVerifiedSearch(searchId, user.id))) return;
+  await db.delete(companyContacts).where(and(eq(companyContacts.id, id), eq(companyContacts.searchId, searchId)));
+  refresh();
+  refreshDetail(searchId);
+}
+
+/** Ajoute un entretien à une ligne de suivi (plusieurs entretiens possibles pour une même candidature). */
+export async function addInterview(_: FormState, fd: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const searchId = Number(fd.get("searchId"));
+  const interviewDate = String(fd.get("interviewDate") ?? "").trim();
+  const note = String(fd.get("note") ?? "").trim().slice(0, 255);
+  if (!searchId || !/^\d{4}-\d{2}-\d{2}$/.test(interviewDate)) return { error: "Date invalide" };
+  if (!(await myVerifiedSearch(searchId, user.id))) return { error: "Introuvable" };
+
+  await db.insert(companyInterviews).values({ searchId, interviewDate, note });
+  refresh();
+  refreshDetail(searchId);
+  return { ok: "Entretien ajouté" };
+}
+
+/** Supprime un entretien (seulement le mien). */
+export async function deleteInterview(fd: FormData) {
+  const user = await requireUser();
+  const id = Number(fd.get("id"));
+  const searchId = Number(fd.get("searchId"));
+  if (!id || !searchId || !(await myVerifiedSearch(searchId, user.id))) return;
+  await db.delete(companyInterviews).where(and(eq(companyInterviews.id, id), eq(companyInterviews.searchId, searchId)));
+  refresh();
+  refreshDetail(searchId);
 }

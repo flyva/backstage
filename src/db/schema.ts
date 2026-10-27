@@ -1340,13 +1340,42 @@ export const altCompanySearches = mysqlTable(
     status: varchar("status", { length: 40 }),
     priority: mysqlEnum("priority", ["faible", "moyenne", "haute"]),
     lastContactDate: date("last_contact_date", { mode: "string" }),
-    interviewDate: date("interview_date", { mode: "string" }),
     delayDays: int("delay_days"), // nombre de jours après lastContactDate : passé ce délai, la ligne passe en rouge et un rappel (mail + push) part une fois
     delayAlertSentAt: datetime("delay_alert_sent_at"), // évite de renvoyer le rappel chaque jour ; remis à zéro si lastContactDate ou delayDays change
     note: text("note").notNull().default(""),
     createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
   },
   (t) => [uniqueIndex("alt_search_company_user").on(t.companyId, t.userId), index("alt_search_user_idx").on(t.userId)],
+);
+
+export const CONTACT_TYPES = ["appel", "mail", "physique"] as const;
+
+// Historique des contacts pour UN suivi de candidature (vrai CRM : base d'appel/mail/visite avec un commentaire).
+// Ajouter un contact met aussi à jour altCompanySearches.lastContactDate (si plus récent) et réarme le rappel de délai.
+export const companyContacts = mysqlTable(
+  "company_contacts",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    searchId: int("search_id").notNull().references(() => altCompanySearches.id, { onDelete: "cascade" }),
+    type: mysqlEnum("type", CONTACT_TYPES).notNull(),
+    contactDate: date("contact_date", { mode: "string" }).notNull(),
+    comment: text("comment").notNull().default(""),
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [index("company_contacts_search_idx").on(t.searchId)],
+);
+
+// Entretiens pour UN suivi de candidature : plusieurs possibles (un bouton "+ ajouter un entretien" dans l'app).
+export const companyInterviews = mysqlTable(
+  "company_interviews",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    searchId: int("search_id").notNull().references(() => altCompanySearches.id, { onDelete: "cascade" }),
+    interviewDate: date("interview_date", { mode: "string" }).notNull(),
+    note: varchar("note", { length: 255 }).notNull().default(""),
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [index("company_interviews_search_idx").on(t.searchId)],
 );
 
 export const RESOURCE_CATEGORIES = ["outils", "sites_ressources", "jobboards", "sites_carrieres"] as const;
