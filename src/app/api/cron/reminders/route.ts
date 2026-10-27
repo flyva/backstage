@@ -1,9 +1,10 @@
 import { timingSafeEqual } from "node:crypto";
-import { and, eq, inArray, lt, lte, or } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, lt, lte, or } from "drizzle-orm";
 import { db } from "@/db";
-import { equipmentItems, loans, roles, timeEntries, users, workDays } from "@/db/schema";
+import { altCompanies, altCompanySearches, equipmentItems, loans, roles, timeEntries, users, workDays } from "@/db/schema";
 import { addDays, weekday } from "@/lib/alternance";
 import { daysBetween, todayParis } from "@/lib/equipment";
+import { publicBaseUrl, sendMail } from "@/lib/mail";
 import { notifyUser } from "@/lib/push";
 import { cardHref, dueCards } from "@/lib/reminders";
 
@@ -88,6 +89,33 @@ async function run(req: Request) {
     }
   }
 
+  // Recherche entreprises : « délais » dépassé (lastContactDate + delayDays) → la ligne passe en rouge côté app, et un
+  // rappel (push + mail) part UNE fois (delayAlertSentAt), remis à zéro si la personne change la date ou le délai.
+  const dueSearches = await db
+    .select({
+      id: altCompanySearches.id, userId: altCompanySearches.userId, lastContactDate: altCompanySearches.lastContactDate,
+      delayDays: altCompanySearches.delayDays, companyName: altCompanies.name, email: users.email,
+    })
+    .from(altCompanySearches)
+    .innerJoin(altCompanies, eq(altCompanies.id, altCompanySearches.companyId))
+    .innerJoin(users, eq(users.id, altCompanySearches.userId))
+    .where(and(isNotNull(altCompanySearches.lastContactDate), isNotNull(altCompanySearches.delayDays), isNull(altCompanySearches.delayAlertSentAt)));
+
+  let delayAlerts = 0;
+  const base = publicBaseUrl();
+  for (const s of dueSearches) {
+    const due = addDays(s.lastContactDate!, s.delayDays!);
+    if (due > today) continue;
+    const body = `${s.companyName} : relance en retard (prévue le ${due}).`;
+    await notifyUser(s.userId, { title: "Relance en retard", body, url: "/recherche-entreprises", tag: `alt-delay-${s.id}` }, "reminders");
+    if (s.email) {
+      const link = base ? `${base}/recherche-entreprises` : "/recherche-entreprises";
+      await sendMail(s.email, "Relance en retard — Recherche entreprises", body, `<p>${body}</p><p><a href="${link}">Voir mon tableau</a></p>`);
+    }
+    await db.update(altCompanySearches).set({ delayAlertSentAt: new Date() }).where(eq(altCompanySearches.id, s.id));
+    delayAlerts++;
+  }
+
   // Purge RGPD : les comptes jamais activés ne doivent pas s'accumuler indéfiniment (voir Admin > RGPD).
   const RETENTION = { rejected: 90, pending: 180 }; // jours depuis la création
   const purged = { rejected: 0, pending: 0 };
@@ -99,7 +127,7 @@ async function run(req: Request) {
     }
   }
 
-  return Response.json({ ok: true, remindedTasks: reminded, remindedPlanning: planned, loansConcerned: due.length, overdue, notifiedBorrowers: borrowers, notifiedManagers: managers, remindedEmptyPointeuse: emptyPointeuse, purged });
+  return Response.json({ ok: true, remindedTasks: reminded, remindedPlanning: planned, loansConcerned: due.length, overdue, notifiedBorrowers: borrowers, notifiedManagers: managers, remindedEmptyPointeuse: emptyPointeuse, delayAlerts, purged });
 }
 
 export const GET = run;

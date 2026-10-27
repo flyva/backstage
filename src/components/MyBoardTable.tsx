@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { CheckSquare, Globe, Phone, Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, CheckSquare, Globe, Phone, Plus, Trash2 } from "lucide-react";
 import { publishCompanies, removeFromBoard, saveSearchField } from "@/lib/company-search-actions";
 import { KIND_LABEL, PRIORITY_LABEL, type CompanyKind, type CompanyPriority } from "@/lib/company-search";
 import { STATUS_BADGE_CLASS, STATUS_ROW_CLASS, type CompanyStatusDef } from "@/lib/company-status";
@@ -14,7 +14,7 @@ export type BoardRow = {
   contactName: string; phone: string; email: string;
   kind: CompanyKind | null; status: string | null; priority: CompanyPriority | null;
   lastContactDate: string | null; interviewDate: string | null; delayDays: number | null; note: string;
-  published: boolean; canPublish: boolean;
+  published: boolean; canPublish: boolean; overdue: boolean;
 };
 
 /** Cellule éditable : un <select> ou <input> qui s'auto-soumet au changement (une ligne de suivi = un formulaire par champ). */
@@ -121,11 +121,13 @@ export function MyBoardTable({ board, statuses }: { board: BoardRow[]; statuses:
             <tbody>
               {filtered.map((r) => {
                 const statusDef = r.status ? statusByKey.get(r.status) : undefined;
+                const rowClass = r.overdue ? "border-l-4 border-danger bg-danger/10" : statusDef ? STATUS_ROW_CLASS[statusDef.color] : "";
                 return (
-                <tr key={r.searchId} className={`border-b border-line last:border-0 align-top ${statusDef ? STATUS_ROW_CLASS[statusDef.color] : ""}`}>
+                <tr key={r.searchId} className={`border-b border-line last:border-0 align-top ${rowClass}`}>
                   <td className="p-2">
                     <p className="font-medium">{r.name}</p>
                     <p className="text-xs text-muted">{r.city}</p>
+                    {r.overdue && <p className="flex items-center gap-1 text-xs font-medium text-danger"><AlertTriangle size={12} /> En retard</p>}
                   </td>
                   <td className="p-2">
                     <p className="text-xs">{r.sector}</p>
@@ -144,7 +146,10 @@ export function MyBoardTable({ board, statuses }: { board: BoardRow[]; statuses:
                   <td className="p-2"><EditCell searchId={r.searchId} field="priority" value={r.priority ?? ""} type="select" options={Object.entries(PRIORITY_LABEL).map(([value, label]) => ({ value, label }))} /></td>
                   <td className="p-2"><EditCell searchId={r.searchId} field="lastContactDate" value={r.lastContactDate ?? ""} type="date" /></td>
                   <td className="p-2"><EditCell searchId={r.searchId} field="interviewDate" value={r.interviewDate ?? ""} type="date" /></td>
-                  <td className="p-2"><EditCell searchId={r.searchId} field="delayDays" value={r.delayDays?.toString() ?? ""} type="number" /></td>
+                  <td className="p-2">
+                    <EditCell searchId={r.searchId} field="delayDays" value={r.delayDays?.toString() ?? ""} type="number" />
+                    {r.overdue && r.delayDays !== null && <p className="mt-0.5 text-[10px] text-danger">dépassé</p>}
+                  </td>
                   <td className="p-2"><NoteCell searchId={r.searchId} value={r.note} /></td>
                   <td className="p-2">
                     {r.published ? (

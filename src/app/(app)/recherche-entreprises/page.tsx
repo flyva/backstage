@@ -4,6 +4,8 @@ import { asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { altCompanies, altCompanySearches, companyStatuses } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
+import { addDays } from "@/lib/alternance";
+import { todayParis } from "@/lib/equipment";
 import { MyBoardTable, type BoardRow } from "@/components/MyBoardTable";
 
 export const metadata = { title: "Mon tableau · Recherche entreprises" };
@@ -18,16 +20,18 @@ export default async function MyBoardPage() {
     ? await db.select().from(altCompanies).where(inArray(altCompanies.id, mySearches.map((s) => s.companyId)))
     : [];
   const companyById = new Map(companies.map((c) => [c.id, c]));
+  const today = todayParis();
 
   const board: BoardRow[] = mySearches
     .map((s) => {
       const c = companyById.get(s.companyId);
       if (!c) return null;
+      const overdue = !!(s.lastContactDate && s.delayDays && addDays(s.lastContactDate, s.delayDays) <= today);
       return {
         searchId: s.id, companyId: c.id, name: c.name, city: c.city, sector: c.sector, types: c.types, address: c.address,
         contactName: c.contactName, phone: c.phone, email: c.email,
         kind: s.kind, status: s.status, priority: s.priority, lastContactDate: s.lastContactDate, interviewDate: s.interviewDate,
-        delayDays: s.delayDays, note: s.note,
+        delayDays: s.delayDays, note: s.note, overdue,
         published: c.published, canPublish: user.perms.admin || c.createdByUserId === user.id,
       };
     })

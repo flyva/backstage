@@ -1,0 +1,1 @@
+ALTER TABLE `alt_company_searches` ADD `delay_alert_sent_at` datetime;

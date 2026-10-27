@@ -1341,7 +1341,8 @@ export const altCompanySearches = mysqlTable(
     priority: mysqlEnum("priority", ["faible", "moyenne", "haute"]),
     lastContactDate: date("last_contact_date", { mode: "string" }),
     interviewDate: date("interview_date", { mode: "string" }),
-    delayDays: int("delay_days"),
+    delayDays: int("delay_days"), // nombre de jours après lastContactDate : passé ce délai, la ligne passe en rouge et un rappel (mail + push) part une fois
+    delayAlertSentAt: datetime("delay_alert_sent_at"), // évite de renvoyer le rappel chaque jour ; remis à zéro si lastContactDate ou delayDays change
     note: text("note").notNull().default(""),
     createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
   },

@@ -102,7 +102,10 @@ export async function saveSearchField(fd: FormData) {
   if (field === "note") value = raw.slice(0, 2000);
   if ((field === "lastContactDate" || field === "interviewDate") && raw && !/^\d{4}-\d{2}-\d{2}$/.test(raw)) return;
 
-  await db.update(altCompanySearches).set({ [field]: value }).where(eq(altCompanySearches.id, id));
+  const values: Record<string, string | number | null> = { [field]: value };
+  // On touche à la date ou au délai : si un rappel était déjà parti pour l'ancienne échéance, on le rearme pour la nouvelle.
+  if (field === "lastContactDate" || field === "delayDays") values.delayAlertSentAt = null;
+  await db.update(altCompanySearches).set(values).where(eq(altCompanySearches.id, id));
   refresh();
 }
 
