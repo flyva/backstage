@@ -12,12 +12,15 @@ const refresh = () => revalidatePath("/recherche-entreprises");
 
 /** Recherche dans l'annuaire par nom, téléphone ou email, pour l'autocomplétion du formulaire « Ajouter une entreprise ». */
 export async function searchCompaniesByQuery(q: string): Promise<CompanyMatch[]> {
-  await requireUser();
+  const user = await requireUser();
   const term = q.trim();
   if (term.length < 2) return [];
   const like_ = `%${term}%`;
   const rows = await db.select().from(altCompanies)
-    .where(or(like(altCompanies.name, like_), like(altCompanies.phone, like_), like(altCompanies.email, like_)))
+    .where(and(
+      or(like(altCompanies.name, like_), like(altCompanies.phone, like_), like(altCompanies.email, like_)),
+      or(eq(altCompanies.published, true), eq(altCompanies.createdByUserId, user.id)),
+    ))
     .limit(8);
   return rows.map((c) => ({
     id: c.id, name: c.name, city: c.city, department: c.department, sector: c.sector, address: c.address, types: c.types,
@@ -37,6 +40,19 @@ export async function bulkAddToBoard(companyIds: number[]) {
   const toAdd = ids.filter((id) => !already.has(id));
   if (toAdd.length) await db.insert(altCompanySearches).values(toAdd.map((companyId) => ({ companyId, userId: user.id })));
   refresh();
+}
+
+/** Publie dans l'annuaire PARTAGÉ une ou plusieurs entreprises qui n'étaient visibles que dans mon tableau (import
+ * CSV ou ajout manuel) : seulement celles que j'ai créées (ou un administrateur, pour toutes). */
+export async function publishCompanies(companyIds: number[]) {
+  const user = await requireUser();
+  const ids = [...new Set(companyIds.map(Number).filter((n) => Number.isInteger(n) && n > 0))];
+  if (ids.length === 0) return;
+  const rows = await db.select({ id: altCompanies.id, createdByUserId: altCompanies.createdByUserId }).from(altCompanies).where(inArray(altCompanies.id, ids));
+  const allowed = rows.filter((r) => user.perms.admin || r.createdByUserId === user.id).map((r) => r.id);
+  if (allowed.length) await db.update(altCompanies).set({ published: true }).where(inArray(altCompanies.id, allowed));
+  refresh();
+  revalidatePath("/recherche-entreprises/annuaire");
 }
 
 /** Retire une entreprise de MON tableau (l'entreprise reste dans l'annuaire partagé pour tout le monde). */
@@ -111,6 +127,7 @@ export async function createCompany(_: FormState, fd: FormData): Promise<FormSta
       phone: String(fd.get("phone") ?? "").trim(),
       email: String(fd.get("email") ?? "").trim(),
       createdByUserId: user.id,
+      published: false,
     });
     companyId = res.insertId;
   }
@@ -119,13 +136,14 @@ export async function createCompany(_: FormState, fd: FormData): Promise<FormSta
   if (!inBoard) await db.insert(altCompanySearches).values({ companyId, userId: user.id });
 
   refresh();
-  return { ok: existing ? "Entreprise déjà dans l'annuaire : ajoutée à ton tableau" : "Entreprise ajoutée" };
+  return { ok: existing ? "Entreprise déjà connue : ajoutée à ton tableau" : "Ajoutée à ton tableau — publie-la dans l'annuaire quand tu es prêt" };
 }
 
 /** Import CSV (format du tableur d'origine, colonnes dans l'ordre : Ok,ville,Departement,Secteur,adresse,Type,Salaire,
  * Souces,avantage,Titre contact,Contact,Tel,Mail,Offre / spontanée,Date dernier contact,Statuts,Priorité,Date entretiens,Observation,Délais).
- * Les entreprises rejoignent l'annuaire PARTAGÉ (dédupliquées par nom+ville) ; le suivi (statut, priorité…) va dans
- * MON tableau à moi, jamais celui des autres. */
+ * Tout atterrit dans MON tableau : les entreprises nouvellement créées ne sont PAS publiées dans l'annuaire (je les
+ * vérifie d'abord, je publie ensuite celles que je veux depuis mon tableau). Dédupliquées par nom+ville, y compris
+ * avec des entreprises déjà publiées par d'autres. */
 export async function importCompaniesCsv(_: FormState, fd: FormData): Promise<FormState> {
   const user = await requireUser();
   const file = fd.get("file");
@@ -157,7 +175,7 @@ export async function importCompaniesCsv(_: FormState, fd: FormData): Promise<Fo
         department: get(2), sector: get(3), address: get(4), types: parseTypes(get(5)),
         salary: get(6), sources: get(7), perks: get(8),
         contactTitle: get(9), contactName: get(10), phone: get(11), email: get(12),
-        createdByUserId: user.id,
+        createdByUserId: user.id, published: false,
       });
       companyId = res.insertId;
       companyByKey.set(nameKey, companyId);
@@ -178,5 +196,5 @@ export async function importCompaniesCsv(_: FormState, fd: FormData): Promise<Fo
   }
 
   refresh();
-  return { ok: `${imported} entreprise(s) importée(s) dans ton tableau${newCompanies ? ` (${newCompanies} nouvelle(s) dans l'annuaire)` : ""}${skipped ? `, ${skipped} ligne(s) ignorée(s)` : ""}` };
+  return { ok: `${imported} entreprise(s) importée(s) dans ton tableau${newCompanies ? ` (${newCompanies} nouvelle(s), à publier toi-même dans l'annuaire si tu veux)` : ""}${skipped ? `, ${skipped} ligne(s) ignorée(s)` : ""}` };
 }

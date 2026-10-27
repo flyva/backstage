@@ -624,6 +624,13 @@
       "when": 1793081803473,
       "tag": "0088_lush_living_lightning",
       "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "5",
+      "when": 1793082164071,
+      "tag": "0089_sparkling_excalibur",
+      "breakpoints": true
     }
   ]
 }

@@ -10,7 +10,7 @@ export const metadata = { title: "Annuaire · Recherche entreprises" };
 export default async function CompanyDirectoryPage() {
   const user = await requireUser();
   const [companies, mySearches] = await Promise.all([
-    db.select().from(altCompanies).orderBy(asc(altCompanies.name)),
+    db.select().from(altCompanies).where(eq(altCompanies.published, true)).orderBy(asc(altCompanies.name)),
     db.select({ companyId: altCompanySearches.companyId }).from(altCompanySearches).where(eq(altCompanySearches.userId, user.id)),
   ]);
   const inBoardIds = new Set(mySearches.map((s) => s.companyId));

@@ -25,6 +25,7 @@ export default async function MyBoardPage() {
         contactName: c.contactName, phone: c.phone, email: c.email,
         kind: s.kind, status: s.status, priority: s.priority, lastContactDate: s.lastContactDate, interviewDate: s.interviewDate,
         delayDays: s.delayDays, note: s.note,
+        published: c.published, canPublish: user.perms.admin || c.createdByUserId === user.id,
       };
     })
     .filter((r): r is BoardRow => r !== null)

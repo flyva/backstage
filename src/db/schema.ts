@@ -1302,6 +1302,10 @@ export const altCompanies = mysqlTable(
     contactName: varchar("contact_name", { length: 150 }).notNull().default(""),
     phone: varchar("phone", { length: 60 }).notNull().default(""),
     email: varchar("email", { length: 300 }).notNull().default(""), // peut contenir plusieurs adresses séparées par ;
+    // Un import CSV ou un ajout manuel atterrit d'abord dans le tableau de la personne (published=false) : elle vérifie,
+    // puis publie elle-même ce qu'elle veut dans l'annuaire commun. Les entreprises déjà seedées (ex. listing
+    // Nouvelle-Aquitaine) restent publiées par défaut (valeur par défaut true, jamais touchée pour elles).
+    published: boolean("published").notNull().default(true),
     createdByUserId: int("created_by_user_id").references((): AnyMySqlColumn => users.id, { onDelete: "set null" }),
     createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
   },

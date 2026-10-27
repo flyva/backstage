@@ -1,0 +1,1 @@
+ALTER TABLE `alt_companies` ADD `published` boolean DEFAULT true NOT NULL;
