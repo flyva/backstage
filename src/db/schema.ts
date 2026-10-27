@@ -150,12 +150,15 @@ export const users = mysqlTable("users", {
   // Référent (tuteur, patron…) : voit en lecture seule la pointeuse et les stats de la personne, s'il est lui-même désigné ici.
   tutorUserId: int("tutor_user_id").references((): AnyMySqlColumn => users.id, { onDelete: "set null" }),
   // Restauration (notes de frais) : plafonds de remboursement propres à CHAQUE personne (contrat différent selon l'entreprise),
-  // jamais un réglage général. Null = non configuré, pas de calcul affiché. Le montant de titre-restaurant part entreprise est
-  // déduit du remboursement sur le(s) repas concerné(s) (resto_tr_moment).
+  // jamais un réglage général. Null = non configuré, pas de calcul affiché. Le montant du ticket-restaurant (part patronale,
+  // facultatif) est déduit du remboursement sur le(s) repas concerné(s) (resto_tr_moment) ; "journee_entiere" le déduit une
+  // seule fois sur le total du jour (midi/soir/matin), sans jamais toucher la catégorie "autre". "Autre" a sa propre
+  // déduction facultative (resto_autre_cents), indépendante du ticket-restaurant.
   restoMaxDayCents: int("resto_max_day_cents"),
   restoMaxMealCents: int("resto_max_meal_cents"),
   restoTrCents: int("resto_tr_cents"),
-  restoTrMoment: mysqlEnum("resto_tr_moment", ["midi", "soir", "les_deux"]).notNull().default("midi"),
+  restoTrMoment: mysqlEnum("resto_tr_moment", ["midi", "soir", "matin", "les_deux", "journee_entiere"]).notNull().default("midi"),
+  restoAutreCents: int("resto_autre_cents"),
   createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
 });
 
@@ -795,7 +798,7 @@ export const expenseNotes = mysqlTable(
     photoFile: varchar("photo_file", { length: 60 }).notNull(),
     date: date("date", { mode: "string" }).notNull(),
     time: varchar("time", { length: 5 }).notNull(), // "HH:MM"
-    moment: mysqlEnum("moment", ["midi", "soir"]).notNull().default("midi"),
+    moment: mysqlEnum("moment", ["matin", "midi", "soir", "autre"]).notNull().default("midi"),
     placeName: varchar("place_name", { length: 120 }).notNull().default(""), // nom du commerce/lieu (ex. "Décathlon")
     place: varchar("place", { length: 200 }).notNull(), // adresse
     priceCents: int("price_cents").notNull(),

@@ -196,7 +196,7 @@ export type ExpExistingPhoto = { key: string; url: string; kind: "main" | "extra
 export function ExpenseNoteForm({
   today, now, day = today, moment = "midi", id, time, price, placeName = "", place = "", comment = "", existingPhotos = [],
 }: {
-  today: string; now: string; day?: string; moment?: "midi" | "soir";
+  today: string; now: string; day?: string; moment?: "matin" | "midi" | "soir" | "autre";
   id?: number; time?: string; price?: number; placeName?: string; place?: string; comment?: string; existingPhotos?: ExpExistingPhoto[];
 }) {
   const [state, action, pending] = useActionState(saveExpenseNote, undefined);
@@ -284,8 +284,10 @@ export function ExpenseNoteForm({
           <div>
             <label className="label" htmlFor="exp-moment">Moment</label>
             <select id="exp-moment" name="moment" defaultValue={moment} className="input">
+              <option value="matin">Matin</option>
               <option value="midi">Midi</option>
               <option value="soir">Soir</option>
+              <option value="autre">Autre</option>
             </select>
           </div>
         </div>
@@ -309,8 +311,8 @@ export function ExpenseNoteForm({
 
 /** Plafonds de remboursement repas, propres à chaque personne (contrat différent selon l'entreprise) : jamais un réglage général. */
 export function RestoSettingsForm({
-  maxDay, maxMeal, tr, trMoment,
-}: { maxDay: number | null; maxMeal: number | null; tr: number | null; trMoment: "midi" | "soir" | "les_deux" }) {
+  maxDay, maxMeal, tr, trMoment, autre,
+}: { maxDay: number | null; maxMeal: number | null; tr: number | null; trMoment: "midi" | "soir" | "matin" | "les_deux" | "journee_entiere"; autre: number | null }) {
   const [state, action, pending] = useActionState(saveRestoSettings, undefined);
   return (
     <form action={action} className="space-y-4">
@@ -326,18 +328,25 @@ export function RestoSettingsForm({
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <label className="label" htmlFor="rs-tr">Titre-restaurant, part entreprise (€)</label>
+          <label className="label" htmlFor="rs-tr">Ticket-restaurant, part patronale (€, facultatif)</label>
           <input id="rs-tr" name="tr" type="number" min={0} max={1000} step={0.01} defaultValue={tr ?? ""} className="input" placeholder="Ex. 4,36" />
-          <p className="mt-1 text-xs text-muted">Déduit du remboursement sur le(s) repas concerné(s), car déjà couvert par le ticket resto.</p>
+          <p className="mt-1 text-xs text-muted">Déduit du remboursement sur le(s) repas concerné(s), car déjà couvert par le ticket resto. Ne concerne jamais la catégorie « Autre ».</p>
         </div>
         <div>
           <label className="label" htmlFor="rs-moment">Ticket resto déduit sur</label>
           <select id="rs-moment" name="trMoment" defaultValue={trMoment} className="input">
+            <option value="matin">Matin seulement</option>
             <option value="midi">Midi seulement</option>
             <option value="soir">Soir seulement</option>
             <option value="les_deux">Midi et soir</option>
+            <option value="journee_entiere">Journée entière (une seule fois par jour)</option>
           </select>
         </div>
+      </div>
+      <div>
+        <label className="label" htmlFor="rs-autre">Déduction sur « Autre » (€, facultatif)</label>
+        <input id="rs-autre" name="autre" type="number" min={0} max={1000} step={0.01} defaultValue={autre ?? ""} className="input" placeholder="Ex. 2" />
+        <p className="mt-1 text-xs text-muted">Indépendante du ticket-restaurant : s&apos;applique uniquement aux notes classées « Autre ».</p>
       </div>
       <p className="text-xs text-muted">Laisse les plafonds vides pour désactiver le calcul automatique dans les notes de frais.</p>
       <div className="flex items-center gap-3">

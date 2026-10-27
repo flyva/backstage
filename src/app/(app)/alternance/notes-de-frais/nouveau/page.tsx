@@ -12,7 +12,8 @@ export default async function NewExpenseNotePage({ searchParams }: PageProps<"/a
   const sp = await searchParams;
   const today = todayParis();
   const day = isDay(sp.day) ? sp.day : today;
-  const moment = sp.moment === "soir" ? "soir" : "midi";
+  const EXPENSE_MOMENTS = ["matin", "midi", "soir", "autre"] as const;
+  const moment = (EXPENSE_MOMENTS as readonly string[]).includes(String(sp.moment)) ? (sp.moment as (typeof EXPENSE_MOMENTS)[number]) : "midi";
   const now = new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date());
 
   return (

@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { expenseFiles, expenseNotes } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { PrintButton } from "@/components/PrintButton";
+import { EXPENSE_MOMENT_LABEL } from "@/lib/alternance";
 
 export const metadata = { title: "Note de frais" };
 
@@ -29,7 +30,7 @@ export default async function ExpenseNotePrintPage({ params }: PageProps<"/alter
       </div>
       <header className="border-b border-line pb-3">
         <h1 className="text-2xl font-bold">Note de frais — {note.placeName || note.place}</h1>
-        <p className="text-sm text-muted">{user.name} · {dateFmt.format(new Date(`${note.date}T12:00:00`))} à {note.time} ({note.moment === "soir" ? "soir" : "midi"}) · {fmtEuros(note.priceCents)}</p>
+        <p className="text-sm text-muted">{user.name} · {dateFmt.format(new Date(`${note.date}T12:00:00`))} à {note.time} ({EXPENSE_MOMENT_LABEL[note.moment].toLowerCase()}) · {fmtEuros(note.priceCents)}</p>
       </header>
       <p className="whitespace-pre-line text-sm">{note.comment}</p>
       {photoSrcs.map((src, i) => (

@@ -27,7 +27,9 @@ export async function saveExpenseNote(_: FormState, fd: FormData): Promise<FormS
   const id = Number(fd.get("id") || 0);
   const date = String(fd.get("date") ?? "");
   const time = String(fd.get("time") ?? "");
-  const moment = fd.get("moment") === "soir" ? "soir" : "midi";
+  const EXPENSE_MOMENTS = ["matin", "midi", "soir", "autre"] as const;
+  const momentRaw = String(fd.get("moment") ?? "");
+  const moment = (EXPENSE_MOMENTS as readonly string[]).includes(momentRaw) ? (momentRaw as (typeof EXPENSE_MOMENTS)[number]) : "midi";
   const placeName = String(fd.get("placeName") ?? "").trim();
   const place = String(fd.get("place") ?? "").trim();
   const rawComment = String(fd.get("comment") ?? "").trim();
@@ -128,13 +130,14 @@ const restoSettingsSchema = z.object({
   maxDay: z.preprocess((v) => (v === "" || v == null ? null : Number(v)), z.number().min(0).max(1000).nullable()),
   maxMeal: z.preprocess((v) => (v === "" || v == null ? null : Number(v)), z.number().min(0).max(1000).nullable()),
   tr: z.preprocess((v) => (v === "" || v == null ? null : Number(v)), z.number().min(0).max(1000).nullable()),
-  trMoment: z.enum(["midi", "soir", "les_deux"]),
+  trMoment: z.enum(["midi", "soir", "matin", "les_deux", "journee_entiere"]),
+  autre: z.preprocess((v) => (v === "" || v == null ? null : Number(v)), z.number().min(0).max(1000).nullable()),
 });
 
 export async function saveRestoSettings(_: FormState, fd: FormData): Promise<FormState> {
   const user = await requireUser();
   const p = restoSettingsSchema.safeParse({
-    maxDay: fd.get("maxDay"), maxMeal: fd.get("maxMeal"), tr: fd.get("tr"), trMoment: fd.get("trMoment"),
+    maxDay: fd.get("maxDay"), maxMeal: fd.get("maxMeal"), tr: fd.get("tr"), trMoment: fd.get("trMoment"), autre: fd.get("autre"),
   });
   if (!p.success) return { error: p.error.issues[0].message };
   await db.update(users).set({
@@ -142,6 +145,7 @@ export async function saveRestoSettings(_: FormState, fd: FormData): Promise<For
     restoMaxMealCents: p.data.maxMeal === null ? null : Math.round(p.data.maxMeal * 100),
     restoTrCents: p.data.tr === null ? null : Math.round(p.data.tr * 100),
     restoTrMoment: p.data.trMoment,
+    restoAutreCents: p.data.autre === null ? null : Math.round(p.data.autre * 100),
   }).where(eq(users.id, user.id));
   revalidatePath("/profil");
   revalidatePath("/alternance/notes-de-frais");

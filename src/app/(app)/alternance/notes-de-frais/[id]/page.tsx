@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { expenseFiles, expenseNotes } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { deleteExpenseNote } from "@/lib/expense-actions";
+import { EXPENSE_MOMENT_LABEL } from "@/lib/alternance";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { CopyButton } from "@/components/people-forms";
 
@@ -31,7 +32,7 @@ export default async function ExpenseNotePage({ params }: PageProps<"/alternance
         {note.place && note.placeName && <p className="text-sm text-muted">{note.place}</p>}
         <p className="text-sm text-muted">
           {dateFmt.format(new Date(`${note.date}T12:00:00`))} à {note.time}
-          {" · "}<span className="rounded-full border border-line px-2 py-0.5 text-xs">{note.moment === "soir" ? "Soir" : "Midi"}</span>
+          {" · "}<span className="rounded-full border border-line px-2 py-0.5 text-xs">{EXPENSE_MOMENT_LABEL[note.moment]}</span>
           {" · "}<span className="font-semibold text-fg">{fmtEuros(note.priceCents)}</span>
         </p>
       </header>

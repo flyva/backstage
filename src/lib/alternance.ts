@@ -57,15 +57,35 @@ export const monthLabel = (month: string) =>
 export const dayLabel = (day: string) =>
   new Intl.DateTimeFormat("fr-FR", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long" }).format(at(day));
 
-export type RestoSettings = { maxDayCents: number | null; maxMealCents: number | null; trCents: number | null; trMoment: "midi" | "soir" | "les_deux" };
+export type ExpenseMoment = "matin" | "midi" | "soir" | "autre";
+export const EXPENSE_MOMENT_LABEL: Record<ExpenseMoment, string> = { matin: "Matin", midi: "Midi", soir: "Soir", autre: "Autre" };
+export type TrMoment = "midi" | "soir" | "matin" | "les_deux" | "journee_entiere";
+export type RestoSettings = {
+  maxDayCents: number | null; maxMealCents: number | null; trCents: number | null; trMoment: TrMoment; autreCents: number | null;
+};
 
-/** Montant remboursé pour un repas : plafonné par repas, puis le ticket-restaurant (part entreprise) déduit s'il s'applique
- * à ce moment-là. Renvoie null si le plafond par repas n'est pas configuré (calcul désactivé, propre à chaque personne). */
-export function restoMealRefund(priceCents: number, moment: "midi" | "soir", s: RestoSettings): number | null {
+/** Montant remboursé pour une entrée : plafonné par repas, puis le ticket-restaurant (part patronale) déduit s'il s'applique
+ * à ce moment précis. « Autre » n'est jamais concerné par le ticket-restaurant : seulement par sa propre déduction
+ * facultative (autreCents). En mode « journée entière », le ticket-restaurant n'est pas déduit ici repas par repas : il
+ * l'est une seule fois au niveau du jour (voir restoDayRefund). Renvoie null si le plafond par repas n'est pas configuré
+ * (calcul désactivé, propre à chaque personne). */
+export function restoMealRefund(priceCents: number, moment: ExpenseMoment, s: RestoSettings): number | null {
   if (s.maxMealCents === null) return null;
   const capped = Math.min(priceCents, s.maxMealCents);
-  const trApplies = s.trCents !== null && (s.trMoment === "les_deux" || s.trMoment === moment);
+  if (moment === "autre") return Math.max(0, capped - (s.autreCents ?? 0));
+  const trApplies = s.trCents !== null && s.trMoment !== "journee_entiere" && (s.trMoment === "les_deux" ? moment === "midi" || moment === "soir" : s.trMoment === moment);
   return Math.max(0, capped - (trApplies ? s.trCents! : 0));
+}
+
+/** Total remboursé pour un jour : somme des entrées (via restoMealRefund), avec en plus la déduction unique du
+ * ticket-restaurant en mode « journée entière » — une seule fois, jamais sur la catégorie « autre ». */
+export function restoDayRefund(notes: { priceCents: number; moment: ExpenseMoment }[], s: RestoSettings): number {
+  const autre = notes.filter((n) => n.moment === "autre");
+  const rest = notes.filter((n) => n.moment !== "autre");
+  const restRefundRaw = rest.reduce((sum, n) => sum + (restoMealRefund(n.priceCents, n.moment, s) ?? 0), 0);
+  const trDeduction = s.trMoment === "journee_entiere" && s.trCents !== null ? Math.min(s.trCents, restRefundRaw) : 0;
+  const autreRefundRaw = autre.reduce((sum, n) => sum + (restoMealRefund(n.priceCents, n.moment, s) ?? 0), 0);
+  return restRefundRaw - trDeduction + autreRefundRaw;
 }
 
 export const fmtHours = (minutes: number) => {

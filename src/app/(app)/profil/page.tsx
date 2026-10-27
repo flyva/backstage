@@ -155,6 +155,7 @@ async function AlternanceTab({ user }: { user: User }) {
         maxMeal={user.restoMaxMealCents === null ? null : user.restoMaxMealCents / 100}
         tr={user.restoTrCents === null ? null : user.restoTrCents / 100}
         trMoment={user.restoTrMoment}
+        autre={user.restoAutreCents === null ? null : user.restoAutreCents / 100}
       />
     </div>
   );
