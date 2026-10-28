@@ -802,7 +802,10 @@ export const expenseNotes = mysqlTable(
     placeName: varchar("place_name", { length: 120 }).notNull().default(""), // nom du commerce/lieu (ex. "Décathlon")
     place: varchar("place", { length: 200 }).notNull(), // adresse
     priceCents: int("price_cents").notNull(),
-    comment: text("comment").notNull(),
+    comment: text("comment").notNull(), // texte complet prêt à copier (régénéré à chaque enregistrement depuis les champs ci-dessous + extraComment)
+    extraComment: text("extra_comment").notNull().default(""), // précision libre saisie par la personne (séparée du texte complet, pour pré-remplir le formulaire de modification)
+    tvaRate: varchar("tva_rate", { length: 10 }), // "20", "10", ou null si non précisé/autre
+    tvaCents: int("tva_cents"), // montant de TVA en centimes : calculé automatiquement depuis tvaRate au moment de la saisie, mais toujours modifiable à la main
     createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
   },
   (t) => [index("exp_user_date_idx").on(t.userId, t.date)],

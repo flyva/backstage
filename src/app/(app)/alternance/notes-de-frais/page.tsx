@@ -54,7 +54,7 @@ export default async function ExpenseNotesPage({ searchParams }: PageProps<"/alt
   const weekCharge = total - weekRefund;
 
   return (
-    <div className="max-w-2xl space-y-5">
+    <div className="max-w-4xl space-y-5">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold"><Receipt size={22} className="text-accent" /> Notes de frais</h1>

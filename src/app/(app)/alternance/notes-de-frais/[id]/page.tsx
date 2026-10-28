@@ -6,9 +6,10 @@ import { db } from "@/db";
 import { expenseFiles, expenseNotes } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { deleteExpenseNote } from "@/lib/expense-actions";
-import { EXPENSE_MOMENT_LABEL } from "@/lib/alternance";
+import { EXPENSE_MOMENT_LABEL, TVA_RATE_LABEL, TVA_RATES, trDeductionFor } from "@/lib/alternance";
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { CopyButton } from "@/components/people-forms";
+import { ExpensePhotoGallery, FieldRow } from "@/components/ExpenseNoteDetail";
 
 export const metadata = { title: "Note de frais" };
 
@@ -24,8 +25,13 @@ export default async function ExpenseNotePage({ params }: PageProps<"/alternance
   const extra = await db.select({ id: expenseFiles.id }).from(expenseFiles).where(eq(expenseFiles.expenseNoteId, id)).orderBy(asc(expenseFiles.id));
   const photos = [{ src: `/api/alternance/notes-de-frais/${note.id}/photo`, dl: `/api/alternance/notes-de-frais/${note.id}/photo?dl=1` }, ...extra.map((f) => ({ src: `/api/alternance/notes-de-frais/${note.id}/photo/${f.id}`, dl: `/api/alternance/notes-de-frais/${note.id}/photo/${f.id}?dl=1` }))];
 
+  const resto = { maxDayCents: user.restoMaxDayCents, maxMealCents: user.restoMaxMealCents, trCents: user.restoTrCents, trMoment: user.restoTrMoment, autreCents: user.restoAutreCents };
+  const trDeduction = trDeductionFor(note.moment, resto);
+  const priceWithoutTr = trDeduction !== null ? Math.max(0, note.priceCents - trDeduction) : null;
+  const tvaLabel = note.tvaCents === null ? "" : `${fmtEuros(note.tvaCents)}${note.tvaRate ? ` (${TVA_RATE_LABEL[note.tvaRate as (typeof TVA_RATES)[number]]})` : ""}`;
+
   return (
-    <div className="max-w-lg space-y-4">
+    <div className="max-w-5xl space-y-4">
       <p className="text-sm"><Link href="/alternance/notes-de-frais" className="inline-flex items-center gap-1 text-muted hover:text-fg"><ArrowLeft size={14} /> Notes de frais</Link></p>
       <header>
         <h1 className="text-2xl font-bold">{note.placeName || note.place}</h1>
@@ -37,19 +43,30 @@ export default async function ExpenseNotePage({ params }: PageProps<"/alternance
         </p>
       </header>
 
-      <div className={`grid gap-3 ${photos.length > 1 ? "sm:grid-cols-2" : ""}`}>
-        {photos.map((p, i) => (
-          <div key={p.src} className="card p-0">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={p.src} alt={`Reçu ${i + 1}`} className="w-full rounded-xl object-contain" />
-          </div>
-        ))}
-      </div>
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <div className="card p-3">
+          <ExpensePhotoGallery photos={photos} />
+        </div>
 
-      <div className="card space-y-3">
-        <h2 className="font-semibold">Commentaire pour l&apos;entreprise</h2>
-        <p className="whitespace-pre-line rounded-lg border border-line bg-bg p-3 text-sm">{note.comment}</p>
-        <CopyButton value={note.comment} label="Copier le commentaire" />
+        <div className="space-y-4">
+          <div className="card">
+            <h2 className="mb-1 font-semibold">Détails</h2>
+            <FieldRow label="Date" value={dateFmt.format(new Date(`${note.date}T12:00:00`))} />
+            <FieldRow label="Nom" value={note.placeName} />
+            <FieldRow label="Adresse" value={note.place} />
+            <FieldRow label="Heure" value={note.time} />
+            <FieldRow label="Prix TTC" value={fmtEuros(note.priceCents)} />
+            {priceWithoutTr !== null && <FieldRow label="Prix sans ticket-restaurant" value={fmtEuros(priceWithoutTr)} />}
+            <FieldRow label="TVA" value={tvaLabel} />
+            <FieldRow label="Commentaire" value={note.extraComment} />
+          </div>
+
+          <div className="card space-y-3">
+            <h2 className="font-semibold">Commentaire pour l&apos;entreprise</h2>
+            <p className="whitespace-pre-line rounded-lg border border-line bg-bg p-3 text-sm">{note.comment}</p>
+            <CopyButton value={note.comment} label="Copier le commentaire" />
+          </div>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2">

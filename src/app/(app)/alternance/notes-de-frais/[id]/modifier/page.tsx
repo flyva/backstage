@@ -30,6 +30,7 @@ export default async function EditExpenseNotePage({ params }: PageProps<"/altern
         <ExpenseNoteForm
           today={note.date} now={note.time} day={note.date} moment={note.moment}
           id={note.id} time={note.time} price={note.priceCents / 100} placeName={note.placeName} place={note.place}
+          extraComment={note.extraComment} tvaRate={note.tvaRate ?? ""} tvaAmount={note.tvaCents === null ? undefined : note.tvaCents / 100}
           existingPhotos={existingPhotos}
         />
       </div>

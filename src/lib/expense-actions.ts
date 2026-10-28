@@ -9,6 +9,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { expenseFiles, expenseNotes, users } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
+import { TVA_RATES } from "@/lib/alternance";
 import { ensureExpenseFilesDir, expenseFilesDir, MAX_EXPENSE_PHOTO_BYTES, newExpenseFileName, removeExpensePhoto, sniffExpensePhoto } from "@/lib/expense-files";
 import { allow } from "@/lib/rate-limit";
 import type { FormState } from "@/lib/actions";
@@ -35,11 +36,16 @@ export async function saveExpenseNote(_: FormState, fd: FormData): Promise<FormS
   const rawComment = String(fd.get("comment") ?? "").trim();
   const euros = Number(String(fd.get("price") ?? "").replace(",", "."));
   const photos = fd.getAll("photos").filter((f): f is File => f instanceof File && f.size > 0);
+  const tvaRateRaw = String(fd.get("tvaRate") ?? "").trim();
+  const tvaRate = (TVA_RATES as readonly string[]).includes(tvaRateRaw) ? tvaRateRaw : null;
+  const tvaAmountRaw = String(fd.get("tvaAmount") ?? "").trim().replace(",", ".");
+  const tvaCents = tvaAmountRaw ? Math.round(Number(tvaAmountRaw) * 100) : null;
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { error: "Date invalide" };
   if (!/^\d{2}:\d{2}$/.test(time)) return { error: "Heure invalide" };
   if (!placeName) return { error: "Indique le nom du lieu" };
   if (!Number.isFinite(euros) || euros <= 0 || euros > 100000) return { error: "Prix invalide" };
+  if (tvaAmountRaw && (!Number.isFinite(tvaCents) || tvaCents! < 0 || tvaCents! > 100000 * 100)) return { error: "Montant de TVA invalide" };
   if (!id && photos.length === 0) return { error: "Ajoute au moins une photo du reçu" };
   if (photos.length > 10) return { error: "10 photos maximum par note" };
   const tooBig = photos.find((p) => p.size > MAX_EXPENSE_PHOTO_BYTES);
@@ -65,16 +71,17 @@ export async function saveExpenseNote(_: FormState, fd: FormData): Promise<FormS
   }
 
   const priceCents = Math.round(euros * 100);
-  const comment = buildExpenseComment(user.name, date, time, placeName, place, priceCents, rawComment.slice(0, 500));
+  const extraComment = rawComment.slice(0, 500);
+  const comment = buildExpenseComment(user.name, date, time, placeName, place, priceCents, extraComment);
 
   if (existing) {
-    await db.update(expenseNotes).set({ date, time, moment, placeName, place, priceCents, comment }).where(eq(expenseNotes.id, id));
+    await db.update(expenseNotes).set({ date, time, moment, placeName, place, priceCents, comment, extraComment, tvaRate, tvaCents }).where(eq(expenseNotes.id, id));
     if (names.length) await db.insert(expenseFiles).values(names.map((fileName) => ({ expenseNoteId: id, fileName })));
     revalidatePath("/alternance/notes-de-frais");
     redirect(`/alternance/notes-de-frais/${id}`);
   }
 
-  const [res] = await db.insert(expenseNotes).values({ userId: user.id, photoFile: names[0], date, time, moment, placeName, place, priceCents, comment });
+  const [res] = await db.insert(expenseNotes).values({ userId: user.id, photoFile: names[0], date, time, moment, placeName, place, priceCents, comment, extraComment, tvaRate, tvaCents });
   const extraNames = names.slice(1);
   if (extraNames.length) await db.insert(expenseFiles).values(extraNames.map((fileName) => ({ expenseNoteId: res.insertId, fileName })));
 

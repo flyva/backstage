@@ -59,6 +59,16 @@ export const dayLabel = (day: string) =>
 
 export type ExpenseMoment = "matin" | "midi" | "soir" | "autre";
 export const EXPENSE_MOMENT_LABEL: Record<ExpenseMoment, string> = { matin: "Matin", midi: "Midi", soir: "Soir", autre: "Autre" };
+
+// Taux de TVA proposés par défaut (France) : le montant est calculé automatiquement à partir du prix TTC quand l'un
+// de ces taux est choisi, mais reste modifiable à la main (reçus avec taux mixtes, TVA étrangère, etc.).
+export const TVA_RATES = ["20", "10"] as const;
+export const TVA_RATE_LABEL: Record<(typeof TVA_RATES)[number], string> = { "20": "20 %", "10": "10 %" };
+
+/** Montant de TVA contenu dans un prix TTC, pour un taux donné (en %). Arrondi au centime. */
+export function tvaFromTtc(priceCentsTtc: number, ratePercent: number): number {
+  return Math.round(priceCentsTtc - priceCentsTtc / (1 + ratePercent / 100));
+}
 export type TrMoment = "midi" | "soir" | "matin" | "les_deux" | "journee_entiere";
 export type RestoSettings = {
   maxDayCents: number | null; maxMealCents: number | null; trCents: number | null; trMoment: TrMoment; autreCents: number | null;
@@ -75,6 +85,14 @@ export function restoMealRefund(priceCents: number, moment: ExpenseMoment, s: Re
   if (moment === "autre") return Math.max(0, capped - (s.autreCents ?? 0));
   const trApplies = s.trCents !== null && s.trMoment !== "journee_entiere" && (s.trMoment === "les_deux" ? moment === "midi" || moment === "soir" : s.trMoment === moment);
   return Math.max(0, capped - (trApplies ? s.trCents! : 0));
+}
+
+/** Déduction du ticket-restaurant (part patronale) qui s'applique spécifiquement à CETTE entrée (hors mode « journée
+ * entière », qui se calcule une seule fois au niveau du jour, voir restoDayRefund) : null si rien ne s'applique ici. */
+export function trDeductionFor(moment: ExpenseMoment, s: RestoSettings): number | null {
+  if (moment === "autre" || s.trCents === null || s.trMoment === "journee_entiere") return null;
+  const applies = s.trMoment === "les_deux" ? moment === "midi" || moment === "soir" : s.trMoment === moment;
+  return applies ? s.trCents : null;
 }
 
 /** Total remboursé pour un jour : somme des entrées (via restoMealRefund), avec en plus la déduction unique du

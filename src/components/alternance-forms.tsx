@@ -5,7 +5,7 @@ import { Camera, Images, Plus, Receipt, Trash2, X } from "lucide-react";
 import type { FormState } from "@/lib/actions";
 import { applyRhythm, removeLogFile, saveLog, setRange } from "@/lib/alternance-actions";
 import { removeExpenseFile, saveExpenseNote, saveRestoSettings } from "@/lib/expense-actions";
-import { KIND_LABEL } from "@/lib/alternance";
+import { KIND_LABEL, TVA_RATE_LABEL, TVA_RATES, tvaFromTtc } from "@/lib/alternance";
 import { MarkdownField } from "@/components/MarkdownField";
 import { DateRangeField } from "@/components/DateRangeField";
 import { AddressField } from "@/components/AddressField";
@@ -194,17 +194,32 @@ export type ExpExistingPhoto = { key: string; url: string; kind: "main" | "extra
 /** Note de frais : une ou plusieurs photos du reçu, date/heure/lieu (auto-complété), prix. En création, le commentaire
  * est généré côté serveur à partir des champs ; en édition, le commentaire déjà généré reste modifiable librement. */
 export function ExpenseNoteForm({
-  today, now, day = today, moment = "midi", id, time, price, placeName = "", place = "", comment = "", existingPhotos = [],
+  today, now, day = today, moment = "midi", id, time, price, placeName = "", place = "", extraComment = "", existingPhotos = [],
+  tvaRate = "", tvaAmount,
 }: {
   today: string; now: string; day?: string; moment?: "matin" | "midi" | "soir" | "autre";
-  id?: number; time?: string; price?: number; placeName?: string; place?: string; comment?: string; existingPhotos?: ExpExistingPhoto[];
+  id?: number; time?: string; price?: number; placeName?: string; place?: string; extraComment?: string; existingPhotos?: ExpExistingPhoto[];
+  tvaRate?: string; tvaAmount?: number;
 }) {
   const [state, action, pending] = useActionState(saveExpenseNote, undefined);
   const inputRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
+  const priceRef = useRef<HTMLInputElement>(null);
   const [files, setFiles] = useState<ExpPending[]>([]);
   const [error, setError] = useState("");
+  const [rate, setRate] = useState(tvaRate);
+  const [amount, setAmount] = useState(tvaAmount !== undefined ? tvaAmount.toFixed(2) : "");
+
+  // Choisir un taux calcule le montant de TVA depuis le prix TTC déjà saisi ; le champ reste ensuite librement modifiable
+  // (reçus à taux mixtes, TVA non précisée…) et n'est plus recalculé automatiquement après coup.
+  const onRateChange = (value: string) => {
+    setRate(value);
+    const euros = Number((priceRef.current?.value ?? "").replace(",", "."));
+    if (value && Number.isFinite(euros) && euros > 0) {
+      setAmount((tvaFromTtc(Math.round(euros * 100), Number(value)) / 100).toFixed(2));
+    }
+  };
 
   const addFiles = async (list: FileList | null) => {
     if (!list) return;
@@ -293,13 +308,26 @@ export function ExpenseNoteForm({
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <div><label className="label" htmlFor="exp-time">Heure</label><input id="exp-time" name="time" type="time" defaultValue={time ?? now} required className="input" /></div>
-          <div><label className="label" htmlFor="exp-price">Prix (€)</label><input id="exp-price" name="price" type="number" step="0.01" min="0.01" required className="input" defaultValue={price} placeholder="12,50" /></div>
+          <div><label className="label" htmlFor="exp-price">Prix TTC (€)</label><input ref={priceRef} id="exp-price" name="price" type="number" step="0.01" min="0.01" required className="input" defaultValue={price} placeholder="12,50" /></div>
         </div>
         <div><label className="label" htmlFor="exp-name">Nom du lieu</label><input id="exp-name" name="placeName" defaultValue={placeName} required maxLength={120} className="input" placeholder="Ex. Décathlon, restaurant Chez Mimi…" /></div>
         <AddressField id="exp-place" name="place" label="Adresse" defaultValue={place} placeholder="Adresse du lieu" />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className="label" htmlFor="exp-tva-rate">Taux de TVA</label>
+            <select id="exp-tva-rate" name="tvaRate" value={rate} onChange={(e) => onRateChange(e.target.value)} className="input">
+              <option value="">Non précisé / autre</option>
+              {TVA_RATES.map((r) => <option key={r} value={r}>{TVA_RATE_LABEL[r]}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label" htmlFor="exp-tva-amount">Montant de TVA (€, facultatif)</label>
+            <input id="exp-tva-amount" name="tvaAmount" type="number" step="0.01" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} className="input" placeholder="Calculé auto. si un taux est choisi" />
+          </div>
+        </div>
         <div>
           <label className="label" htmlFor="exp-comment">Commentaire (facultatif)</label>
-          <textarea id="exp-comment" name="comment" rows={2} maxLength={500} defaultValue={comment} className="input" placeholder="Précision à ajouter au commentaire généré" />
+          <textarea id="exp-comment" name="comment" rows={2} maxLength={500} defaultValue={extraComment} className="input" placeholder="Précision à ajouter au commentaire généré" />
           <p className="mt-1 text-xs text-muted">Le commentaire envoyé est régénéré à partir des champs ci-dessus, avec cette précision ajoutée à la fin.</p>
         </div>
         <Feedback state={state} />
