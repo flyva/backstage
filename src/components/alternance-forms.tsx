@@ -194,12 +194,12 @@ export type ExpExistingPhoto = { key: string; url: string; kind: "main" | "extra
 /** Note de frais : une ou plusieurs photos du reçu, date/heure/lieu (auto-complété), prix. En création, le commentaire
  * est généré côté serveur à partir des champs ; en édition, le commentaire déjà généré reste modifiable librement. */
 export function ExpenseNoteForm({
-  today, now, day = today, moment = "midi", id, time, price, placeName = "", place = "", extraComment = "", existingPhotos = [],
-  tvaRate = "", tvaAmount,
+  today, now, day = today, moment = "midi", id, time, price, placeName = "", place = "", businessNumber = "", extraComment = "", existingPhotos = [],
+  tvaRate = "", tvaAmount, businessNumbers = [],
 }: {
   today: string; now: string; day?: string; moment?: "matin" | "midi" | "soir" | "autre";
-  id?: number; time?: string; price?: number; placeName?: string; place?: string; extraComment?: string; existingPhotos?: ExpExistingPhoto[];
-  tvaRate?: string; tvaAmount?: number;
+  id?: number; time?: string; price?: number; placeName?: string; place?: string; businessNumber?: string; extraComment?: string; existingPhotos?: ExpExistingPhoto[];
+  tvaRate?: string; tvaAmount?: number; businessNumbers?: string[];
 }) {
   const [state, action, pending] = useActionState(saveExpenseNote, undefined);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -312,6 +312,13 @@ export function ExpenseNoteForm({
         </div>
         <div><label className="label" htmlFor="exp-name">Nom du lieu</label><input id="exp-name" name="placeName" defaultValue={placeName} required maxLength={120} className="input" placeholder="Ex. Décathlon, restaurant Chez Mimi…" /></div>
         <AddressField id="exp-place" name="place" label="Adresse" defaultValue={place} placeholder="Adresse du lieu" />
+        <div>
+          <label className="label" htmlFor="exp-business">Numéro d&apos;affaire (facultatif)</label>
+          <input id="exp-business" name="businessNumber" list="exp-business-numbers" defaultValue={businessNumber} maxLength={60} className="input" placeholder="Ex. 2026-042" />
+          <datalist id="exp-business-numbers">
+            {businessNumbers.map((b) => <option key={b} value={b} />)}
+          </datalist>
+        </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <label className="label" htmlFor="exp-tva-rate">Taux de TVA</label>

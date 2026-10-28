@@ -4,7 +4,7 @@ import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { eq } from "drizzle-orm";
+import { and, desc, eq, ne } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { expenseFiles, expenseNotes, users } from "@/db/schema";
@@ -33,6 +33,7 @@ export async function saveExpenseNote(_: FormState, fd: FormData): Promise<FormS
   const moment = (EXPENSE_MOMENTS as readonly string[]).includes(momentRaw) ? (momentRaw as (typeof EXPENSE_MOMENTS)[number]) : "midi";
   const placeName = String(fd.get("placeName") ?? "").trim();
   const place = String(fd.get("place") ?? "").trim();
+  const businessNumber = String(fd.get("businessNumber") ?? "").trim().slice(0, 60);
   const rawComment = String(fd.get("comment") ?? "").trim();
   const euros = Number(String(fd.get("price") ?? "").replace(",", "."));
   const photos = fd.getAll("photos").filter((f): f is File => f instanceof File && f.size > 0);
@@ -75,18 +76,28 @@ export async function saveExpenseNote(_: FormState, fd: FormData): Promise<FormS
   const comment = buildExpenseComment(user.name, date, time, placeName, place, priceCents, extraComment);
 
   if (existing) {
-    await db.update(expenseNotes).set({ date, time, moment, placeName, place, priceCents, comment, extraComment, tvaRate, tvaCents }).where(eq(expenseNotes.id, id));
+    await db.update(expenseNotes).set({ date, time, moment, placeName, place, businessNumber, priceCents, comment, extraComment, tvaRate, tvaCents }).where(eq(expenseNotes.id, id));
     if (names.length) await db.insert(expenseFiles).values(names.map((fileName) => ({ expenseNoteId: id, fileName })));
     revalidatePath("/alternance/notes-de-frais");
     redirect(`/alternance/notes-de-frais/${id}`);
   }
 
-  const [res] = await db.insert(expenseNotes).values({ userId: user.id, photoFile: names[0], date, time, moment, placeName, place, priceCents, comment, extraComment, tvaRate, tvaCents });
+  const [res] = await db.insert(expenseNotes).values({ userId: user.id, photoFile: names[0], date, time, moment, placeName, place, businessNumber, priceCents, comment, extraComment, tvaRate, tvaCents });
   const extraNames = names.slice(1);
   if (extraNames.length) await db.insert(expenseFiles).values(extraNames.map((fileName) => ({ expenseNoteId: res.insertId, fileName })));
 
   revalidatePath("/alternance/notes-de-frais");
   redirect(`/alternance/notes-de-frais/${res.insertId}`);
+}
+
+/** Numéros d'affaire déjà utilisés par cette personne, pour l'autocomplétion du champ (liste <datalist>, pas de
+ * recherche serveur à chaque frappe : le volume par personne reste toujours petit). */
+export async function listBusinessNumbers(): Promise<string[]> {
+  const user = await requireUser();
+  const rows = await db.selectDistinct({ businessNumber: expenseNotes.businessNumber }).from(expenseNotes)
+    .where(and(eq(expenseNotes.userId, user.id), ne(expenseNotes.businessNumber, "")))
+    .orderBy(desc(expenseNotes.businessNumber));
+  return rows.map((r) => r.businessNumber);
 }
 
 /** Retire une seule photo d'une note (la principale ou une photo supplémentaire) sans toucher au reste.

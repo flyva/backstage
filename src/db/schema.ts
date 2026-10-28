@@ -801,6 +801,7 @@ export const expenseNotes = mysqlTable(
     moment: mysqlEnum("moment", ["matin", "midi", "soir", "autre"]).notNull().default("midi"),
     placeName: varchar("place_name", { length: 120 }).notNull().default(""), // nom du commerce/lieu (ex. "Décathlon")
     place: varchar("place", { length: 200 }).notNull(), // adresse
+    businessNumber: varchar("business_number", { length: 60 }).notNull().default(""), // numéro d'affaire (suggestions : déjà utilisés par la même personne)
     priceCents: int("price_cents").notNull(),
     comment: text("comment").notNull(), // texte complet prêt à copier (régénéré à chaque enregistrement depuis les champs ci-dessous + extraComment)
     extraComment: text("extra_comment").notNull().default(""), // précision libre saisie par la personne (séparée du texte complet, pour pré-remplir le formulaire de modification)

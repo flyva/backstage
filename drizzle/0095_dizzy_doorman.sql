@@ -1,0 +1,1 @@
+ALTER TABLE `expense_notes` ADD `business_number` varchar(60) DEFAULT '' NOT NULL;

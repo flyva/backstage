@@ -5,6 +5,7 @@ import { ArrowLeft, Receipt } from "lucide-react";
 import { db } from "@/db";
 import { expenseFiles, expenseNotes } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
+import { listBusinessNumbers } from "@/lib/expense-actions";
 import { ExpenseNoteForm, type ExpExistingPhoto } from "@/components/alternance-forms";
 
 export const metadata = { title: "Modifier la note de frais" };
@@ -15,7 +16,10 @@ export default async function EditExpenseNotePage({ params }: PageProps<"/altern
   if (!Number.isInteger(id)) notFound();
   const [note] = await db.select().from(expenseNotes).where(and(eq(expenseNotes.id, id), eq(expenseNotes.userId, user.id))).limit(1);
   if (!note) notFound();
-  const extra = await db.select({ id: expenseFiles.id }).from(expenseFiles).where(eq(expenseFiles.expenseNoteId, id)).orderBy(asc(expenseFiles.id));
+  const [extra, businessNumbers] = await Promise.all([
+    db.select({ id: expenseFiles.id }).from(expenseFiles).where(eq(expenseFiles.expenseNoteId, id)).orderBy(asc(expenseFiles.id)),
+    listBusinessNumbers(),
+  ]);
 
   const existingPhotos: ExpExistingPhoto[] = [
     { key: "main", url: `/api/alternance/notes-de-frais/${id}/photo`, kind: "main", fileId: null },
@@ -30,8 +34,8 @@ export default async function EditExpenseNotePage({ params }: PageProps<"/altern
         <ExpenseNoteForm
           today={note.date} now={note.time} day={note.date} moment={note.moment}
           id={note.id} time={note.time} price={note.priceCents / 100} placeName={note.placeName} place={note.place}
-          extraComment={note.extraComment} tvaRate={note.tvaRate ?? ""} tvaAmount={note.tvaCents === null ? undefined : note.tvaCents / 100}
-          existingPhotos={existingPhotos}
+          businessNumber={note.businessNumber} extraComment={note.extraComment} tvaRate={note.tvaRate ?? ""} tvaAmount={note.tvaCents === null ? undefined : note.tvaCents / 100}
+          businessNumbers={businessNumbers} existingPhotos={existingPhotos}
         />
       </div>
     </div>

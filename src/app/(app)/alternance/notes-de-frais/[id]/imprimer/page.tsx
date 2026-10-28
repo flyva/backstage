@@ -53,6 +53,7 @@ export default async function ExpenseNotePrintPage({ params }: PageProps<"/alter
         <InfoRow label="Date" value={dateFmt.format(new Date(`${note.date}T12:00:00`))} />
         <InfoRow label="Nom" value={note.placeName} />
         <InfoRow label="Adresse" value={note.place} />
+        <InfoRow label="Numéro d'affaire" value={note.businessNumber} />
         <InfoRow label="Heure" value={note.time} />
         <InfoRow label="Prix TTC" value={fmtEuros(note.priceCents)} />
         {priceWithoutTr !== null && <InfoRow label="Prix sans ticket-restaurant" value={fmtEuros(priceWithoutTr)} />}

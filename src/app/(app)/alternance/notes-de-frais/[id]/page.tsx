@@ -54,6 +54,7 @@ export default async function ExpenseNotePage({ params }: PageProps<"/alternance
             <FieldRow label="Date" value={dateFmt.format(new Date(`${note.date}T12:00:00`))} />
             <FieldRow label="Nom" value={note.placeName} />
             <FieldRow label="Adresse" value={note.place} />
+            <FieldRow label="Numéro d'affaire" value={note.businessNumber} />
             <FieldRow label="Heure" value={note.time} />
             <FieldRow label="Prix TTC" value={fmtEuros(note.priceCents)} />
             {priceWithoutTr !== null && <FieldRow label="Prix sans ticket-restaurant" value={fmtEuros(priceWithoutTr)} />}
