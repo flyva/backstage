@@ -25,9 +25,10 @@ export default async function AlternancePage({ searchParams }: PageProps<"/alter
   const grid = monthGrid(month);
 
   const mine = await tutees(user.id);
-  // Compte « Entreprise » (lecture seule) : pas de planning à soi, donc on affiche directement celui de la personne
-  // suivie (la première s'il y en a plusieurs) sans avoir à cliquer, sauf si on a explicitement choisi via ?as=.
-  const asParam = typeof sp.as === "string" ? sp.as : user.perms.companyOnly && mine[0] ? String(mine[0].id) : undefined;
+  // Pas de bascule automatique sur une personne suivie, même pour un compte Entreprise : on affiche ce qui est
+  // explicitement demandé (?as=), jamais une devinette sur « la » personne qui intéresse — choix fait depuis
+  // l'accueil (CompanyHome) ou le sélecteur ci-dessous.
+  const asParam = typeof sp.as === "string" ? sp.as : undefined;
   const subject = await resolveTimeSubject(user, asParam);
 
   const rows = await db
@@ -46,9 +47,10 @@ export default async function AlternancePage({ searchParams }: PageProps<"/alter
       {(mine.length > 0 || subject.readonly) && (
         <section className="card flex flex-wrap items-center gap-2 text-sm">
           <span className="text-muted">{subject.readonly ? `Tu regardes le planning de ${subject.name} (lecture seule).` : "Tu vois aussi, en tant que référent :"}</span>
-          {subject.readonly && !user.perms.companyOnly && <Link href="/alternance" className="btn-ghost text-xs">← Revenir à mon planning</Link>}
-          {/* Compte Entreprise avec plusieurs personnes suivies : les autres restent proposées pour basculer, même une fois affiché celui par défaut. */}
-          {(user.perms.companyOnly ? mine.filter((t) => t.id !== subject.userId) : subject.readonly ? [] : mine).map((t) => (
+          {subject.readonly && (
+            <Link href={user.perms.companyOnly ? "/" : "/alternance"} className="btn-ghost text-xs">← {user.perms.companyOnly ? "Revenir à l'accueil" : "Revenir à mon planning"}</Link>
+          )}
+          {mine.filter((t) => t.id !== subject.userId).map((t) => (
             <Link key={t.id} href={`/alternance?as=${t.id}`} className="rounded-full border border-line px-2.5 py-1 text-xs hover:border-accent">{t.name}</Link>
           ))}
         </section>

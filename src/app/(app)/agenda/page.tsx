@@ -49,9 +49,9 @@ export default async function AgendaPage({ searchParams }: PageProps<"/agenda">)
   const today = dayKey(new Date());
 
   const mine = await tutees(user.id);
-  // Compte « Entreprise » (lecture seule) : pas d'agenda à soi, donc on affiche directement celui de la personne
-  // suivie (la première s'il y en a plusieurs) sans avoir à cliquer, sauf si on a explicitement choisi via ?as=.
-  const asParam = typeof sp.as === "string" ? sp.as : user.perms.companyOnly && mine[0] ? String(mine[0].id) : undefined;
+  // Pas de bascule automatique, même pour un compte Entreprise : seul un ?as= explicite (choisi depuis l'accueil ou
+  // le sélecteur ci-dessous) affiche l'agenda de quelqu'un d'autre.
+  const asParam = typeof sp.as === "string" ? sp.as : undefined;
   const subject = await resolveTimeSubject(user, asParam);
   const subjectIcal = subject.userId === user.id ? user.icalUrl : ((await db.select({ icalUrl: users.icalUrl }).from(users).where(eq(users.id, subject.userId)).limit(1))[0]?.icalUrl ?? null);
 
@@ -76,8 +76,10 @@ export default async function AgendaPage({ searchParams }: PageProps<"/agenda">)
       {(mine.length > 0 || subject.readonly) && (
         <section className="card flex flex-wrap items-center gap-2 text-sm">
           <span className="text-muted">{subject.readonly ? `Tu regardes l'agenda de ${subject.name} (lecture seule).` : "Tu vois aussi, en tant que référent :"}</span>
-          {subject.readonly && !user.perms.companyOnly && <Link href="/agenda" className="btn-ghost text-xs">← Revenir à mon agenda</Link>}
-          {(user.perms.companyOnly ? mine.filter((t) => t.id !== subject.userId) : subject.readonly ? [] : mine).map((t) => (
+          {subject.readonly && (
+            <Link href={user.perms.companyOnly ? "/" : "/agenda"} className="btn-ghost text-xs">← {user.perms.companyOnly ? "Revenir à l'accueil" : "Revenir à mon agenda"}</Link>
+          )}
+          {mine.filter((t) => t.id !== subject.userId).map((t) => (
             <Link key={t.id} href={`/agenda?as=${t.id}`} className="rounded-full border border-line px-2.5 py-1 text-xs hover:border-accent">{t.name}</Link>
           ))}
         </section>
