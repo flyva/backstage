@@ -10,12 +10,14 @@ const TABS = [
 ];
 
 export default async function AlternanceLayout({ children }: { children: React.ReactNode }) {
-  await requireUser();
+  const user = await requireUser();
+  // Rôle « Entreprise » : seul le planning est accessible (voir COMPANY_ALLOWED_PATHS), les autres onglets n'ont pas lieu d'être proposés.
+  const tabs = user.perms.companyOnly ? TABS.filter((t) => t.slug === "") : TABS;
   return (
     <div className="space-y-5">
       <div className="space-y-5 print:hidden">
         <h1 className="text-2xl font-bold">Alternance</h1>
-        <ProjectTabs base="/alternance" tabs={TABS} label="Sections de l'alternance" />
+        <ProjectTabs base="/alternance" tabs={tabs} label="Sections de l'alternance" />
       </div>
       {children}
     </div>

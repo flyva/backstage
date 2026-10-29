@@ -673,6 +673,13 @@
       "when": 1793214836466,
       "tag": "0095_dizzy_doorman",
       "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "5",
+      "when": 1793276550923,
+      "tag": "0096_overconfident_blizzard",
+      "breakpoints": true
     }
   ]
 }

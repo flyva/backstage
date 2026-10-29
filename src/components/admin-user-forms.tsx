@@ -1,12 +1,20 @@
 "use client";
 
-import { useActionState } from "react";
-import { EyeOff, Trash2 } from "lucide-react";
+import { useActionState, useState } from "react";
+import { EyeOff, RefreshCw, Trash2 } from "lucide-react";
 import type { FormState } from "@/lib/actions";
 import { anonymizeUser, createUser, deleteRole, deleteUser, resetUserPassword, saveRole, updateUser } from "@/lib/user-admin-actions";
 import { ADMIN_PERM, COURSE_PAGES, LEVEL_FIELDS, LEVEL_LABEL, levelOf, SECTION_FIELDS, TICKETS_PERM, type Level } from "@/lib/perms";
 import { TOGGLEABLE_GROUPS } from "@/lib/nav-data";
 import { PasswordField } from "@/components/PasswordField";
+import { CopyButton } from "@/components/people-forms";
+
+/** Mot de passe lisible (pas de 0/O/1/l ambigus), facile à relire ou recopier à voix haute. */
+function randomPassword() {
+  const abc = "abcdefghjkmnpqrstuvwxyzACDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const bytes = crypto.getRandomValues(new Uint8Array(12));
+  return Array.from(bytes, (b) => abc[b % abc.length]).join("");
+}
 
 function Feedback({ state }: { state: FormState }) {
   if (state?.error) return <p className="text-sm text-danger" role="alert">{state.error}</p>;
@@ -34,6 +42,10 @@ export function RoleForm({ role = {} }: { role?: RoleValues }) {
           <span><strong>Administrateur</strong><span className="block text-xs text-muted">Tous les droits ci-dessous, y compris ceux qu&apos;on ajoutera plus tard. À réserver à peu de personnes.</span></span>
         </label>
         {role.system && role.isAdmin && <input type="hidden" name="isAdmin" value="on" />}
+        <label className="flex items-start gap-3 rounded-xl border border-line p-3 text-sm has-[:checked]:border-accent has-[:checked]:bg-accent/5">
+          <input type="checkbox" name="isCompany" defaultChecked={!!role.isCompany} disabled={!!role.isAdmin} className="mt-0.5 size-4 accent-[var(--accent)]" />
+          <span><strong>Entreprise (lecture seule)</strong><span className="block text-xs text-muted">Aucune modification possible nulle part : accès uniquement à l&apos;Agenda, au Planning des personnes qui l&apos;ont désigné comme référent, et aux Contacts de l&apos;école. Ignore tous les réglages ci-dessous.</span></span>
+        </label>
         <label className="flex items-start gap-3 rounded-xl border border-line p-3 text-sm has-[:checked]:border-accent has-[:checked]:bg-accent/5">
           <input type="checkbox" name={ADMIN_PERM.field} defaultChecked={!!role[ADMIN_PERM.field]} className="mt-0.5 size-4 accent-[var(--accent)]" />
           <span><strong>{ADMIN_PERM.label}</strong><span className="block text-xs text-muted">{ADMIN_PERM.hint}</span></span>
@@ -159,17 +171,22 @@ export function DeleteRoleForm({ id }: { id: number }) {
 
 /**
  * Création d'un compte natif (mot de passe, pas Google/Microsoft) : pour les personnes sans adresse 3iS ni Gmail,
- * typiquement un tuteur en entreprise. Un lien d'activation (choix du mot de passe, puis CGU) part par mail.
- * « Référent de » rattache directement ce compte au planning/pointeuse des alternants choisis (lecture seule).
+ * typiquement un tuteur en entreprise. Deux modes :
+ * - « invite » : un lien d'activation (choix du mot de passe, puis CGU) part par mail.
+ * - « direct » : pas de mail, identifiants (mot de passe aléatoire ou choisi ici) donnés tout de suite à l'admin,
+ *   CGU déjà acceptées — pratique pour donner l'accès à l'entreprise sans qu'elle ait à créer quoi que ce soit.
+ * « Référent de » rattache directement ce compte au planning/pointeuse/agenda des alternants choisis (lecture seule).
  */
 export function CreateUserForm({ roles, alternants }: { roles: { id: number; name: string }[]; alternants: { id: number; name: string }[] }) {
   const [state, action, pending] = useActionState(createUser, undefined);
+  const [mode, setMode] = useState<"invite" | "direct">("invite");
+  const [password, setPassword] = useState(() => randomPassword());
   return (
     <form action={action} className="space-y-4" key={state?.ok ? "done" : "form"}>
       <div className="grid gap-3 sm:grid-cols-2">
         <div><label className="label" htmlFor="nu-fn">Prénom</label><input id="nu-fn" name="firstName" required maxLength={60} className="input" /></div>
         <div><label className="label" htmlFor="nu-ln">Nom</label><input id="nu-ln" name="lastName" required maxLength={60} className="input" /></div>
-        <div className="sm:col-span-2"><label className="label" htmlFor="nu-em">Adresse e-mail (sert à l&apos;identifiant et au lien d&apos;activation)</label><input id="nu-em" name="email" type="email" required maxLength={190} className="input" /></div>
+        <div className="sm:col-span-2"><label className="label" htmlFor="nu-em">Adresse e-mail (sert d&apos;identifiant)</label><input id="nu-em" name="email" type="email" required maxLength={190} className="input" /></div>
         <div>
           <label className="label" htmlFor="nu-role">Rôle</label>
           <select id="nu-role" name="roleId" defaultValue="" required className="input">
@@ -178,18 +195,46 @@ export function CreateUserForm({ roles, alternants }: { roles: { id: number; nam
           </select>
         </div>
       </div>
+
+      <fieldset className="space-y-2">
+        <legend className="label">Mise en place du compte</legend>
+        <div role="radiogroup" className="grid gap-2 sm:grid-cols-2">
+          <label className={`cursor-pointer rounded-xl border p-3 text-sm ${mode === "invite" ? "border-accent bg-accent/5" : "border-line"}`}>
+            <input type="radio" name="modeRadio" checked={mode === "invite"} onChange={() => setMode("invite")} className="sr-only" />
+            <strong>Lien par mail</strong>
+            <span className="mt-0.5 block text-xs text-muted">La personne reçoit un mail, choisit elle-même son mot de passe et accepte les CGU.</span>
+          </label>
+          <label className={`cursor-pointer rounded-xl border p-3 text-sm ${mode === "direct" ? "border-accent bg-accent/5" : "border-line"}`}>
+            <input type="radio" name="modeRadio" checked={mode === "direct"} onChange={() => setMode("direct")} className="sr-only" />
+            <strong>Identifiants immédiats</strong>
+            <span className="mt-0.5 block text-xs text-muted">Pas de mail : tu récupères l&apos;adresse et le mot de passe ici pour les transmettre toi-même. CGU déjà acceptées.</span>
+          </label>
+        </div>
+        <input type="hidden" name="mode" value={mode} />
+        {mode === "direct" && (
+          <div>
+            <label className="label" htmlFor="nu-pw">Mot de passe (aléatoire par défaut, modifiable)</label>
+            <div className="flex flex-wrap items-center gap-2">
+              <input id="nu-pw" name="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} maxLength={200} required className="input max-w-xs font-mono" />
+              <button type="button" className="btn-ghost" onClick={() => setPassword(randomPassword())} title="Générer un autre mot de passe aléatoire"><RefreshCw size={15} /> Régénérer</button>
+              <CopyButton value={password} label="Copier le mot de passe" />
+            </div>
+            <p className="mt-1 text-xs text-muted">La personne pourra le changer ensuite depuis son profil.</p>
+          </div>
+        )}
+      </fieldset>
+
       {alternants.length > 0 && (
         <div>
-          <label className="label" htmlFor="nu-tutees">Référent (tuteur) de — voit leur pointeuse et leurs stats en lecture seule</label>
+          <label className="label" htmlFor="nu-tutees">Référent (tuteur) de — voit leur agenda, leur pointeuse et leurs stats en lecture seule</label>
           <select id="nu-tutees" name="tuteeIds" multiple size={Math.min(6, alternants.length)} className="input">
             {alternants.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>
           <p className="mt-1 text-xs text-muted">Facultatif : laisse vide si ce compte n&apos;a pas besoin de voir le planning d&apos;un alternant (ctrl/cmd + clic pour en choisir plusieurs).</p>
         </div>
       )}
-      <p className="text-xs text-muted">Un mail est envoyé à cette adresse avec un lien (valable 7 jours) pour choisir un mot de passe et accepter les CGU.</p>
       <Feedback state={state} />
-      <button className="btn" disabled={pending}>{pending ? "Création…" : "Créer le compte et envoyer le lien"}</button>
+      <button className="btn" disabled={pending}>{pending ? "Création…" : mode === "direct" ? "Créer le compte" : "Créer le compte et envoyer le lien"}</button>
     </form>
   );
 }

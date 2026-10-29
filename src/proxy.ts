@@ -8,7 +8,11 @@ export function proxy(request: NextRequest) {
   if (!request.cookies.has("session")) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
-  return NextResponse.next();
+  // Transmis aux Server Components via `headers()` : sert à restreindre les pages accessibles à un rôle « Entreprise »
+  // (lecture seule), sans avoir à passer le chemin explicitement à chaque page (voir requireUser dans lib/auth.ts).
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-pathname", request.nextUrl.pathname);
+  return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
 export const config = {

@@ -8,6 +8,7 @@ import { todayParis } from "@/lib/equipment";
 import { absoluteUrl } from "@/lib/base-url";
 import { KIND_CLASS, KIND_LABEL, addMonths, isMonth, isWeekend, monthGrid, monthLabel } from "@/lib/alternance";
 import { cycleDay } from "@/lib/alternance-actions";
+import { resolveTimeSubject, tutees } from "@/lib/time-access";
 import { RangeForm, RhythmForm } from "@/components/alternance-forms";
 import { CalendarImport } from "@/components/CalendarImport";
 import { FeedPanel } from "@/components/people-forms";
@@ -23,25 +24,38 @@ export default async function AlternancePage({ searchParams }: PageProps<"/alter
   const month = isMonth(sp.m) ? sp.m : today.slice(0, 7);
   const grid = monthGrid(month);
 
+  const asParam = typeof sp.as === "string" ? sp.as : undefined;
+  const subject = await resolveTimeSubject(user, asParam);
+  const mine = await tutees(user.id);
+
   const rows = await db
     .select()
     .from(workDays)
-    .where(and(eq(workDays.userId, user.id), gte(workDays.day, grid[0].day), lte(workDays.day, grid[grid.length - 1].day)))
+    .where(and(eq(workDays.userId, subject.userId), gte(workDays.day, grid[0].day), lte(workDays.day, grid[grid.length - 1].day)))
     .orderBy(asc(workDays.day));
   const kindOf = new Map(rows.map((r) => [r.day, r.kind]));
 
   const count = (k: WorkKind) => rows.filter((r) => r.kind === k && r.day.startsWith(month)).length;
   const feedUrl = user.feedToken ? await absoluteUrl(`/api/feed/${user.feedToken}.ics`) : null;
+  const monthHref = (m: string) => `?${new URLSearchParams({ m, ...(subject.readonly ? { as: String(subject.userId) } : {}) })}`;
 
   return (
     <div className="space-y-6">
+      {(mine.length > 0 || subject.readonly) && (
+        <section className="card flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-muted">{subject.readonly ? `Tu regardes le planning de ${subject.name} (lecture seule).` : "Tu vois aussi, en tant que référent :"}</span>
+          {subject.readonly && <Link href="/alternance" className="btn-ghost text-xs">← Revenir à mon planning</Link>}
+          {!subject.readonly && mine.map((t) => <Link key={t.id} href={`/alternance?as=${t.id}`} className="rounded-full border border-line px-2.5 py-1 text-xs hover:border-accent">{t.name}</Link>)}
+        </section>
+      )}
+
       <section className="card space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-1">
-            <Link href={`?m=${addMonths(month, -1)}`} className="btn-ghost px-2" aria-label="Mois précédent"><ChevronLeft size={16} /></Link>
+            <Link href={monthHref(addMonths(month, -1))} className="btn-ghost px-2" aria-label="Mois précédent"><ChevronLeft size={16} /></Link>
             <h2 className="w-44 text-center text-lg font-semibold capitalize">{monthLabel(month)}</h2>
-            <Link href={`?m=${addMonths(month, 1)}`} className="btn-ghost px-2" aria-label="Mois suivant"><ChevronRight size={16} /></Link>
-            {month !== today.slice(0, 7) && <Link href="?" className="btn-ghost ml-2 text-xs">Aujourd&apos;hui</Link>}
+            <Link href={monthHref(addMonths(month, 1))} className="btn-ghost px-2" aria-label="Mois suivant"><ChevronRight size={16} /></Link>
+            {month !== today.slice(0, 7) && <Link href={subject.readonly ? `?as=${subject.userId}` : "?"} className="btn-ghost ml-2 text-xs">Aujourd&apos;hui</Link>}
           </div>
           <ul className="flex flex-wrap gap-2 text-xs">
             {(Object.keys(KIND_LABEL) as WorkKind[]).map((k) => (
@@ -54,50 +68,56 @@ export default async function AlternancePage({ searchParams }: PageProps<"/alter
         <div className="grid grid-cols-7 gap-1">
           {grid.map(({ day, inMonth }) => {
             const kind = kindOf.get(day);
+            const cls = `flex h-14 w-full flex-col items-center justify-center gap-0.5 rounded-lg border text-sm ${kind ? `${KIND_CLASS[kind]} border-transparent` : "border-line"} ${inMonth ? "" : "opacity-40"} ${day === today ? "ring-2 ring-accent" : ""} ${!kind && isWeekend(day) ? "bg-bg" : ""}`;
+            const content = (
+              <>
+                <span className="font-medium tabular-nums">{Number(day.slice(8))}</span>
+                {kind && <span className="text-[10px] leading-none">{KIND_LABEL[kind]}</span>}
+              </>
+            );
+            if (subject.readonly) return <div key={day} className={cls} aria-label={`${day} : ${kind ? KIND_LABEL[kind] : "libre"}`}>{content}</div>;
             return (
               <form key={day} action={cycleDay}>
                 <input type="hidden" name="day" value={day} />
-                <button
-                  className={`flex h-14 w-full flex-col items-center justify-center gap-0.5 rounded-lg border text-sm transition hover:border-accent ${kind ? `${KIND_CLASS[kind]} border-transparent` : "border-line"} ${inMonth ? "" : "opacity-40"} ${day === today ? "ring-2 ring-accent" : ""} ${!kind && isWeekend(day) ? "bg-bg" : ""}`}
-                  aria-label={`${day} : ${kind ? KIND_LABEL[kind] : "libre"}`}
-                >
-                  <span className="font-medium tabular-nums">{Number(day.slice(8))}</span>
-                  {kind && <span className="text-[10px] leading-none">{KIND_LABEL[kind]}</span>}
-                </button>
+                <button className={`${cls} transition hover:border-accent`} aria-label={`${day} : ${kind ? KIND_LABEL[kind] : "libre"}`}>{content}</button>
               </form>
             );
           })}
         </div>
-        <p className="text-xs text-muted">Clique sur un jour pour changer son type : libre → école → entreprise → congé → férié → libre.</p>
+        <p className="text-xs text-muted">{subject.readonly ? "Lecture seule." : "Clique sur un jour pour changer son type : libre → école → entreprise → congé → férié → libre."}</p>
       </section>
 
-      <section className="card space-y-3">
-        <h2 className="font-semibold">Télécharger mon calendrier</h2>
-        <p className="text-sm text-muted">Un lien à ajouter dans Google Agenda, Apple Calendrier ou Outlook (ton entreprise d&apos;accueil, un tuteur…) : il reste à jour automatiquement avec ce planning et le reste de ton activité sur Backstage.</p>
-        <FeedPanel enabled={!!user.feedToken} httpsUrl={feedUrl} />
-      </section>
+      {!subject.readonly && (
+        <>
+          <section className="card space-y-3">
+            <h2 className="font-semibold">Télécharger mon calendrier</h2>
+            <p className="text-sm text-muted">Un lien à ajouter dans Google Agenda, Apple Calendrier ou Outlook (ton entreprise d&apos;accueil, un tuteur…) : il reste à jour automatiquement avec ce planning et le reste de ton activité sur Backstage. Pour donner un accès complet (avec connexion) plutôt qu&apos;un simple lien, un administrateur peut aussi créer un compte « Entreprise » qui te voit directement dans l&apos;appli — voir Administration → Utilisateurs.</p>
+            <FeedPanel enabled={!!user.feedToken} httpsUrl={feedUrl} />
+          </section>
 
-      <section className="card space-y-3">
-        <h2 className="font-semibold">Importer le calendrier de l&apos;école</h2>
-        <p className="text-sm text-muted">Envoie le PDF du calendrier de formation : les périodes à l&apos;école, en entreprise et les jours fériés se placent tout seuls, ici et dans l&apos;agenda.</p>
-        <CalendarImport />
-      </section>
+          <section className="card space-y-3">
+            <h2 className="font-semibold">Importer le calendrier de l&apos;école</h2>
+            <p className="text-sm text-muted">Envoie le PDF du calendrier de formation : les périodes à l&apos;école, en entreprise et les jours fériés se placent tout seuls, ici et dans l&apos;agenda.</p>
+            <CalendarImport />
+          </section>
 
-      <details className="card space-y-3">
-        <summary className="cursor-pointer font-semibold">Autres façons de planifier</summary>
-        <div className="space-y-6 pt-3">
-      <section className="space-y-3">
-        <h2 className="font-semibold">Planifier un rythme</h2>
-        <p className="text-sm text-muted">Par exemple 1 semaine à l&apos;école puis 3 semaines en entreprise, répété 8 fois. Les jours du lundi au vendredi sont remplis.</p>
-        <RhythmForm today={today} />
-      </section>
+          <details className="card space-y-3">
+            <summary className="cursor-pointer font-semibold">Autres façons de planifier</summary>
+            <div className="space-y-6 pt-3">
+          <section className="space-y-3">
+            <h2 className="font-semibold">Planifier un rythme</h2>
+            <p className="text-sm text-muted">Par exemple 1 semaine à l&apos;école puis 3 semaines en entreprise, répété 8 fois. Les jours du lundi au vendredi sont remplis.</p>
+            <RhythmForm today={today} />
+          </section>
 
-      <section className="space-y-3">
-        <h2 className="font-semibold">Appliquer à une période</h2>
-        <RangeForm today={today} />
-      </section>
-        </div>
-      </details>
+          <section className="space-y-3">
+            <h2 className="font-semibold">Appliquer à une période</h2>
+            <RangeForm today={today} />
+          </section>
+            </div>
+          </details>
+        </>
+      )}
     </div>
   );
 }

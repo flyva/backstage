@@ -1,7 +1,10 @@
 // Droits d'un rôle (partagé serveur / client, sans dépendance serveur).
 
+import { TOGGLEABLE_GROUPS } from "@/lib/nav-data";
+
 export type RoleFlags = {
   isAdmin: boolean;
+  isCompany: boolean;
   permAdministration: boolean;
   permMateriel: boolean;
   permBde: boolean;
@@ -38,8 +41,13 @@ export const COURSE_PAGES = [
 ] as const;
 export type CoursePageKey = (typeof COURSE_PAGES)[number]["key"];
 
+/** Pages accessibles à un rôle « Entreprise » (lecture seule) : rien d'autre, aucune page de gestion. */
+export const COMPANY_ALLOWED_PATHS = ["/", "/agenda", "/alternance", "/contacts", "/profil", "/parametres"] as const;
+
 export type Perms = {
   admin: boolean; // administrateur : tous les droits
+  /** Rôle externe en lecture seule (entreprise d'accueil…) : Agenda, Planning/pointeuse des référés et Contacts seulement, rien à gérer. */
+  companyOnly: boolean;
   administration: boolean;
   materiel: boolean;
   bde: boolean;
@@ -57,11 +65,26 @@ export type Perms = {
   hiddenPages: string[];
 };
 
-/** Un administrateur a tous les droits, quel que soit le détail coché. */
+/** Un administrateur a tous les droits, quel que soit le détail coché. Un rôle « Entreprise » n'en a aucun : lecture seule, Agenda/Planning/Contacts uniquement. */
 export function permsOf(r: RoleFlags | null | undefined): Perms {
   const a = !!r?.isAdmin;
+  const company = !a && !!r?.isCompany;
+  if (company) {
+    const allHrefs = TOGGLEABLE_GROUPS.flatMap((g) => g.pages).map((pg) => pg.href);
+    return {
+      admin: false,
+      companyOnly: true,
+      administration: false,
+      materiel: false, bde: false, actus: false, galerie: false, tickets: false,
+      view: { materiel: false, bde: false, actus: false, galerie: false },
+      sections: { savoirs: false, promo: false, vie: false, detente: false, rechercheEntreprises: false },
+      courses: Object.fromEntries(COURSE_PAGES.map((p) => [p.key, false])) as Record<CoursePageKey, boolean>,
+      hiddenPages: allHrefs.filter((href) => !COMPANY_ALLOWED_PATHS.includes(href as (typeof COMPANY_ALLOWED_PATHS)[number])),
+    };
+  }
   return {
     admin: a,
+    companyOnly: false,
     administration: a || !!r?.permAdministration,
     materiel: a || !!r?.permMateriel,
     bde: a || !!r?.permBde,

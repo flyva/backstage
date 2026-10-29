@@ -47,6 +47,10 @@ export const roles = mysqlTable("roles", {
   // Pages individuelles masquées du menu pour ce rôle (ex. "/alternance/pointeuse,/instagram") : liste de hrefs
   // séparés par des virgules. Vide ou absent = rien de masqué. Même principe d'opt-out que courseTags.
   hiddenPages: text("hidden_pages"),
+  // Rôle externe en lecture seule (entreprise d'accueil, tuteur sans accès au reste de l'appli) : quel que soit le
+  // reste des réglages ci-dessus, l'accès se limite à l'agenda, au planning/pointeuse des personnes qui l'ont
+  // désigné comme référent (agendaViewers) et aux contacts de l'école ; aucune page de gestion n'est accessible.
+  isCompany: boolean("is_company").notNull().default(false),
   createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
 });
 
@@ -147,8 +151,6 @@ export const users = mysqlTable("users", {
   // jours de la semaine au-delà de workDaysPerWeek sont marqués « repos » automatiquement s'il n'y a rien dessus.
   standardWorkMinutes: int("standard_work_minutes").notNull().default(420),
   workDaysPerWeek: int("work_days_per_week").notNull().default(5),
-  // Référent (tuteur, patron…) : voit en lecture seule la pointeuse et les stats de la personne, s'il est lui-même désigné ici.
-  tutorUserId: int("tutor_user_id").references((): AnyMySqlColumn => users.id, { onDelete: "set null" }),
   // Restauration (notes de frais) : plafonds de remboursement propres à CHAQUE personne (contrat différent selon l'entreprise),
   // jamais un réglage général. Null = non configuré, pas de calcul affiché. Le montant du ticket-restaurant (part patronale,
   // facultatif) est déduit du remboursement sur le(s) repas concerné(s) (resto_tr_moment) ; "journee_entiere" le déduit une
@@ -172,6 +174,18 @@ export const sessions = mysqlTable(
     expiresAt: datetime("expires_at").notNull(),
   },
   (t) => [index("sessions_user_idx").on(t.userId)],
+);
+
+// Qui peut voir en lecture seule le planning/pointeuse/stats de qui (agenda partagé avec un tuteur, l'entreprise
+// d'accueil…) : une personne peut avoir plusieurs référents, et un référent peut suivre plusieurs personnes.
+export const agendaViewers = mysqlTable(
+  "agenda_viewers",
+  {
+    ownerUserId: int("owner_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    viewerUserId: int("viewer_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [primaryKey({ columns: [t.ownerUserId, t.viewerUserId] }), index("agenda_viewers_viewer_idx").on(t.viewerUserId)],
 );
 
 // Qui, côté admin, a consulté ou modifié la fiche de qui (RGPD : traçabilité des accès aux données sensibles).

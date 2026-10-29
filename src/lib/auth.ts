@@ -1,13 +1,13 @@
 import "server-only";
 import { randomBytes, scrypt as scryptCb, timingSafeEqual, createHash } from "node:crypto";
 import { promisify } from "node:util";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { roles, sessions, users, type User } from "@/db/schema";
-import { permsOf, type Module, type Perms } from "@/lib/perms";
+import { COMPANY_ALLOWED_PATHS, permsOf, type Module, type Perms } from "@/lib/perms";
 
 const scrypt = promisify(scryptCb) as (pw: string, salt: Buffer, len: number) => Promise<Buffer>;
 
@@ -101,6 +101,12 @@ export async function requireUser() {
   if (user.status !== "active") redirect("/en-attente");
   // Inscription Google/Microsoft : pas de formulaire avec case à cocher, donc l'acceptation se fait ici, au premier accès.
   if (!user.cguAcceptedAt) redirect("/accepter-cgu");
+  // Rôle « Entreprise » (lecture seule) : accès limité à Agenda, Planning et Contacts, où qu'on essaie d'aller
+  // (barre d'adresse comprise, pas seulement le menu). Le chemin vient d'un en-tête posé par proxy.ts.
+  if (user.perms.companyOnly) {
+    const path = (await headers()).get("x-pathname") ?? "/";
+    if (!COMPANY_ALLOWED_PATHS.includes(path as (typeof COMPANY_ALLOWED_PATHS)[number])) redirect("/agenda");
+  }
   return user;
 }
 

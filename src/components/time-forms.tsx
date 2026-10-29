@@ -66,7 +66,7 @@ export function DayStatusEditForm({ day, kind }: { day: string; kind: Extract<Wo
   );
 }
 
-export function TimeSettingsForm({ standardHours, workDaysPerWeek, tutorUserId, colleagues }: { standardHours: number; workDaysPerWeek: number; tutorUserId: number | null; colleagues: { id: number; name: string }[] }) {
+export function TimeSettingsForm({ standardHours, workDaysPerWeek, viewerIds, colleagues }: { standardHours: number; workDaysPerWeek: number; viewerIds: number[]; colleagues: { id: number; name: string }[] }) {
   const [state, action, pending] = useActionState(saveTimeSettings, undefined);
   const restDays = 7 - workDaysPerWeek;
   return (
@@ -85,12 +85,11 @@ export function TimeSettingsForm({ standardHours, workDaysPerWeek, tutorUserId, 
           <p className="mt-1 text-xs text-muted">Les heures sup se comptent sur la semaine entière. Les {restDays > 0 ? `${restDays} dernier${restDays > 1 ? "s" : ""} jour${restDays > 1 ? "s" : ""} de la semaine (ex. week-end)` : "jours restants"} sont marqués « Repos » tout seuls.</p>
         </div>
         <div>
-          <label className="label" htmlFor="ts-tutor">Référent (tuteur, patron…)</label>
-          <select id="ts-tutor" name="tutorUserId" defaultValue={tutorUserId ?? ""} className="input">
-            <option value="">Personne</option>
+          <label className="label" htmlFor="ts-tutor">Référents (tuteur, patron, entreprise d&apos;accueil…)</label>
+          <select id="ts-tutor" name="viewerIds" multiple size={Math.min(5, Math.max(3, colleagues.length))} defaultValue={viewerIds.map(String)} className="input">
             {colleagues.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
-          <p className="mt-1 text-xs text-muted">Cette personne voit ta pointeuse et tes stats en lecture seule.</p>
+          <p className="mt-1 text-xs text-muted">Ces personnes voient ton planning, ta pointeuse et tes stats en lecture seule (ctrl/cmd + clic pour en choisir plusieurs).</p>
         </div>
       </div>
       <div className="flex items-center gap-3">

@@ -2,10 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { and, count, eq, inArray, ne } from "drizzle-orm";
+import { and, count, eq, ne, or } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { passwordResets, roles, sessions, users } from "@/db/schema";
+import { agendaViewers, passwordResets, roles, sessions, users } from "@/db/schema";
 import { hashPassword, requireAdmin } from "@/lib/auth";
 import { joinName } from "@/lib/names";
 import { COURSE_PAGES } from "@/lib/perms";
@@ -62,6 +62,7 @@ export async function saveRole(_: FormState, fd: FormData): Promise<FormState> {
     name: p.data.name,
     description: p.data.description || null,
     isAdmin: flag("isAdmin"),
+    isCompany: flag("isCompany"),
     permAdministration: flag("permAdministration"),
     permTickets: flag("permTickets"),
     viewSavoirs: fd.get("section_savoirs") !== "none",
@@ -82,6 +83,7 @@ export async function saveRole(_: FormState, fd: FormData): Promise<FormState> {
     })(),
     ...levels(fd),
   };
+  if (values.isAdmin) values.isCompany = false; // un administrateur n'est jamais un rôle externe en lecture seule
   const raw = Number(fd.get("id") || 0);
   const [dup] = await db.select({ id: roles.id }).from(roles).where(eq(roles.name, values.name)).limit(1);
   if (dup && dup.id !== raw) return { error: "Un rôle porte déjà ce nom" };
@@ -134,9 +136,14 @@ const createUserSchema = z.object({
 
 /**
  * Crée un compte natif (mot de passe, pas Google/Microsoft) directement depuis l'admin : pour les personnes sans
- * adresse 3iS ni Gmail (tuteur en entreprise, intervenant extérieur…). Le mot de passe de départ est inutilisable
- * (aléatoire, jamais communiqué) : un lien pour en choisir un vrai est envoyé par mail, en réutilisant le mécanisme
- * de « mot de passe oublié » (même page /reinitialiser, mêmes jetons à usage unique).
+ * adresse 3iS ni Gmail (tuteur en entreprise, intervenant extérieur…).
+ *
+ * Deux façons de démarrer :
+ * - « invite » (par défaut) : mot de passe de départ inutilisable, un lien pour en choisir un vrai part par mail
+ *   (réutilise le mécanisme de « mot de passe oublié ») ; les CGU restent à accepter par la personne.
+ * - « direct » : pas de mail, les identifiants (adresse + mot de passe choisi ici, ou généré) sont donnés tout de
+ *   suite à l'admin pour les transmettre lui-même ; les CGU sont considérées acceptées (c'est l'admin qui crée le
+ *   compte en connaissance de cause). La personne pourra changer son mot de passe depuis son profil.
  */
 export async function createUser(_: FormState, fd: FormData): Promise<FormState> {
   const admin = await requireAdmin();
@@ -150,7 +157,15 @@ export async function createUser(_: FormState, fd: FormData): Promise<FormState>
   const [taken] = await db.select({ id: users.id }).from(users).where(eq(users.email, p.data.email)).limit(1);
   if (taken) return { error: "Cette adresse est déjà utilisée par un autre compte" };
 
-  // Comptes dont ce nouveau compte devient le référent (tuteur) : il pourra voir leur pointeuse et leurs stats en lecture seule.
+  const direct = fd.get("mode") === "direct";
+  let password = "";
+  if (direct) {
+    password = String(fd.get("password") ?? "");
+    if (password.length < 8) return { error: "Mot de passe : 8 caractères minimum" };
+    if (password.length > 200) return { error: "Mot de passe trop long" };
+  }
+
+  // Alternants dont ce nouveau compte devient le référent : il pourra voir leur agenda, leur pointeuse et leurs stats en lecture seule.
   const tuteeIds = fd.getAll("tuteeIds").map((v) => Number(v)).filter((n) => Number.isInteger(n) && n > 0);
 
   const name = joinName(p.data.firstName, p.data.lastName);
@@ -159,13 +174,21 @@ export async function createUser(_: FormState, fd: FormData): Promise<FormState>
     firstName: p.data.firstName,
     lastName: p.data.lastName,
     name,
-    passwordHash: await hashPassword(randomBytes(32).toString("hex")), // inutilisable : remplacé via le lien envoyé par mail
+    // Mode « invite » : inutilisable, remplacé via le lien envoyé par mail. Mode « direct » : celui choisi ici.
+    passwordHash: await hashPassword(direct ? password : randomBytes(32).toString("hex")),
     roleId: roleId.data,
     status: "active",
+    cguAcceptedAt: direct ? new Date() : null,
   });
   const newId = res.insertId;
 
-  if (tuteeIds.length) await db.update(users).set({ tutorUserId: newId }).where(inArray(users.id, tuteeIds));
+  if (tuteeIds.length) await db.insert(agendaViewers).values(tuteeIds.map((ownerUserId) => ({ ownerUserId, viewerUserId: newId })));
+
+  if (direct) {
+    await logAdminAction(admin.id, "create", newId, name);
+    refresh();
+    return { ok: `Compte créé. Identifiant : ${p.data.email} · Mot de passe : ${password} (donne-les à la personne ; elle pourra changer son mot de passe dans son profil).` };
+  }
 
   const base = publicBaseUrl();
   if (base) {
@@ -276,6 +299,7 @@ export async function anonymizeUser(_: FormState, fd: FormData): Promise<FormSta
     discord: null, habilitation: null, trackId: null, classId: null, cardEnabled: false, cardSlug: null,
     icalUrl: null, feedToken: null,
   }).where(eq(users.id, uid));
+  await db.delete(agendaViewers).where(or(eq(agendaViewers.ownerUserId, uid), eq(agendaViewers.viewerUserId, uid)));
   await db.delete(sessions).where(eq(sessions.userId, uid));
   await logAdminAction(admin.id, "anonymize", uid, target.name);
   refresh();

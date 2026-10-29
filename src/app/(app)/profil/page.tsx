@@ -4,7 +4,7 @@ import { and, asc, eq, ne } from "drizzle-orm";
 import { Download } from "lucide-react";
 import QRCode from "qrcode";
 import { db } from "@/db";
-import { classes, tracks, userLinks, users } from "@/db/schema";
+import { agendaViewers, classes, tracks, userLinks, users } from "@/db/schema";
 import { ProfileForm } from "@/components/forms";
 import { AvatarForm, CardPanel, DeleteMyAccountForm, FeedPanel, FicheForm, LinksEditor } from "@/components/people-forms";
 import { TimeSettingsForm } from "@/components/time-forms";
@@ -137,14 +137,17 @@ async function NetworksTab({ userId }: { userId: number }) {
 }
 
 async function AlternanceTab({ user }: { user: User }) {
-  const colleagues = await db.select({ id: users.id, name: users.name }).from(users).where(and(ne(users.id, user.id), eq(users.status, "active"))).orderBy(users.name);
+  const [colleagues, viewers] = await Promise.all([
+    db.select({ id: users.id, name: users.name }).from(users).where(and(ne(users.id, user.id), eq(users.status, "active"))).orderBy(users.name),
+    db.select({ id: agendaViewers.viewerUserId }).from(agendaViewers).where(eq(agendaViewers.ownerUserId, user.id)),
+  ]);
   return (
     <div className="card space-y-4">
       <div>
         <h2 className="font-semibold">Pointeuse</h2>
-        <p className="text-sm text-muted">La durée standard sert à calculer tes heures sup. Le référent voit ta pointeuse et tes statistiques en lecture seule.</p>
+        <p className="text-sm text-muted">La durée standard sert à calculer tes heures sup. Les référents voient ta pointeuse et tes statistiques en lecture seule.</p>
       </div>
-      <TimeSettingsForm standardHours={user.standardWorkMinutes / 60} workDaysPerWeek={user.workDaysPerWeek} tutorUserId={user.tutorUserId} colleagues={colleagues} />
+      <TimeSettingsForm standardHours={user.standardWorkMinutes / 60} workDaysPerWeek={user.workDaysPerWeek} viewerIds={viewers.map((v) => v.id)} colleagues={colleagues} />
 
       <div className="border-t border-line pt-4">
         <h2 className="font-semibold">Restauration</h2>
