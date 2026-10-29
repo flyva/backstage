@@ -2,12 +2,13 @@ import Link from "next/link";
 import { and, eq, inArray } from "drizzle-orm";
 import { ChevronLeft, ChevronRight, MapPin, RefreshCw } from "lucide-react";
 import { db } from "@/db";
-import { workDays } from "@/db/schema";
+import { users, workDays } from "@/db/schema";
 import { KIND_CLASS, KIND_LABEL } from "@/lib/alternance";
 import { requireUser } from "@/lib/auth";
 import { refreshAgenda } from "@/lib/actions";
 import { WeekGrid } from "@/components/WeekGrid";
 import { courseEvents } from "@/lib/courses";
+import { resolveTimeSubject, tutees } from "@/lib/time-access";
 import { dayKey, eventGroupTag, rangeOfWeek, weekDays, type AgendaEvent } from "@/lib/ical";
 
 export const metadata = { title: "Agenda" };
@@ -41,38 +42,57 @@ function EventCard({ e }: { e: AgendaEvent }) {
 
 export default async function AgendaPage({ searchParams }: PageProps<"/agenda">) {
   const user = await requireUser();
-  const raw = Number((await searchParams).s ?? 0);
+  const sp = await searchParams;
+  const raw = Number(sp.s ?? 0);
   const offset = Number.isInteger(raw) ? Math.max(-26, Math.min(52, raw)) : 0;
   const days = weekDays(offset);
   const today = dayKey(new Date());
+
+  const mine = await tutees(user.id);
+  // Compte « Entreprise » (lecture seule) : pas d'agenda à soi, donc on affiche directement celui de la personne
+  // suivie (la première s'il y en a plusieurs) sans avoir à cliquer, sauf si on a explicitement choisi via ?as=.
+  const asParam = typeof sp.as === "string" ? sp.as : user.perms.companyOnly && mine[0] ? String(mine[0].id) : undefined;
+  const subject = await resolveTimeSubject(user, asParam);
+  const subjectIcal = subject.userId === user.id ? user.icalUrl : ((await db.select({ icalUrl: users.icalUrl }).from(users).where(eq(users.id, subject.userId)).limit(1))[0]?.icalUrl ?? null);
 
   let events: AgendaEvent[] = [];
   let error: string | null = null;
   try {
     const { from, to } = rangeOfWeek(days);
-    events = await courseEvents(user, from, to);
+    events = await courseEvents({ id: subject.userId, icalUrl: subjectIcal }, from, to);
   } catch (e) {
     error = e instanceof Error ? e.message : "erreur inconnue";
   }
   const byDay = Map.groupBy(events, (e) => dayKey(e.start));
   // Planning de l'alternance (école / entreprise / congé / férié) : affiché même sans lien iCal.
-  const kinds = new Map((await db.select({ day: workDays.day, kind: workDays.kind }).from(workDays).where(and(eq(workDays.userId, user.id), inArray(workDays.day, days.map((d) => d.key))))).map((r) => [r.day, r.kind]));
+  const kinds = new Map((await db.select({ day: workDays.day, kind: workDays.kind }).from(workDays).where(and(eq(workDays.userId, subject.userId), inArray(workDays.day, days.map((d) => d.key))))).map((r) => [r.day, r.kind]));
   const np = nowFmt.formatToParts(new Date());
   const nowMinutes = Number(np.find((p) => p.type === "hour")?.value) * 60 + Number(np.find((p) => p.type === "minute")?.value);
   const label = `${rangeFmt.format(days[0].date)} – ${rangeFmt.format(days[6].date)}`;
+  const weekHref = (s: number) => `?${new URLSearchParams({ s: String(s), ...(subject.readonly ? { as: String(subject.userId) } : {}) })}`;
 
   return (
     <div className="space-y-6">
+      {(mine.length > 0 || subject.readonly) && (
+        <section className="card flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-muted">{subject.readonly ? `Tu regardes l'agenda de ${subject.name} (lecture seule).` : "Tu vois aussi, en tant que référent :"}</span>
+          {subject.readonly && !user.perms.companyOnly && <Link href="/agenda" className="btn-ghost text-xs">← Revenir à mon agenda</Link>}
+          {(user.perms.companyOnly ? mine.filter((t) => t.id !== subject.userId) : subject.readonly ? [] : mine).map((t) => (
+            <Link key={t.id} href={`/agenda?as=${t.id}`} className="rounded-full border border-line px-2.5 py-1 text-xs hover:border-accent">{t.name}</Link>
+          ))}
+        </section>
+      )}
+
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Agenda</h1>
-          <p className="text-sm text-muted">Ton planning Ypareo, semaine du {label}</p>
+          <p className="text-sm text-muted">{subject.readonly ? "Planning Ypareo" : "Ton planning Ypareo"}, semaine du {label}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Link href={`/agenda?s=${offset - 1}`} className="btn-ghost" aria-label="Semaine précédente"><ChevronLeft size={16} /></Link>
-          <Link href="/agenda" className="btn-ghost">Aujourd&apos;hui</Link>
-          <Link href={`/agenda?s=${offset + 1}`} className="btn-ghost" aria-label="Semaine suivante"><ChevronRight size={16} /></Link>
-          {user.icalUrl && (
+          <Link href={weekHref(offset - 1)} className="btn-ghost" aria-label="Semaine précédente"><ChevronLeft size={16} /></Link>
+          <Link href={subject.readonly ? `?as=${subject.userId}` : "/agenda"} className="btn-ghost">Aujourd&apos;hui</Link>
+          <Link href={weekHref(offset + 1)} className="btn-ghost" aria-label="Semaine suivante"><ChevronRight size={16} /></Link>
+          {!subject.readonly && user.icalUrl && (
             <form action={refreshAgenda}>
               <button className="btn-ghost" title="Resynchroniser avec Ypareo"><RefreshCw size={16} /></button>
             </form>
@@ -80,16 +100,24 @@ export default async function AgendaPage({ searchParams }: PageProps<"/agenda">)
         </div>
       </header>
 
-      {!user.icalUrl && (
+      {!subjectIcal && (
         <div className="card border-accent text-sm">
-          Aucun planning relié. Ajoute ton lien iCalendar dans ton{" "}
-          <Link href="/profil" className="font-medium text-accent underline">profil</Link> (Planning → Action → Export au format iCalendar).
+          {subject.readonly ? (
+            "Aucun planning relié chez cette personne."
+          ) : (
+            <>Aucun planning relié. Ajoute ton lien iCalendar dans ton{" "}
+            <Link href="/profil" className="font-medium text-accent underline">profil</Link> (Planning → Action → Export au format iCalendar).</>
+          )}
         </div>
       )}
       {error && (
         <div className="card border-danger text-sm">
-          Impossible de lire ton planning : {error}. Vérifie ton lien dans ton{" "}
-          <Link href="/profil" className="text-accent underline">profil</Link>.
+          {subject.readonly ? (
+            `Impossible de lire ce planning : ${error}.`
+          ) : (
+            <>Impossible de lire ton planning : {error}. Vérifie ton lien dans ton{" "}
+            <Link href="/profil" className="text-accent underline">profil</Link>.</>
+          )}
         </div>
       )}
 

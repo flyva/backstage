@@ -24,9 +24,11 @@ export default async function AlternancePage({ searchParams }: PageProps<"/alter
   const month = isMonth(sp.m) ? sp.m : today.slice(0, 7);
   const grid = monthGrid(month);
 
-  const asParam = typeof sp.as === "string" ? sp.as : undefined;
-  const subject = await resolveTimeSubject(user, asParam);
   const mine = await tutees(user.id);
+  // Compte « Entreprise » (lecture seule) : pas de planning à soi, donc on affiche directement celui de la personne
+  // suivie (la première s'il y en a plusieurs) sans avoir à cliquer, sauf si on a explicitement choisi via ?as=.
+  const asParam = typeof sp.as === "string" ? sp.as : user.perms.companyOnly && mine[0] ? String(mine[0].id) : undefined;
+  const subject = await resolveTimeSubject(user, asParam);
 
   const rows = await db
     .select()
@@ -44,8 +46,11 @@ export default async function AlternancePage({ searchParams }: PageProps<"/alter
       {(mine.length > 0 || subject.readonly) && (
         <section className="card flex flex-wrap items-center gap-2 text-sm">
           <span className="text-muted">{subject.readonly ? `Tu regardes le planning de ${subject.name} (lecture seule).` : "Tu vois aussi, en tant que référent :"}</span>
-          {subject.readonly && <Link href="/alternance" className="btn-ghost text-xs">← Revenir à mon planning</Link>}
-          {!subject.readonly && mine.map((t) => <Link key={t.id} href={`/alternance?as=${t.id}`} className="rounded-full border border-line px-2.5 py-1 text-xs hover:border-accent">{t.name}</Link>)}
+          {subject.readonly && !user.perms.companyOnly && <Link href="/alternance" className="btn-ghost text-xs">← Revenir à mon planning</Link>}
+          {/* Compte Entreprise avec plusieurs personnes suivies : les autres restent proposées pour basculer, même une fois affiché celui par défaut. */}
+          {(user.perms.companyOnly ? mine.filter((t) => t.id !== subject.userId) : subject.readonly ? [] : mine).map((t) => (
+            <Link key={t.id} href={`/alternance?as=${t.id}`} className="rounded-full border border-line px-2.5 py-1 text-xs hover:border-accent">{t.name}</Link>
+          ))}
         </section>
       )}
 
