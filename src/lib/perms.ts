@@ -109,7 +109,7 @@ export function permsOf(r: RoleFlags | null | undefined): Perms {
   };
 }
 
-/** `courseTags` vide ou absent = toutes les pages de Cours sont visibles (comportement par défaut, sans configuration). */
+/** `courseTags` absent (`null`) = jamais configuré, toutes les pages de Cours sont visibles. Une chaîne vide = tout décoché. */
 function courseAccess(admin: boolean, tags: string | null): Record<CoursePageKey, boolean> {
   // `null`/absent = jamais configuré, tout visible. Une chaîne vide (tout décoché) doit rester distincte : sinon elle
   // retombe sur le même comportement que `null` et plus rien ne peut masquer TOUTES les pages de Cours d'un coup.

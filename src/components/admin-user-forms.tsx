@@ -132,7 +132,10 @@ export function RoleForm({ role = {} }: { role?: RoleValues }) {
         <div className="space-y-2">
           {COURSE_PAGES.map((cp) => {
             const tags = typeof role.courseTags === "string" ? role.courseTags : null;
-            const cur = !role.id || !tags ? "view" : tags.split(",").includes(cp.key) ? "view" : "none";
+            // `null` = jamais configuré (tout visible) ; une chaîne vide = tout décoché volontairement. Les deux ne
+            // doivent pas se confondre, sinon enregistrer « tout en Aucun » réaffiche « Voir » juste après (le champ
+            // vide retombe sur le même cas que « pas de rôle » faute de distinction).
+            const cur = !role.id || tags == null ? "view" : tags.split(",").includes(cp.key) ? "view" : "none";
             return (
               <div key={cp.key} className="rounded-xl border border-line p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
