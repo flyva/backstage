@@ -2,17 +2,21 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { and, count, eq, ne } from "drizzle-orm";
+import { and, count, eq, inArray, ne } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { roles, sessions, users } from "@/db/schema";
+import { passwordResets, roles, sessions, users } from "@/db/schema";
 import { hashPassword, requireAdmin } from "@/lib/auth";
 import { joinName } from "@/lib/names";
 import { COURSE_PAGES } from "@/lib/perms";
 import { TOGGLEABLE_GROUPS } from "@/lib/nav-data";
 import { logAdminAction } from "@/lib/audit";
-import { randomBytes } from "node:crypto";
+import { randomBytes, createHash } from "node:crypto";
+import { publicBaseUrl, sendMail } from "@/lib/mail";
+import { renderMail } from "@/lib/mail-template";
 import type { FormState } from "@/lib/actions";
+
+const sha256 = (s: string) => createHash("sha256").update(s).digest("hex");
 
 const id = z.coerce.number().int().positive();
 const refresh = () => revalidatePath("/admin", "layout");
@@ -121,6 +125,62 @@ const userSchema = z.object({
   email: z.string().trim().toLowerCase().email("Email invalide").max(190),
   status: z.enum(["active", "pending", "disabled", "rejected"]),
 });
+
+const createUserSchema = z.object({
+  firstName: z.string().trim().min(1, "Prénom requis").max(60),
+  lastName: z.string().trim().min(1, "Nom requis").max(60),
+  email: z.string().trim().toLowerCase().email("Email invalide").max(190),
+});
+
+/**
+ * Crée un compte natif (mot de passe, pas Google/Microsoft) directement depuis l'admin : pour les personnes sans
+ * adresse 3iS ni Gmail (tuteur en entreprise, intervenant extérieur…). Le mot de passe de départ est inutilisable
+ * (aléatoire, jamais communiqué) : un lien pour en choisir un vrai est envoyé par mail, en réutilisant le mécanisme
+ * de « mot de passe oublié » (même page /reinitialiser, mêmes jetons à usage unique).
+ */
+export async function createUser(_: FormState, fd: FormData): Promise<FormState> {
+  const admin = await requireAdmin();
+  const p = createUserSchema.safeParse({ firstName: fd.get("firstName"), lastName: fd.get("lastName"), email: fd.get("email") });
+  if (!p.success) return { error: p.error.issues[0].message };
+  const roleId = id.safeParse(fd.get("roleId"));
+  if (!roleId.success) return { error: "Choisis un rôle" };
+  const [role] = await db.select().from(roles).where(eq(roles.id, roleId.data)).limit(1);
+  if (!role) return { error: "Rôle introuvable" };
+
+  const [taken] = await db.select({ id: users.id }).from(users).where(eq(users.email, p.data.email)).limit(1);
+  if (taken) return { error: "Cette adresse est déjà utilisée par un autre compte" };
+
+  // Comptes dont ce nouveau compte devient le référent (tuteur) : il pourra voir leur pointeuse et leurs stats en lecture seule.
+  const tuteeIds = fd.getAll("tuteeIds").map((v) => Number(v)).filter((n) => Number.isInteger(n) && n > 0);
+
+  const name = joinName(p.data.firstName, p.data.lastName);
+  const [res] = await db.insert(users).values({
+    email: p.data.email,
+    firstName: p.data.firstName,
+    lastName: p.data.lastName,
+    name,
+    passwordHash: await hashPassword(randomBytes(32).toString("hex")), // inutilisable : remplacé via le lien envoyé par mail
+    roleId: roleId.data,
+    status: "active",
+  });
+  const newId = res.insertId;
+
+  if (tuteeIds.length) await db.update(users).set({ tutorUserId: newId }).where(inArray(users.id, tuteeIds));
+
+  const base = publicBaseUrl();
+  if (base) {
+    const token = randomBytes(32).toString("hex");
+    await db.insert(passwordResets).values({ userId: newId, tokenHash: sha256(token), expiresAt: new Date(Date.now() + 7 * 864e5) });
+    const link = `${base}/reinitialiser?token=${token}`;
+    const text = `Bonjour ${p.data.firstName || name},\n\nUn compte Backstage vient d'être créé pour toi (${name}). Ouvre ce lien (valable 7 jours) pour choisir ton mot de passe et accéder à l'application :\n${link}\n`;
+    const html = renderMail({ preview: "Choisis ton mot de passe pour activer ton compte Backstage.", title: "Ton compte Backstage", paragraphs: [`Bonjour ${p.data.firstName || name},`, "Un compte Backstage vient d'être créé pour toi. Clique sur le bouton pour choisir ton mot de passe et y accéder."], button: { label: "Choisir mon mot de passe", url: link }, note: "Le lien est valable 7 jours." });
+    await sendMail(p.data.email, "Ton compte Backstage", text, html);
+  }
+
+  await logAdminAction(admin.id, "create", newId, name);
+  refresh();
+  return { ok: base ? "Compte créé : un mail avec un lien d'activation vient d'être envoyé." : "Compte créé (APP_URL non configuré : aucun mail envoyé, communique le mot de passe via « Réinitialiser »)." };
+}
 
 export async function updateUser(_: FormState, fd: FormData): Promise<FormState> {
   const admin = await requireAdmin();

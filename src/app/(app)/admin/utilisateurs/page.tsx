@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { asc, eq } from "drizzle-orm";
-import { ChevronRight, UserRound } from "lucide-react";
+import { ChevronRight, UserPlus, UserRound } from "lucide-react";
 import { db } from "@/db";
 import { roles, users } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
+import { CreateUserForm } from "@/components/admin-user-forms";
 
 export const metadata = { title: "Utilisateurs" };
 
@@ -33,6 +34,12 @@ export default async function UsersPage({ searchParams }: PageProps<"/admin/util
 
   return (
     <div className="space-y-5">
+      <details className="card space-y-3">
+        <summary className="flex cursor-pointer items-center gap-2 font-semibold"><UserPlus size={16} className="text-accent" /> Créer un compte</summary>
+        <p className="text-sm text-muted">Pour une personne sans adresse 3iS ni Gmail (un tuteur en entreprise, un intervenant extérieur…). Elle reçoit un mail avec un lien pour choisir son mot de passe et accepter les CGU.</p>
+        <CreateUserForm roles={allRoles} alternants={rows.filter(({ u }) => u.status === "active").map(({ u }) => ({ id: u.id, name: u.name }))} />
+      </details>
+
       <form role="search" className="flex flex-wrap gap-2">
         <input name="q" defaultValue={q} placeholder="Rechercher un nom ou une adresse…" aria-label="Rechercher" className="input max-w-xs" />
         <select name="role" defaultValue={roleFilter} aria-label="Rôle" className="input w-auto"><option value="">Tous les rôles</option>{allRoles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select>

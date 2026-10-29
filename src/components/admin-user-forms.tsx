@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import { EyeOff, Trash2 } from "lucide-react";
 import type { FormState } from "@/lib/actions";
-import { anonymizeUser, deleteRole, deleteUser, resetUserPassword, saveRole, updateUser } from "@/lib/user-admin-actions";
+import { anonymizeUser, createUser, deleteRole, deleteUser, resetUserPassword, saveRole, updateUser } from "@/lib/user-admin-actions";
 import { ADMIN_PERM, COURSE_PAGES, LEVEL_FIELDS, LEVEL_LABEL, levelOf, SECTION_FIELDS, TICKETS_PERM, type Level } from "@/lib/perms";
 import { TOGGLEABLE_GROUPS } from "@/lib/nav-data";
 import { PasswordField } from "@/components/PasswordField";
@@ -153,6 +153,43 @@ export function DeleteRoleForm({ id }: { id: number }) {
       <input type="hidden" name="id" value={id} />
       <button className="flex items-center gap-1 text-xs text-muted hover:text-danger" disabled={pending}><Trash2 size={14} /> Supprimer le rôle</button>
       <Feedback state={state} />
+    </form>
+  );
+}
+
+/**
+ * Création d'un compte natif (mot de passe, pas Google/Microsoft) : pour les personnes sans adresse 3iS ni Gmail,
+ * typiquement un tuteur en entreprise. Un lien d'activation (choix du mot de passe, puis CGU) part par mail.
+ * « Référent de » rattache directement ce compte au planning/pointeuse des alternants choisis (lecture seule).
+ */
+export function CreateUserForm({ roles, alternants }: { roles: { id: number; name: string }[]; alternants: { id: number; name: string }[] }) {
+  const [state, action, pending] = useActionState(createUser, undefined);
+  return (
+    <form action={action} className="space-y-4" key={state?.ok ? "done" : "form"}>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div><label className="label" htmlFor="nu-fn">Prénom</label><input id="nu-fn" name="firstName" required maxLength={60} className="input" /></div>
+        <div><label className="label" htmlFor="nu-ln">Nom</label><input id="nu-ln" name="lastName" required maxLength={60} className="input" /></div>
+        <div className="sm:col-span-2"><label className="label" htmlFor="nu-em">Adresse e-mail (sert à l&apos;identifiant et au lien d&apos;activation)</label><input id="nu-em" name="email" type="email" required maxLength={190} className="input" /></div>
+        <div>
+          <label className="label" htmlFor="nu-role">Rôle</label>
+          <select id="nu-role" name="roleId" defaultValue="" required className="input">
+            <option value="" disabled>Choisir…</option>
+            {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+          </select>
+        </div>
+      </div>
+      {alternants.length > 0 && (
+        <div>
+          <label className="label" htmlFor="nu-tutees">Référent (tuteur) de — voit leur pointeuse et leurs stats en lecture seule</label>
+          <select id="nu-tutees" name="tuteeIds" multiple size={Math.min(6, alternants.length)} className="input">
+            {alternants.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+          <p className="mt-1 text-xs text-muted">Facultatif : laisse vide si ce compte n&apos;a pas besoin de voir le planning d&apos;un alternant (ctrl/cmd + clic pour en choisir plusieurs).</p>
+        </div>
+      )}
+      <p className="text-xs text-muted">Un mail est envoyé à cette adresse avec un lien (valable 7 jours) pour choisir un mot de passe et accepter les CGU.</p>
+      <Feedback state={state} />
+      <button className="btn" disabled={pending}>{pending ? "Création…" : "Créer le compte et envoyer le lien"}</button>
     </form>
   );
 }

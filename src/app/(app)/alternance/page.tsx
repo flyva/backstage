@@ -5,10 +5,12 @@ import { db } from "@/db";
 import { workDays, type WorkKind } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { todayParis } from "@/lib/equipment";
+import { absoluteUrl } from "@/lib/base-url";
 import { KIND_CLASS, KIND_LABEL, addMonths, isMonth, isWeekend, monthGrid, monthLabel } from "@/lib/alternance";
 import { cycleDay } from "@/lib/alternance-actions";
 import { RangeForm, RhythmForm } from "@/components/alternance-forms";
 import { CalendarImport } from "@/components/CalendarImport";
+import { FeedPanel } from "@/components/people-forms";
 
 export const metadata = { title: "Planning de l'alternance" };
 
@@ -29,6 +31,7 @@ export default async function AlternancePage({ searchParams }: PageProps<"/alter
   const kindOf = new Map(rows.map((r) => [r.day, r.kind]));
 
   const count = (k: WorkKind) => rows.filter((r) => r.kind === k && r.day.startsWith(month)).length;
+  const feedUrl = user.feedToken ? await absoluteUrl(`/api/feed/${user.feedToken}.ics`) : null;
 
   return (
     <div className="space-y-6">
@@ -66,6 +69,12 @@ export default async function AlternancePage({ searchParams }: PageProps<"/alter
           })}
         </div>
         <p className="text-xs text-muted">Clique sur un jour pour changer son type : libre → école → entreprise → congé → férié → libre.</p>
+      </section>
+
+      <section className="card space-y-3">
+        <h2 className="font-semibold">Télécharger mon calendrier</h2>
+        <p className="text-sm text-muted">Un lien à ajouter dans Google Agenda, Apple Calendrier ou Outlook (ton entreprise d&apos;accueil, un tuteur…) : il reste à jour automatiquement avec ce planning et le reste de ton activité sur Backstage.</p>
+        <FeedPanel enabled={!!user.feedToken} httpsUrl={feedUrl} />
       </section>
 
       <section className="card space-y-3">
