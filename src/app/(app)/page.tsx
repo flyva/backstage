@@ -1,16 +1,73 @@
 import Link from "next/link";
 import { and, desc, eq, inArray } from "drizzle-orm";
-import { AlertTriangle, Bike, Briefcase, Clock, ExternalLink, GraduationCap, Mail, MapPin, Moon, Package, Sun, TramFront, type LucideIcon } from "lucide-react";
+import { AlertTriangle, Bike, Briefcase, Building2, CalendarDays, Clock, ExternalLink, GraduationCap, Mail, MapPin, Moon, Package, Phone, Sun, TramFront, UserRound, type LucideIcon } from "lucide-react";
 import { db } from "@/db";
-import { equipmentItems, loans, newsPosts } from "@/db/schema";
-import { requireUser } from "@/lib/auth";
+import { agendaViewers, equipmentItems, loans, newsPosts, users } from "@/db/schema";
+import { requireUser, type SessionUser } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 import { courseEvents } from "@/lib/courses";
 import { dayKey, type AgendaEvent } from "@/lib/ical";
 import { daysBetween, STATUS_LABEL, todayParis } from "@/lib/equipment";
 import { homeGlance } from "@/lib/glance";
 import { ago } from "@/lib/relative-time";
+import { avatarUrl } from "@/lib/avatar-files";
 import { MyDay } from "@/components/MyDay";
+
+/**
+ * Accueil d'un compte « Entreprise » (lecture seule) : pas de dashboard générique (cours, vélos, matériel… qui ne le
+ * concernent pas), juste les coordonnées déjà publiques sur le profil des personnes dont il est référent — aucune
+ * information supplémentaire n'est collectée pour cet affichage.
+ */
+async function CompanyHome({ user }: { user: SessionUser }) {
+  const people = await db
+    .select({
+      id: users.id, name: users.name, avatarFile: users.avatarFile, headline: users.headline,
+      email: users.email, contactEmail: users.contactEmail, phone: users.phone,
+      companyName: users.companyName, showCompany: users.showCompany,
+    })
+    .from(agendaViewers)
+    .innerJoin(users, eq(users.id, agendaViewers.ownerUserId))
+    .where(eq(agendaViewers.viewerUserId, user.id))
+    .orderBy(users.name);
+
+  return (
+    <div className="space-y-6">
+      <header className="card border-l-4 border-accent">
+        <h1 className="text-2xl font-bold">Bonjour 👋</h1>
+        <p className="text-sm text-muted">Accès en lecture seule : {people.length > 1 ? "voici les personnes" : "voici la personne"} dont tu es référent.</p>
+      </header>
+
+      {people.length === 0 ? (
+        <div className="card text-sm text-muted">Personne ne t&apos;a encore désigné comme référent. Demande à la personne concernée de t&apos;ajouter depuis son profil (onglet Alternance), ou à un administrateur.</div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {people.map((p) => (
+            <section key={p.id} className="card space-y-3">
+              <div className="flex items-center gap-3">
+                {avatarUrl(p.avatarFile) ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={avatarUrl(p.avatarFile)!} alt="" className="size-12 shrink-0 rounded-full object-cover" />
+                ) : (
+                  <span className="grid size-12 shrink-0 place-items-center rounded-full bg-accent/15 text-accent"><UserRound size={22} /></span>
+                )}
+                <div className="min-w-0">
+                  <h2 className="truncate font-semibold">{p.name}</h2>
+                  {p.headline && <p className="truncate text-sm text-muted">{p.headline}</p>}
+                </div>
+              </div>
+              <dl className="space-y-1.5 text-sm">
+                <div className="flex items-center gap-2"><Mail size={14} className="shrink-0 text-muted" /><dd className="truncate">{p.contactEmail || p.email}</dd></div>
+                {p.phone && <div className="flex items-center gap-2"><Phone size={14} className="shrink-0 text-muted" /><dd>{p.phone}</dd></div>}
+                {p.showCompany && p.companyName && <div className="flex items-center gap-2"><Building2 size={14} className="shrink-0 text-muted" /><dd className="truncate">{p.companyName}</dd></div>}
+              </dl>
+              <Link href={`/alternance?as=${p.id}`} className="btn-ghost text-xs"><CalendarDays size={14} /> Voir son planning</Link>
+            </section>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const timeFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit" });
 const dateFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", weekday: "long", day: "numeric", month: "long" });
@@ -23,6 +80,7 @@ const section = "card p-0 border-t-[3px]";
 
 export default async function HomePage() {
   const user = await requireUser();
+  if (user.perms.companyOnly) return <CompanyHome user={user} />;
   const s = await getSettings();
   const today = todayParis();
   const hourParis = Number(new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", hour: "2-digit", hourCycle: "h23" }).format(new Date()));

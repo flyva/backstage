@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { KeyRound } from "lucide-react";
 import { getSessionUser } from "@/lib/auth";
 import { microsoftEnabled } from "@/lib/microsoft";
 import { googleEnabled } from "@/lib/google";
@@ -57,20 +58,21 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
       {(await searchParams)["compte-supprime"] === "1" && <div className="card border-green-600 text-sm" role="status">Ton compte a bien été supprimé.</div>}
 
       <div className="card space-y-4">
-        {social && (
-          <div className="space-y-2">
-            {microsoft && <MicrosoftButton />}
-            {google ? <GoogleButton /> : dev && <GoogleButton disabled />}
-          </div>
+        {social ? (
+          <>
+            <div className="space-y-2">
+              {microsoft && <MicrosoftButton />}
+              {google ? <GoogleButton /> : dev && <GoogleButton disabled />}
+            </div>
+            <div className="flex items-center gap-3 text-xs text-muted"><span className="h-px flex-1 bg-line" /> ou <span className="h-px flex-1 bg-line" /></div>
+            <Link href="/connexion-externe" className="btn-ghost w-full"><KeyRound size={16} /> Connexion externe (entreprise, tuteur…)</Link>
+          </>
+        ) : (
+          <>
+            <LoginForm emailDomain={emailDomain} />
+            <p className="text-center text-xs"><Link href="/mot-de-passe-oublie" className="text-muted underline hover:text-fg">Mot de passe oublié ?</Link></p>
+          </>
         )}
-        {social && (
-          <div className="flex items-center gap-3 text-xs text-muted"><span className="h-px flex-1 bg-line" /> ou avec un mot de passe <span className="h-px flex-1 bg-line" /></div>
-        )}
-        {social && (
-          <p className="text-xs text-muted">Accès externe (entreprise d&apos;accueil, tuteur…) : connecte-toi ici avec l&apos;adresse et le mot de passe qu&apos;on t&apos;a transmis, même si ce n&apos;est pas une adresse Google ou {emailDomain ?? "de l'école"}.</p>
-        )}
-        <LoginForm emailDomain={emailDomain} />
-        <p className="text-center text-xs"><Link href="/mot-de-passe-oublie" className="text-muted underline hover:text-fg">Mot de passe oublié ?</Link></p>
       </div>
 
       {(localRegistration || microsoft || google) && (
