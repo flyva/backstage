@@ -66,6 +66,9 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
         {social && (
           <div className="flex items-center gap-3 text-xs text-muted"><span className="h-px flex-1 bg-line" /> ou avec un mot de passe <span className="h-px flex-1 bg-line" /></div>
         )}
+        {social && (
+          <p className="text-xs text-muted">Accès externe (entreprise d&apos;accueil, tuteur…) : connecte-toi ici avec l&apos;adresse et le mot de passe qu&apos;on t&apos;a transmis, même si ce n&apos;est pas une adresse Google ou {emailDomain ?? "de l'école"}.</p>
+        )}
         <LoginForm emailDomain={emailDomain} />
         <p className="text-center text-xs"><Link href="/mot-de-passe-oublie" className="text-muted underline hover:text-fg">Mot de passe oublié ?</Link></p>
       </div>
