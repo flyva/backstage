@@ -1,6 +1,6 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, or } from "drizzle-orm";
 import { db } from "@/db";
-import { classes, tracks, userLinks, users } from "@/db/schema";
+import { classes, roles, tracks, userLinks, users } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { avatarUrl } from "@/lib/avatar-files";
 import { onlineUserIds } from "@/lib/presence";
@@ -14,7 +14,11 @@ export default async function AnnuairePage() {
   const [allTracks, allClasses, rows] = await Promise.all([
     db.select().from(tracks).orderBy(asc(tracks.sortOrder), asc(tracks.name)),
     db.select().from(classes).orderBy(asc(classes.sortOrder), asc(classes.name)),
-    db.select().from(users).where(and(eq(users.status, "active"), eq(users.showInDirectory, true))).orderBy(asc(users.lastName), asc(users.firstName)),
+    // Un compte « Entreprise » (tuteur, entreprise d'accueil…) n'est pas une personne de la promo : jamais dans l'annuaire.
+    db.select({ u: users }).from(users).leftJoin(roles, eq(roles.id, users.roleId))
+      .where(and(eq(users.status, "active"), eq(users.showInDirectory, true), or(isNull(roles.isCompany), eq(roles.isCompany, false))))
+      .orderBy(asc(users.lastName), asc(users.firstName))
+      .then((r) => r.map((x) => x.u)),
   ]);
   const links = rows.length ? await db.select().from(userLinks).where(inArray(userLinks.userId, rows.map((r) => r.id))).orderBy(asc(userLinks.sortOrder)) : [];
   const trackName = new Map(allTracks.map((t) => [t.id, t.name]));

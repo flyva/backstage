@@ -89,6 +89,10 @@ export default async function HomePage() {
   const dayLabelLong = dateFmt.format(new Date());
 
   const home = user.homeLat != null && user.homeLng != null ? { lat: user.homeLat, lng: user.homeLng } : null;
+  // Un rôle sans accès à un domaine n'a pas besoin qu'on interroge la base pour autant : ni la carte « Prêts à rendre »,
+  // ni la section matériel/actualités ne doivent apparaître pour lui.
+  const showMateriel = user.perms.view.materiel;
+  const showActus = user.perms.view.actus;
 
   // Chaque source est indépendante : si l'une échoue, l'accueil s'affiche quand même.
   const [agenda, glance, myLoans, news] = await Promise.all([
@@ -103,14 +107,18 @@ export default async function HomePage() {
       }
     })(),
     homeGlance(home),
-    db
-      .select({ id: loans.id, status: loans.status, quantity: loans.quantity, dueDate: loans.dueDate, name: equipmentItems.name })
-      .from(loans)
-      .innerJoin(equipmentItems, eq(equipmentItems.id, loans.itemId))
-      .where(and(eq(loans.userId, user.id), inArray(loans.status, ["requested", "reserved", "out"])))
-      .orderBy(loans.dueDate)
-      .limit(6),
-    db.select({ id: newsPosts.id, title: newsPosts.title, pinned: newsPosts.pinned, createdAt: newsPosts.createdAt }).from(newsPosts).orderBy(desc(newsPosts.pinned), desc(newsPosts.createdAt)).limit(4),
+    showMateriel
+      ? db
+          .select({ id: loans.id, status: loans.status, quantity: loans.quantity, dueDate: loans.dueDate, name: equipmentItems.name })
+          .from(loans)
+          .innerJoin(equipmentItems, eq(equipmentItems.id, loans.itemId))
+          .where(and(eq(loans.userId, user.id), inArray(loans.status, ["requested", "reserved", "out"])))
+          .orderBy(loans.dueDate)
+          .limit(6)
+      : Promise.resolve([]),
+    showActus
+      ? db.select({ id: newsPosts.id, title: newsPosts.title, pinned: newsPosts.pinned, createdAt: newsPosts.createdAt }).from(newsPosts).orderBy(desc(newsPosts.pinned), desc(newsPosts.createdAt)).limit(4)
+      : Promise.resolve([]),
   ]);
 
   const now = new Date();
@@ -136,11 +144,11 @@ export default async function HomePage() {
       value: dep ? (dep.minutes[0] <= 0 ? "Imminent" : `${dep.minutes[0]} min`) : "–",
       sub: dep && stop ? `${stop.name} → ${dep.destination}` : home ? "Aucun passage prévu" : "Ajoute ton adresse",
     },
-    {
+    ...(showMateriel ? [{
       label: "Prêts à rendre", icon: Package, color: "#f59e0b", href: "/materiel",
       value: String(dueSoon.length),
       sub: overdue.length ? `${overdue.length} en retard` : dueSoon[0] ? `${dueSoon[0].name} · ${daysBetween(today, dueSoon[0].dueDate) <= 0 ? "aujourd'hui" : "demain"}` : "Rien à rendre",
-    },
+    } satisfies Stat] : []),
     {
       label: "Vélos disponibles", icon: Bike, color: "#dc3545", href: "/mobilite",
       value: bike ? String(bike.bikes) : "–",
@@ -256,54 +264,58 @@ export default async function HomePage() {
           )}
         </section>
 
-        <section className={`${section} lg:col-span-2`} style={{ borderTopColor: "#f59e0b" }}>
-          <div className="flex items-center justify-between px-5 py-3">
-            <h2 className="font-semibold">Mes prêts de matériel</h2>
-            <Link href="/materiel" className="text-xs text-accent underline">Catalogue</Link>
-          </div>
-          {myLoans.length === 0 ? (
-            <p className="px-5 pb-4 text-sm text-muted">Aucun prêt en cours.</p>
-          ) : (
-            <div className="overflow-x-auto px-5 pb-4">
-              <table className="w-full text-left text-sm">
-                <thead><tr className="text-xs text-muted"><th className="py-2 font-medium">Matériel</th><th className="font-medium">Retour</th><th className="font-medium">Statut</th></tr></thead>
-                <tbody className="divide-y divide-line">
-                  {myLoans.map((l) => {
-                    const late = l.status === "out" && l.dueDate < today;
-                    return (
-                      <tr key={l.id}>
-                        <td className="py-2.5 font-medium">{l.quantity > 1 && `${l.quantity} × `}{l.name}</td>
-                        <td className={late ? "text-danger" : "text-muted"}>
-                          {late ? <span className="flex items-center gap-1"><AlertTriangle size={12} /> en retard de {-daysBetween(today, l.dueDate)} j</span> : shortDate.format(new Date(l.dueDate))}
-                        </td>
-                        <td><span className={`rounded-full px-2 py-0.5 text-xs font-medium ${late ? "bg-danger text-white" : l.status === "out" ? "bg-accent text-accent-fg" : "border border-line text-muted"}`}>{late ? "En retard" : STATUS_LABEL[l.status]}</span></td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+        {showMateriel && (
+          <section className={`${section} lg:col-span-2`} style={{ borderTopColor: "#f59e0b" }}>
+            <div className="flex items-center justify-between px-5 py-3">
+              <h2 className="font-semibold">Mes prêts de matériel</h2>
+              <Link href="/materiel" className="text-xs text-accent underline">Catalogue</Link>
             </div>
-          )}
-        </section>
+            {myLoans.length === 0 ? (
+              <p className="px-5 pb-4 text-sm text-muted">Aucun prêt en cours.</p>
+            ) : (
+              <div className="overflow-x-auto px-5 pb-4">
+                <table className="w-full text-left text-sm">
+                  <thead><tr className="text-xs text-muted"><th className="py-2 font-medium">Matériel</th><th className="font-medium">Retour</th><th className="font-medium">Statut</th></tr></thead>
+                  <tbody className="divide-y divide-line">
+                    {myLoans.map((l) => {
+                      const late = l.status === "out" && l.dueDate < today;
+                      return (
+                        <tr key={l.id}>
+                          <td className="py-2.5 font-medium">{l.quantity > 1 && `${l.quantity} × `}{l.name}</td>
+                          <td className={late ? "text-danger" : "text-muted"}>
+                            {late ? <span className="flex items-center gap-1"><AlertTriangle size={12} /> en retard de {-daysBetween(today, l.dueDate)} j</span> : shortDate.format(new Date(l.dueDate))}
+                          </td>
+                          <td><span className={`rounded-full px-2 py-0.5 text-xs font-medium ${late ? "bg-danger text-white" : l.status === "out" ? "bg-accent text-accent-fg" : "border border-line text-muted"}`}>{late ? "En retard" : STATUS_LABEL[l.status]}</span></td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        )}
 
-        <section className={section} style={{ borderTopColor: "#17a2b8" }}>
-          <div className="flex items-center justify-between px-5 py-3">
-            <h2 className="font-semibold">Actualités</h2>
-            <Link href="/actus" className="text-xs text-accent underline">Tout voir</Link>
-          </div>
-          {news.length === 0 ? (
-            <p className="px-5 pb-4 text-sm text-muted">Aucune actualité.</p>
-          ) : (
-            <ul className="space-y-3 px-5 pb-4 text-sm">
-              {news.map((n) => (
-                <li key={n.id} className="flex items-baseline gap-2">
-                  <Link href={`/actus/${n.id}`} className="min-w-0 flex-1 truncate hover:text-accent">{n.pinned && "📌 "}{n.title}</Link>
-                  <span className="shrink-0 text-xs text-muted">{ago(n.createdAt)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        {showActus && (
+          <section className={section} style={{ borderTopColor: "#17a2b8" }}>
+            <div className="flex items-center justify-between px-5 py-3">
+              <h2 className="font-semibold">Actualités</h2>
+              <Link href="/actus" className="text-xs text-accent underline">Tout voir</Link>
+            </div>
+            {news.length === 0 ? (
+              <p className="px-5 pb-4 text-sm text-muted">Aucune actualité.</p>
+            ) : (
+              <ul className="space-y-3 px-5 pb-4 text-sm">
+                {news.map((n) => (
+                  <li key={n.id} className="flex items-baseline gap-2">
+                    <Link href={`/actus/${n.id}`} className="min-w-0 flex-1 truncate hover:text-accent">{n.pinned && "📌 "}{n.title}</Link>
+                    <span className="shrink-0 text-xs text-muted">{ago(n.createdAt)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
-import { and, eq, or, sql } from "drizzle-orm";
+import { and, eq, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { users } from "@/db/schema";
+import { roles, users } from "@/db/schema";
 import { getUser } from "@/lib/auth";
 import { allow } from "@/lib/rate-limit";
 import { avatarUrl } from "@/lib/avatar-files";
@@ -18,11 +18,13 @@ export async function GET(req: Request) {
 
   const like = `%${q.replace(/[\\%_]/g, "\\$&")}%`;
   const rows = await db
-    .select()
+    .select({ u: users })
     .from(users)
+    .leftJoin(roles, eq(roles.id, users.roleId))
     .where(and(
       eq(users.status, "active"),
       eq(users.showInDirectory, true),
+      or(isNull(roles.isCompany), eq(roles.isCompany, false)), // un compte « Entreprise » n'apparaît jamais dans cette recherche
       or(
         sql`${users.firstName} like ${like}`,
         sql`${users.lastName} like ${like}`,
@@ -31,7 +33,8 @@ export async function GET(req: Request) {
         sql`${users.phone} like ${like}`,
       ),
     ))
-    .limit(8);
+    .limit(8)
+    .then((r) => r.map((x) => x.u));
 
   const people = rows.map((u) => ({
     id: u.id,
