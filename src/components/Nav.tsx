@@ -27,6 +27,11 @@ const itemActive = (pathname: string, i: Item): boolean => (i.href ? isActive(pa
 const itemVisible = (i: Item, isAdmin: boolean, views: Record<string, boolean>, hidden: Set<string>) =>
   (!i.adminOnly || isAdmin) && (!i.module || views[i.module]) && !(i.href && hidden.has(i.href));
 const visibleChildren = (i: Item, isAdmin: boolean, views: Record<string, boolean>, hidden: Set<string>) => (i.children ?? []).filter((c) => itemVisible(c, isAdmin, views, hidden));
+// Un dossier (ex. « Cours », « Recherche entreprises ») n'a pas de `module` propre : `itemVisible` seul le laisse
+// toujours passer, même quand tous ses enfants sont masqués (role sans aucune page de Cours, par ex.). Sans ce
+// garde-fou, un groupe (ex. « Travail ») pouvait rester affiché — vide, rien à déplier — pour ce seul dossier fantôme.
+const itemRendersSomething = (i: Item, isAdmin: boolean, views: Record<string, boolean>, hidden: Set<string>) =>
+  itemVisible(i, isAdmin, views, hidden) && (!i.children || visibleChildren(i, isAdmin, views, hidden).length > 0);
 
 export function Nav({ isAdmin, loanBadge, views, hiddenPages }: { isAdmin: boolean; loanBadge: number; views: Record<string, boolean>; hiddenPages?: string[] }) {
   const hidden = new Set(hiddenPages ?? []); // déjà vide pour un·e administrateur·rice (voir permsOf)
@@ -84,8 +89,8 @@ export function Nav({ isAdmin, loanBadge, views, hiddenPages }: { isAdmin: boole
     <nav className="space-y-0.5" aria-label="Navigation principale">
       {GROUPS.map((g) => {
         if (views[g.id] === false) return null; // section entière masquée pour ce rôle (Savoirs, Promo, Vie étudiante)
-        const items = g.items.filter((i) => itemVisible(i, isAdmin, views, hidden));
-        if (items.length === 0) return null;
+        const items = g.items.filter((i) => itemRendersSomething(i, isAdmin, views, hidden));
+        if (items.length === 0) return null; // ex. « Travail » sans aucune page de Cours ni rien d'autre d'activé
         const open = openId === g.id;
         const pending = items.reduce((n, i) => n + countOf(i.badge), 0);
         const color = GROUP_COLOR[g.id] ?? "var(--accent)";
