@@ -111,7 +111,9 @@ export function permsOf(r: RoleFlags | null | undefined): Perms {
 
 /** `courseTags` vide ou absent = toutes les pages de Cours sont visibles (comportement par défaut, sans configuration). */
 function courseAccess(admin: boolean, tags: string | null): Record<CoursePageKey, boolean> {
-  const allowed = tags ? new Set(tags.split(",").map((t) => t.trim()).filter(Boolean)) : null;
+  // `null`/absent = jamais configuré, tout visible. Une chaîne vide (tout décoché) doit rester distincte : sinon elle
+  // retombe sur le même comportement que `null` et plus rien ne peut masquer TOUTES les pages de Cours d'un coup.
+  const allowed = tags == null ? null : new Set(tags.split(",").map((t) => t.trim()).filter(Boolean));
   return Object.fromEntries(COURSE_PAGES.map((p) => [p.key, admin || !allowed || allowed.has(p.key)])) as Record<CoursePageKey, boolean>;
 }
 
