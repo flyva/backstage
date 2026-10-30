@@ -44,6 +44,12 @@ export type CoursePageKey = (typeof COURSE_PAGES)[number]["key"];
 /** Pages accessibles à un rôle « Entreprise » (lecture seule) : rien d'autre, aucune page de gestion. */
 export const COMPANY_ALLOWED_PATHS = ["/", "/agenda", "/alternance", "/contacts", "/profil", "/parametres"] as const;
 
+/**
+ * Préfixes accessibles en plus (chemins dynamiques) : la fiche annuaire d'une personne précise, jamais l'annuaire
+ * entier (ni la recherche) — la page elle-même vérifie que c'est bien quelqu'un dont le compte est référent.
+ */
+export const COMPANY_ALLOWED_PREFIXES = ["/annuaire/"] as const;
+
 export type Perms = {
   admin: boolean; // administrateur : tous les droits
   /** Rôle externe en lecture seule (entreprise d'accueil…) : Agenda, Planning/pointeuse des référés et Contacts seulement, rien à gérer. */

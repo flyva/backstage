@@ -7,7 +7,7 @@ import { cache } from "react";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { roles, sessions, users, type User } from "@/db/schema";
-import { COMPANY_ALLOWED_PATHS, permsOf, type Module, type Perms } from "@/lib/perms";
+import { COMPANY_ALLOWED_PATHS, COMPANY_ALLOWED_PREFIXES, permsOf, type Module, type Perms } from "@/lib/perms";
 
 const scrypt = promisify(scryptCb) as (pw: string, salt: Buffer, len: number) => Promise<Buffer>;
 
@@ -105,7 +105,8 @@ export async function requireUser() {
   // (barre d'adresse comprise, pas seulement le menu). Le chemin vient d'un en-tête posé par proxy.ts.
   if (user.perms.companyOnly) {
     const path = (await headers()).get("x-pathname") ?? "/";
-    if (!COMPANY_ALLOWED_PATHS.includes(path as (typeof COMPANY_ALLOWED_PATHS)[number])) redirect("/agenda");
+    const allowed = COMPANY_ALLOWED_PATHS.includes(path as (typeof COMPANY_ALLOWED_PATHS)[number]) || COMPANY_ALLOWED_PREFIXES.some((p) => path.startsWith(p));
+    if (!allowed) redirect("/agenda");
   }
   return user;
 }

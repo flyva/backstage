@@ -60,7 +60,10 @@ async function CompanyHome({ user }: { user: SessionUser }) {
                 {p.phone && <div className="flex items-center gap-2"><Phone size={14} className="shrink-0 text-muted" /><dd>{p.phone}</dd></div>}
                 {p.showCompany && p.companyName && <div className="flex items-center gap-2"><Building2 size={14} className="shrink-0 text-muted" /><dd className="truncate">{p.companyName}</dd></div>}
               </dl>
-              <Link href={`/alternance?as=${p.id}`} className="btn-ghost text-xs"><CalendarDays size={14} /> Voir son planning</Link>
+              <div className="flex flex-wrap gap-2">
+                <Link href={`/alternance?as=${p.id}`} className="btn-ghost text-xs"><CalendarDays size={14} /> Voir son planning</Link>
+                <Link href={`/annuaire/${p.id}`} className="btn-ghost text-xs"><UserRound size={14} /> Voir sa fiche</Link>
+              </div>
             </section>
           ))}
         </div>

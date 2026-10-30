@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, Bell, Check, Images, Newspaper, PartyPopper, Sparkles, UserCheck, type LucideIcon } from "lucide-react";
+import { AlertTriangle, Bell, Check, CheckCheck, Images, Newspaper, PartyPopper, Sparkles, UserCheck, type LucideIcon } from "lucide-react";
 import { markNotificationsSeen } from "@/lib/actions";
 
 export type NotifItem = {
@@ -67,6 +67,13 @@ export function NotificationBell({ items: initial, unread: initialUnread }: { it
     if (next && count > 0) { setAcked(unread); void markNotificationsSeen(); }
   };
 
+  // Marque tout comme lu sans attendre une prochaine ouverture : la pastille et le point « non lue » de chaque ligne disparaissent tout de suite.
+  const markAllSeen = () => {
+    setAcked(unread);
+    setItems((prev) => prev.map((n) => ({ ...n, unread: false })));
+    void markNotificationsSeen();
+  };
+
   return (
     <div ref={box} className="relative">
       <button
@@ -86,9 +93,16 @@ export function NotificationBell({ items: initial, unread: initialUnread }: { it
 
       {open && (
         <div role="menu" className="absolute right-0 z-40 mt-2 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-line bg-surface shadow-xl">
-          <div className="flex items-center justify-between border-b border-line px-4 py-3">
+          <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
             <h2 className="text-sm font-semibold">Notifications</h2>
-            <Link href="/parametres/notifications" onClick={() => setOpen(false)} className="text-xs text-accent underline">Réglages</Link>
+            <div className="flex items-center gap-3">
+              {count > 0 && (
+                <button type="button" onClick={markAllSeen} className="flex items-center gap-1 text-xs text-muted hover:text-fg" title="Marquer tout comme lu">
+                  <CheckCheck size={13} /> Tout marquer comme lu
+                </button>
+              )}
+              <Link href="/parametres/notifications" onClick={() => setOpen(false)} className="text-xs text-accent underline">Réglages</Link>
+            </div>
           </div>
           {items.length === 0 ? (
             <p className="px-4 py-6 text-center text-sm text-muted">Rien de nouveau pour le moment.</p>

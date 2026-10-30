@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { and, asc, desc, eq, gt } from "drizzle-orm";
 import { Building2, Mail, Phone } from "lucide-react";
 import { db } from "@/db";
-import { listings, reviews, tracks, userLinks, users } from "@/db/schema";
+import { agendaViewers, listings, reviews, tracks, userLinks, users } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { avatarUrl } from "@/lib/avatar-files";
 import { LISTING_LABEL, LISTING_PHOTO_PREFIX, formatPrice } from "@/lib/listing-shared";
@@ -27,8 +27,16 @@ export default async function MemberPage({ params }: PageProps<"/annuaire/[id]">
   if (!Number.isInteger(id)) notFound();
   const [u] = await db.select().from(users).where(and(eq(users.id, id), eq(users.status, "active"))).limit(1);
   const isSelf = !!u && u.id === viewer.id;
-  // Une personne qui a choisi de ne pas apparaître dans l'annuaire n'a pas de fiche visible (sauf pour elle-même).
-  if (!u || (!u.showInDirectory && !isSelf)) notFound();
+  if (!u) notFound();
+  // Compte « Entreprise » (lecture seule) : jamais l'annuaire entier, seulement la fiche d'une personne dont il est
+  // référent — qu'elle soit « dans l'annuaire » ou non (ça ne concerne que l'annuaire public de la promo).
+  if (viewer.perms.companyOnly) {
+    const [link] = await db.select({ x: agendaViewers.ownerUserId }).from(agendaViewers).where(and(eq(agendaViewers.ownerUserId, id), eq(agendaViewers.viewerUserId, viewer.id))).limit(1);
+    if (!link) notFound();
+  } else if (!u.showInDirectory && !isSelf) {
+    // Une personne qui a choisi de ne pas apparaître dans l'annuaire n'a pas de fiche visible (sauf pour elle-même).
+    notFound();
+  }
 
   const [trackRow, links, ratings, received, listed] = await Promise.all([
     u.trackId ? db.select({ name: tracks.name }).from(tracks).where(eq(tracks.id, u.trackId)).limit(1) : Promise.resolve([]),
@@ -42,7 +50,7 @@ export default async function MemberPage({ params }: PageProps<"/annuaire/[id]">
 
   return (
     <div className="space-y-5">
-      <p className="text-sm"><Link href="/annuaire" className="text-muted underline">← Annuaire</Link></p>
+      <p className="text-sm"><Link href={viewer.perms.companyOnly ? "/" : "/annuaire"} className="text-muted underline">← {viewer.perms.companyOnly ? "Accueil" : "Annuaire"}</Link></p>
       {isSelf && (
         <div className="card border-accent text-sm">
           {u.showInDirectory ? "Voici ta fiche telle que les autres membres la voient. " : "Tu as choisi de ne pas apparaître dans l'annuaire : personne d'autre ne peut ouvrir cette fiche. "}
@@ -64,7 +72,7 @@ export default async function MemberPage({ params }: PageProps<"/annuaire/[id]">
             {rating && <div><RatingBadge avg={rating.avg} n={rating.n} /></div>}
           </div>
           <div className="space-y-2">
-            {!isSelf && <MessageButton otherUserId={u.id} />}
+            {!isSelf && !viewer.perms.companyOnly && <MessageButton otherUserId={u.id} />}
             {email3is && <a href={`mailto:${email3is}`} className="btn w-full"><Mail size={16} aria-hidden /> {email3is}</a>}
             {u.phone && u.showPhone && <a href={`tel:${u.phone.replace(/[^\d+]/g, "")}`} className="btn-ghost w-full"><Phone size={16} aria-hidden /> {u.phone}</a>}
             {u.discord && <div className="flex justify-center"><CopyChip value={u.discord} prefix="Discord : " className="px-3 py-1.5 text-sm" /></div>}
