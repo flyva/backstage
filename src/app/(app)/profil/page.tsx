@@ -6,7 +6,7 @@ import QRCode from "qrcode";
 import { db } from "@/db";
 import { agendaViewers, classes, tracks, userLinks, users } from "@/db/schema";
 import { ProfileForm } from "@/components/forms";
-import { AvatarForm, CardPanel, DeleteMyAccountForm, FeedPanel, FicheForm, LinksEditor } from "@/components/people-forms";
+import { AvatarForm, CardPanel, CompanyProfileForm, DeleteMyAccountForm, FeedPanel, FicheForm, LinksEditor } from "@/components/people-forms";
 import { TimeSettingsForm } from "@/components/time-forms";
 import { RestoSettingsForm } from "@/components/alternance-forms";
 import { avatarUrl } from "@/lib/avatar-files";
@@ -27,6 +27,7 @@ type TabId = (typeof TABS)[number]["id"];
 
 export default async function ProfilPage({ searchParams }: PageProps<"/profil">) {
   const user = await requireUser();
+  if (user.perms.companyOnly) return <CompanyProfilePage user={user} />;
   const sp = await searchParams;
   const welcome = sp.bienvenue;
   const tab: TabId = TABS.some((t) => t.id === sp.onglet) ? (sp.onglet as TabId) : "general";
@@ -100,6 +101,39 @@ export default async function ProfilPage({ searchParams }: PageProps<"/profil">)
 }
 
 type User = Awaited<ReturnType<typeof requireUser>>;
+
+/**
+ * Profil d'un compte « Entreprise » (lecture seule) : rien de ce qui concerne un·e alternant·e (filière, classe,
+ * réseaux, pointeuse, carte de visite, abonnement calendrier…) — juste son nom, l'entreprise et le poste.
+ */
+function CompanyProfilePage({ user }: { user: User }) {
+  return (
+    <div className="space-y-5">
+      <h1 className="text-2xl font-bold">Mon profil</h1>
+      <div className="grid items-start gap-5 xl:grid-cols-2">
+        <div className="card">
+          <CompanyProfileForm firstName={user.firstName} lastName={user.lastName} companyName={user.companyName ?? ""} headline={user.headline ?? ""} />
+        </div>
+        <div className="space-y-5">
+          <p className="text-sm text-muted">
+            Thème et mot de passe : <Link href="/parametres" className="text-accent underline">Paramètres</Link>.
+          </p>
+          <div className="card space-y-2">
+            <h2 className="font-semibold">Mes données</h2>
+            <p className="text-sm text-muted">Télécharge un fichier avec tes données personnelles.</p>
+            <a href="/api/rgpd/export" className="btn-ghost w-fit"><Download size={15} aria-hidden /> Exporter mes données</a>
+            <p className="text-xs text-muted"><Link href="/cgu" className="underline">CGU</Link> · <Link href="/mentions-legales" className="underline">Mentions légales</Link></p>
+          </div>
+          <div className="card space-y-2 border-danger">
+            <h2 className="font-semibold">Supprimer mon compte</h2>
+            <p className="text-sm text-muted">Efface définitivement ton compte et tes données.</p>
+            <DeleteMyAccountForm email={user.email} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 async function FicheTab({ user }: { user: User }) {
   const allTracks = await db.select().from(tracks).orderBy(asc(tracks.sortOrder), asc(tracks.name));

@@ -19,6 +19,24 @@ const MAX_LINKS = 12;
 const MAX_CONTACTS = 500;
 const text = (fd: FormData, k: string, max: number) => String(fd.get(k) ?? "").trim().slice(0, max);
 
+// ---------- Profil d'un compte « Entreprise » (lecture seule) : juste son nom, l'entreprise et le poste, rien du
+// reste du profil (filière, classe, annuaire, carte de visite, réseaux…) qui ne le concerne pas. ----------
+
+export async function saveCompanyProfile(_: FormState, fd: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const firstName = text(fd, "firstName", 60);
+  const lastName = text(fd, "lastName", 60);
+  if (!firstName || !lastName) return { error: "Prénom et nom requis" };
+  const companyName = text(fd, "companyName", 120);
+  const headline = text(fd, "headline", 120);
+  await db.update(users).set({
+    firstName, lastName, name: `${firstName} ${lastName}`.trim(),
+    companyName: companyName || null, headline: headline || null,
+  }).where(eq(users.id, user.id));
+  revalidatePath("/profil");
+  return { ok: "Profil enregistré" };
+}
+
 // ---------- Fiche personnelle ----------
 
 export async function saveFiche(_: FormState, fd: FormData): Promise<FormState> {

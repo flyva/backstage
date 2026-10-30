@@ -167,6 +167,9 @@ export async function createUser(_: FormState, fd: FormData): Promise<FormState>
 
   // Alternants dont ce nouveau compte devient le référent : il pourra voir leur agenda, leur pointeuse et leurs stats en lecture seule.
   const tuteeIds = fd.getAll("tuteeIds").map((v) => Number(v)).filter((n) => Number.isInteger(n) && n > 0);
+  // Pour un compte « Entreprise » : évite à l'admin de redonner ces deux infos juste après dans le profil de la personne.
+  const companyName = String(fd.get("companyName") ?? "").trim().slice(0, 120);
+  const headline = String(fd.get("headline") ?? "").trim().slice(0, 120);
 
   const name = joinName(p.data.firstName, p.data.lastName);
   const [res] = await db.insert(users).values({
@@ -179,6 +182,8 @@ export async function createUser(_: FormState, fd: FormData): Promise<FormState>
     roleId: roleId.data,
     status: "active",
     cguAcceptedAt: direct ? new Date() : null,
+    companyName: companyName || null,
+    headline: headline || null,
   });
   const newId = res.insertId;
 

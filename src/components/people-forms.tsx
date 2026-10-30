@@ -8,7 +8,7 @@ import { Toggle } from "@/components/Toggle";
 import { LINK_KINDS, type LinkKind } from "@/db/schema";
 import { HABILITATION_SYMBOLS, LINK_LABEL, initialsOf } from "@/lib/people-shared";
 import {
-  addLink, deleteLink, deleteMyAccount, regenerateCardSlug, removeAvatar, saveClass, saveFiche, saveNetworkContact, saveTrack, setCardEnabled, uploadAvatar,
+  addLink, deleteLink, deleteMyAccount, regenerateCardSlug, removeAvatar, saveClass, saveCompanyProfile, saveFiche, saveNetworkContact, saveTrack, setCardEnabled, uploadAvatar,
   deleteClass, deleteNetworkContact, deleteTrack, setFeedEnabled, regenerateFeedToken,
 } from "@/lib/people-actions";
 
@@ -93,6 +93,30 @@ export function AvatarForm({ name, url }: { name: string; url: string | null }) 
         <p className="text-xs text-muted">La photo est recadrée en carré. Elle apparaît dans l&apos;annuaire, le menu et ta carte de visite.</p>
       </div>
     </div>
+  );
+}
+
+// ---------- Profil d'un compte « Entreprise » (lecture seule) ----------
+
+export function CompanyProfileForm({ firstName, lastName, companyName, headline }: { firstName: string; lastName: string; companyName: string; headline: string }) {
+  const [state, action, pending] = useActionState(saveCompanyProfile, undefined);
+  return (
+    <form action={action} className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div><label className="label" htmlFor="cp-fn">Prénom</label><input id="cp-fn" name="firstName" defaultValue={firstName} maxLength={60} required className="input" /></div>
+        <div><label className="label" htmlFor="cp-ln">Nom</label><input id="cp-ln" name="lastName" defaultValue={lastName} maxLength={60} required className="input" /></div>
+      </div>
+      <div>
+        <label className="label" htmlFor="cp-company">Entreprise</label>
+        <input id="cp-company" name="companyName" defaultValue={companyName} maxLength={120} placeholder="Nom de l'entreprise" className="input" />
+      </div>
+      <div>
+        <label className="label" htmlFor="cp-headline">Poste</label>
+        <input id="cp-headline" name="headline" defaultValue={headline} maxLength={120} placeholder="Tuteur, responsable technique…" className="input" />
+      </div>
+      <Feedback state={state} />
+      <button className="btn" disabled={pending}>{pending ? "Enregistrement…" : "Enregistrer"}</button>
+    </form>
   );
 }
 

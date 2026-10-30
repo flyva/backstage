@@ -180,10 +180,12 @@ export function DeleteRoleForm({ id }: { id: number }) {
  *   CGU déjà acceptées — pratique pour donner l'accès à l'entreprise sans qu'elle ait à créer quoi que ce soit.
  * « Référent de » rattache directement ce compte au planning/pointeuse/agenda des alternants choisis (lecture seule).
  */
-export function CreateUserForm({ roles, alternants }: { roles: { id: number; name: string }[]; alternants: { id: number; name: string }[] }) {
+export function CreateUserForm({ roles, alternants }: { roles: { id: number; name: string; isCompany: boolean }[]; alternants: { id: number; name: string }[] }) {
   const [state, action, pending] = useActionState(createUser, undefined);
   const [mode, setMode] = useState<"invite" | "direct">("invite");
   const [password, setPassword] = useState(() => randomPassword());
+  const [roleId, setRoleId] = useState("");
+  const isCompanyRole = roles.some((r) => String(r.id) === roleId && r.isCompany);
   return (
     <form action={action} className="space-y-4" key={state?.ok ? "done" : "form"}>
       <div className="grid gap-3 sm:grid-cols-2">
@@ -192,12 +194,20 @@ export function CreateUserForm({ roles, alternants }: { roles: { id: number; nam
         <div className="sm:col-span-2"><label className="label" htmlFor="nu-em">Adresse e-mail (sert d&apos;identifiant)</label><input id="nu-em" name="email" type="email" required maxLength={190} className="input" /></div>
         <div>
           <label className="label" htmlFor="nu-role">Rôle</label>
-          <select id="nu-role" name="roleId" defaultValue="" required className="input">
+          <select id="nu-role" name="roleId" value={roleId} onChange={(e) => setRoleId(e.target.value)} required className="input">
             <option value="" disabled>Choisir…</option>
             {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
           </select>
         </div>
       </div>
+
+      {isCompanyRole && (
+        <div className="grid gap-3 rounded-xl border border-line p-3 sm:grid-cols-2">
+          <div><label className="label" htmlFor="nu-company">Entreprise</label><input id="nu-company" name="companyName" maxLength={120} placeholder="Nom de l'entreprise" className="input" /></div>
+          <div><label className="label" htmlFor="nu-headline">Poste</label><input id="nu-headline" name="headline" maxLength={120} placeholder="Tuteur, responsable technique…" className="input" /></div>
+          <p className="text-xs text-muted sm:col-span-2">Affichés sur le profil du compte (lui évite d&apos;avoir à les ressaisir).</p>
+        </div>
+      )}
 
       <fieldset className="space-y-2">
         <legend className="label">Mise en place du compte</legend>
