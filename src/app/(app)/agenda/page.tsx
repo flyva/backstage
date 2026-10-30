@@ -49,9 +49,9 @@ export default async function AgendaPage({ searchParams }: PageProps<"/agenda">)
   const today = dayKey(new Date());
 
   const mine = await tutees(user.id);
-  // Pas de bascule automatique, même pour un compte Entreprise : seul un ?as= explicite (choisi depuis l'accueil ou
-  // le sélecteur ci-dessous) affiche l'agenda de quelqu'un d'autre.
-  const asParam = typeof sp.as === "string" ? sp.as : undefined;
+  // Compte Entreprise avec une seule personne suivie : pas d'ambiguïté, pas la peine de cliquer, on affiche
+  // directement son agenda. S'il y en a plusieurs (ou aucune), on laisse le choix explicite (devinette impossible).
+  const asParam = typeof sp.as === "string" ? sp.as : user.perms.companyOnly && mine.length === 1 ? String(mine[0].id) : undefined;
   const subject = await resolveTimeSubject(user, asParam);
   const subjectIcal = subject.userId === user.id ? user.icalUrl : ((await db.select({ icalUrl: users.icalUrl }).from(users).where(eq(users.id, subject.userId)).limit(1))[0]?.icalUrl ?? null);
 

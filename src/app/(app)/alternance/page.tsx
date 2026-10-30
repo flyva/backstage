@@ -25,10 +25,9 @@ export default async function AlternancePage({ searchParams }: PageProps<"/alter
   const grid = monthGrid(month);
 
   const mine = await tutees(user.id);
-  // Pas de bascule automatique sur une personne suivie, même pour un compte Entreprise : on affiche ce qui est
-  // explicitement demandé (?as=), jamais une devinette sur « la » personne qui intéresse — choix fait depuis
-  // l'accueil (CompanyHome) ou le sélecteur ci-dessous.
-  const asParam = typeof sp.as === "string" ? sp.as : undefined;
+  // Compte Entreprise avec une seule personne suivie : pas d'ambiguïté, pas la peine de cliquer, on affiche
+  // directement son planning. S'il y en a plusieurs (ou aucune), on laisse le choix explicite (devinette impossible).
+  const asParam = typeof sp.as === "string" ? sp.as : user.perms.companyOnly && mine.length === 1 ? String(mine[0].id) : undefined;
   const subject = await resolveTimeSubject(user, asParam);
 
   const rows = await db
