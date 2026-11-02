@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { agendaViewers, timeEntries, users, workDays } from "@/db/schema";
+import { agendaViewers, DAY_HALVES, timeEntries, users, workDays } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { todayParis } from "@/lib/equipment";
 import { addDays, isDay, parseTime } from "@/lib/alternance";
@@ -67,17 +67,17 @@ export async function deleteTimeEntry(fd: FormData) {
 
 // ---------- Jours congé / maladie (depuis la pointeuse) ----------
 
-const statusSchema = z.object({ day: z.string().refine(isDay, "Date invalide"), kind: z.enum(["conge", "maladie", "vide"]) });
+const statusSchema = z.object({ day: z.string().refine(isDay, "Date invalide"), kind: z.enum(["conge", "maladie", "vide"]), half: z.enum(DAY_HALVES) });
 
 /** Marque (ou retire) un jour congé/maladie directement depuis la pointeuse. Ne touche jamais école/entreprise/férié. */
 export async function setDayStatus(_: FormState, fd: FormData): Promise<FormState> {
   const user = await requireUser();
-  const p = statusSchema.safeParse({ day: fd.get("day"), kind: fd.get("kind") });
+  const p = statusSchema.safeParse({ day: fd.get("day"), kind: fd.get("kind"), half: fd.get("half") || "journee" });
   if (!p.success) return { error: p.error.issues[0].message };
   if (p.data.kind === "vide") {
     await db.delete(workDays).where(and(eq(workDays.userId, user.id), eq(workDays.day, p.data.day)));
   } else {
-    await db.insert(workDays).values({ userId: user.id, day: p.data.day, kind: p.data.kind }).onDuplicateKeyUpdate({ set: { kind: p.data.kind } });
+    await db.insert(workDays).values({ userId: user.id, day: p.data.day, kind: p.data.kind, half: p.data.half }).onDuplicateKeyUpdate({ set: { kind: p.data.kind, half: p.data.half } });
   }
   refresh();
   revalidatePath("/alternance");

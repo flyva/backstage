@@ -1,0 +1,1 @@
+ALTER TABLE `work_days` ADD `half` enum('journee','matin','apres_midi') DEFAULT 'journee' NOT NULL;

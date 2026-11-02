@@ -745,12 +745,18 @@ export const projectFiles = mysqlTable(
 export const WORK_KINDS = ["ecole", "entreprise", "conge", "ferie", "maladie"] as const;
 export type WorkKind = (typeof WORK_KINDS)[number];
 
+export const DAY_HALVES = ["journee", "matin", "apres_midi"] as const;
+export type DayHalf = (typeof DAY_HALVES)[number];
+
 export const workDays = mysqlTable(
   "work_days",
   {
     userId: int("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
     day: date("day", { mode: "string" }).notNull(),
     kind: mysqlEnum("kind", WORK_KINDS).notNull(),
+    // Ne concerne que congé et maladie : journée entière (par défaut) ou une seule demi-journée. Sans effet sur les
+    // autres types (école, entreprise, férié), toujours comptés en journée entière.
+    half: mysqlEnum("half", DAY_HALVES).notNull().default("journee"),
   },
   (t) => [primaryKey({ columns: [t.userId, t.day] })],
 );

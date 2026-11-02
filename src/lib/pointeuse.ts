@@ -1,5 +1,5 @@
 // Pointeuse : résolution du statut d'une journée et agrégats (semaine / mois / année). Partagé serveur / client.
-import type { WorkKind } from "@/db/schema";
+import type { DayHalf, WorkKind } from "@/db/schema";
 import { addDays, isDay, monthGrid, weekday } from "@/lib/alternance";
 
 /** Journée « standard » fixe (école, congé, maladie) : 7 h effectives, indépendamment du réglage personnel de la personne. */
@@ -34,13 +34,15 @@ export const FIXED_KINDS: WorkKind[] = ["ecole", "conge", "maladie"];
  * n'est saisi : « repos » pour les derniers jours de la semaine au-delà de workDaysPerWeek (ex. samedi-dimanche pour
  * 5 j/semaine), « non travaillé » sinon (jour ouvré sans rien de saisi — à vérifier).
  */
-export function daySummary(day: string, today: string, kind: WorkKind | undefined, entries: TimeEntry[], workDaysPerWeek: number): DaySummary {
+export function daySummary(day: string, today: string, kind: WorkKind | undefined, entries: TimeEntry[], workDaysPerWeek: number, half: DayHalf = "journee"): DaySummary {
   if (day > today) return { day, source: "futur", grossMinutes: 0, pauseMinutes: 0, effectiveMinutes: 0, entries: [] };
   if (kind === "ecole") {
     return { day, source: "ecole", grossMinutes: STANDARD_DAY_MINUTES + SCHOOL_PAUSE_MINUTES, pauseMinutes: SCHOOL_PAUSE_MINUTES, effectiveMinutes: STANDARD_DAY_MINUTES, entries: [] };
   }
   if (kind === "conge" || kind === "maladie") {
-    return { day, source: kind, grossMinutes: STANDARD_DAY_MINUTES, pauseMinutes: 0, effectiveMinutes: STANDARD_DAY_MINUTES, entries: [] };
+    // Demi-journée : la moitié des 7 h fixes, pas de pause (comme pour une journée entière, pas de vraie journée à couper).
+    const minutes = half === "journee" ? STANDARD_DAY_MINUTES : STANDARD_DAY_MINUTES / 2;
+    return { day, source: kind, grossMinutes: minutes, pauseMinutes: 0, effectiveMinutes: minutes, entries: [] };
   }
   if (entries.length === 0) {
     const source = weekday(day) >= workDaysPerWeek ? "repos" : "non_travaille";

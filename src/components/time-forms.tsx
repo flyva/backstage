@@ -2,8 +2,9 @@
 
 import { useActionState } from "react";
 import type { FormState } from "@/lib/actions";
-import type { WorkKind } from "@/db/schema";
+import type { DayHalf, WorkKind } from "@/db/schema";
 import { saveTimeEntry, saveTimeSettings, setDayStatus } from "@/lib/time-actions";
+import { HALF_LABEL } from "@/lib/alternance";
 import { DateRangeField } from "@/components/DateRangeField";
 
 function Feedback({ state }: { state: FormState }) {
@@ -45,21 +46,30 @@ export function DayStatusForm({ today }: { today: string }) {
           <option value="vide">Retirer le marquage</option>
         </select>
       </div>
+      <div className="w-40">
+        <label className="label" htmlFor="ds-half">Durée</label>
+        <select id="ds-half" name="half" defaultValue="journee" className="input">
+          {(Object.keys(HALF_LABEL) as DayHalf[]).map((h) => <option key={h} value={h}>{HALF_LABEL[h]}</option>)}
+        </select>
+      </div>
       <button className="btn-ghost" disabled={pending}>{pending ? "…" : "Appliquer"}</button>
       <div className="basis-full"><Feedback state={state} /></div>
     </form>
   );
 }
 
-/** Ligne de tableau : change le statut (congé ↔ maladie) d'un jour déjà marqué, sans repasser par le formulaire du haut. */
-export function DayStatusEditForm({ day, kind }: { day: string; kind: Extract<WorkKind, "conge" | "maladie"> }) {
+/** Ligne de tableau : change le statut (congé ↔ maladie) et la durée (journée/demi-journée) d'un jour déjà marqué, sans repasser par le formulaire du haut. */
+export function DayStatusEditForm({ day, kind, half }: { day: string; kind: Extract<WorkKind, "conge" | "maladie">; half: DayHalf }) {
   const [state, action, pending] = useActionState(setDayStatus, undefined);
   return (
-    <form action={action} className="flex items-center gap-2">
+    <form action={action} className="flex flex-wrap items-center gap-2">
       <input type="hidden" name="day" value={day} />
       <select name="kind" defaultValue={kind} disabled={pending} onChange={(e) => e.currentTarget.form?.requestSubmit()} className="input py-1 text-xs">
         <option value="conge">Congé</option>
         <option value="maladie">Maladie</option>
+      </select>
+      <select name="half" defaultValue={half} disabled={pending} onChange={(e) => e.currentTarget.form?.requestSubmit()} className="input py-1 text-xs">
+        {(Object.keys(HALF_LABEL) as DayHalf[]).map((h) => <option key={h} value={h}>{HALF_LABEL[h]}</option>)}
       </select>
       {state?.error && <span className="text-xs text-danger">{state.error}</span>}
     </form>

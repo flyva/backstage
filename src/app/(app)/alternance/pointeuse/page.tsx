@@ -5,8 +5,8 @@ import { db } from "@/db";
 import { timeEntries, workDays } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { todayParis } from "@/lib/equipment";
-import { KIND_CLASS, KIND_LABEL, addMonths, dayLabel, fmtHours, fmtTime, isMonth, monthLabel } from "@/lib/alternance";
-import { FIXED_KINDS, daySummary, entrySpanMinutes } from "@/lib/pointeuse";
+import { KIND_CLASS, KIND_LABEL, addMonths, dayLabel, fmtHours, fmtTime, halfSuffix, isMonth, monthLabel } from "@/lib/alternance";
+import { FIXED_KINDS, STANDARD_DAY_MINUTES, daySummary, entrySpanMinutes } from "@/lib/pointeuse";
 import { deleteDayStatus, deleteTimeEntry } from "@/lib/time-actions";
 import { TimeEntryForm, DayStatusForm, DayStatusEditForm } from "@/components/time-forms";
 import { ConfirmButton } from "@/components/ConfirmButton";
@@ -32,7 +32,7 @@ export default async function PointeusePage({ searchParams }: PageProps<"/altern
   const totalMonth = [...entriesByDay.entries()].reduce((s, [day, list]) => {
     const sum = daySummary(day, today, undefined, list, user.workDaysPerWeek);
     return s + sum.effectiveMinutes;
-  }, 0) + fixedDays.length * 420;
+  }, 0) + fixedDays.reduce((s, d) => s + (d.half === "journee" ? STANDARD_DAY_MINUTES : STANDARD_DAY_MINUTES / 2), 0);
 
   return (
     <div className="space-y-6">
@@ -76,7 +76,7 @@ export default async function PointeusePage({ searchParams }: PageProps<"/altern
                 <tr className="border-b border-line bg-bg text-left text-xs text-muted">
                   <th className="py-1.5 pl-3 pr-3 font-medium">Date</th>
                   <th className="py-1.5 pr-3 font-medium">Statut</th>
-                  <th className="py-1.5 pr-3 font-medium">Changer en</th>
+                  <th className="py-1.5 pr-3 font-medium">Changer en / durée</th>
                   <th className="py-1.5 pr-3 font-medium" />
                 </tr>
               </thead>
@@ -84,8 +84,8 @@ export default async function PointeusePage({ searchParams }: PageProps<"/altern
                 {markedDays.map((d) => (
                   <tr key={d.day}>
                     <td className="py-1.5 pl-3 pr-3 capitalize">{dayLabel(d.day)}</td>
-                    <td className="py-1.5 pr-3"><span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${KIND_CLASS[d.kind]}`}>{KIND_LABEL[d.kind]}</span></td>
-                    <td className="py-1.5 pr-3"><DayStatusEditForm day={d.day} kind={d.kind} /></td>
+                    <td className="py-1.5 pr-3"><span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${KIND_CLASS[d.kind]}`}>{KIND_LABEL[d.kind]}{halfSuffix(d.half)}</span></td>
+                    <td className="py-1.5 pr-3"><DayStatusEditForm day={d.day} kind={d.kind} half={d.half} /></td>
                     <td className="py-1.5 pr-3">
                       <form action={deleteDayStatus}>
                         <input type="hidden" name="day" value={d.day} />

@@ -6,7 +6,7 @@ import { workDays, type WorkKind } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { todayParis } from "@/lib/equipment";
 import { absoluteUrl } from "@/lib/base-url";
-import { KIND_CLASS, KIND_LABEL, addMonths, isMonth, isWeekend, monthGrid, monthLabel } from "@/lib/alternance";
+import { KIND_CLASS, KIND_LABEL, addMonths, halfSuffix, isMonth, isWeekend, monthGrid, monthLabel } from "@/lib/alternance";
 import { cycleDay } from "@/lib/alternance-actions";
 import { resolveTimeSubject, tutees } from "@/lib/time-access";
 import { RangeForm, RhythmForm } from "@/components/alternance-forms";
@@ -36,6 +36,7 @@ export default async function AlternancePage({ searchParams }: PageProps<"/alter
     .where(and(eq(workDays.userId, subject.userId), gte(workDays.day, grid[0].day), lte(workDays.day, grid[grid.length - 1].day)))
     .orderBy(asc(workDays.day));
   const kindOf = new Map(rows.map((r) => [r.day, r.kind]));
+  const halfOf = new Map(rows.map((r) => [r.day, r.half]));
 
   const count = (k: WorkKind) => rows.filter((r) => r.kind === k && r.day.startsWith(month)).length;
   const feedUrl = user.feedToken ? await absoluteUrl(`/api/feed/${user.feedToken}.ics`) : null;
@@ -74,18 +75,21 @@ export default async function AlternancePage({ searchParams }: PageProps<"/alter
         <div className="grid grid-cols-7 gap-1">
           {grid.map(({ day, inMonth }) => {
             const kind = kindOf.get(day);
+            const half = halfOf.get(day) ?? "journee";
+            const halvable = kind === "conge" || kind === "maladie";
             const cls = `flex h-14 w-full flex-col items-center justify-center gap-0.5 rounded-lg border text-sm ${kind ? `${KIND_CLASS[kind]} border-transparent` : "border-line"} ${inMonth ? "" : "opacity-40"} ${day === today ? "ring-2 ring-accent" : ""} ${!kind && isWeekend(day) ? "bg-bg" : ""}`;
+            const label = kind ? `${KIND_LABEL[kind]}${halvable ? halfSuffix(half) : ""}` : "libre";
             const content = (
               <>
                 <span className="font-medium tabular-nums">{Number(day.slice(8))}</span>
-                {kind && <span className="text-[10px] leading-none">{KIND_LABEL[kind]}</span>}
+                {kind && <span className="text-[10px] leading-none">{KIND_LABEL[kind]}{halvable && half !== "journee" && " ½"}</span>}
               </>
             );
-            if (subject.readonly) return <div key={day} className={cls} aria-label={`${day} : ${kind ? KIND_LABEL[kind] : "libre"}`}>{content}</div>;
+            if (subject.readonly) return <div key={day} className={cls} aria-label={`${day} : ${label}`} title={label}>{content}</div>;
             return (
               <form key={day} action={cycleDay}>
                 <input type="hidden" name="day" value={day} />
-                <button className={`${cls} transition hover:border-accent`} aria-label={`${day} : ${kind ? KIND_LABEL[kind] : "libre"}`}>{content}</button>
+                <button className={`${cls} transition hover:border-accent`} aria-label={`${day} : ${label}`} title={label}>{content}</button>
               </form>
             );
           })}

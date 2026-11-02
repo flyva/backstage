@@ -680,6 +680,13 @@
       "when": 1793276550923,
       "tag": "0096_overconfident_blizzard",
       "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "5",
+      "when": 1793623927058,
+      "tag": "0097_foamy_iron_monger",
+      "breakpoints": true
     }
   ]
 }

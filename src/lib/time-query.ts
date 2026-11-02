@@ -11,9 +11,10 @@ export async function fetchDaySummaries(userId: number, from: string, to: string
     db.select().from(timeEntries).where(and(eq(timeEntries.userId, userId), gte(timeEntries.day, from), lte(timeEntries.day, to))).orderBy(asc(timeEntries.startMinutes)),
   ]);
   const kindOf = new Map(wd.map((r) => [r.day, r.kind]));
+  const halfOf = new Map(wd.map((r) => [r.day, r.half]));
   const entriesByDay = new Map<string, typeof te>();
   for (const e of te) entriesByDay.set(e.day, [...(entriesByDay.get(e.day) ?? []), e]);
   const out: DaySummary[] = [];
-  for (let d = from; d <= to; d = addDays(d, 1)) out.push(daySummary(d, today, kindOf.get(d), entriesByDay.get(d) ?? [], workDaysPerWeek));
+  for (let d = from; d <= to; d = addDays(d, 1)) out.push(daySummary(d, today, kindOf.get(d), entriesByDay.get(d) ?? [], workDaysPerWeek, halfOf.get(d)));
   return out;
 }

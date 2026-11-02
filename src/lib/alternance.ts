@@ -1,7 +1,10 @@
 // Planning d'alternance : constantes et calendrier (partagé serveur / client, sans dépendance serveur).
-import type { WorkKind } from "@/db/schema";
+import type { DayHalf, WorkKind } from "@/db/schema";
 
 export const KIND_LABEL: Record<WorkKind, string> = { ecole: "École", entreprise: "Entreprise", conge: "Congé", ferie: "Férié", maladie: "Maladie" };
+export const HALF_LABEL: Record<DayHalf, string> = { journee: "Journée entière", matin: "Matin", apres_midi: "Après-midi" };
+/** Étiquette courte à ajouter à côté de « Congé »/« Maladie » quand ce n'est qu'une demi-journée (rien pour une journée entière). */
+export const halfSuffix = (half: DayHalf) => (half === "journee" ? "" : ` (${HALF_LABEL[half].toLowerCase()})`);
 export const KIND_CLASS: Record<WorkKind, string> = {
   ecole: "bg-blue-500/20 text-blue-800 dark:text-blue-200",
   entreprise: "bg-emerald-500/20 text-emerald-800 dark:text-emerald-200",
