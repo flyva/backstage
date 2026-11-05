@@ -687,6 +687,13 @@
       "when": 1793623927058,
       "tag": "0097_foamy_iron_monger",
       "breakpoints": true
+    },
+    {
+      "idx": 98,
+      "version": "5",
+      "when": 1793888934253,
+      "tag": "0098_neat_colossus",
+      "breakpoints": true
     }
   ]
 }

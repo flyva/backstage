@@ -22,7 +22,7 @@ export default async function EditTimeEntryPage({ params }: PageProps<"/alternan
       <Link href="/alternance/pointeuse/lignes" className="text-sm text-muted hover:text-fg">← Toutes les lignes</Link>
       <h1 className="text-2xl font-bold capitalize">Modifier la ligne du {dayLabel(e.day)}</h1>
       <div className="card">
-        <TimeEntryForm today={today} id={e.id} day={e.day} endDay={e.endDay} start={fmtTime(e.startMinutes)} end={fmtTime(e.endMinutes)} pause={e.pauseMinutes} comment={e.comment ?? ""} />
+        <TimeEntryForm today={today} id={e.id} day={e.day} endDay={e.endDay} start={fmtTime(e.startMinutes)} end={fmtTime(e.endMinutes)} pause={e.pauseMinutes} comment={e.comment ?? ""} kind={e.kind} />
       </div>
     </div>
   );

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { agendaViewers, DAY_HALVES, timeEntries, users, workDays } from "@/db/schema";
+import { agendaViewers, DAY_HALVES, TIME_ENTRY_KINDS, timeEntries, users, workDays } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { todayParis } from "@/lib/equipment";
 import { addDays, isDay, parseTime } from "@/lib/alternance";
@@ -25,6 +25,7 @@ const entrySchema = z.object({
   end: z.string().refine((v) => parseTime(v) !== null, "Heure de fin invalide"),
   pause: z.coerce.number().int().min(0, "Pause : 0 minimum").max(600, "Pause trop longue"),
   comment: z.string().trim().max(300),
+  kind: z.enum(TIME_ENTRY_KINDS),
 });
 
 export async function saveTimeEntry(_: FormState, fd: FormData): Promise<FormState> {
@@ -32,6 +33,7 @@ export async function saveTimeEntry(_: FormState, fd: FormData): Promise<FormSta
   const today = todayParis();
   const p = entrySchema.safeParse({
     day: fd.get("day"), endDay: fd.get("endDay") || fd.get("day"), start: fd.get("start"), end: fd.get("end"), pause: fd.get("pause") || 0, comment: fd.get("comment") ?? "",
+    kind: fd.get("kind") || "travail",
   });
   if (!p.success) return { error: p.error.issues[0].message };
   if (p.data.day > today) return { error: "Impossible d'ajouter une ligne dans le futur" };
@@ -51,7 +53,7 @@ export async function saveTimeEntry(_: FormState, fd: FormData): Promise<FormSta
     return { error: "Ce jour est marqué école, congé ou maladie : il est déjà compté, retire d'abord ce marquage sur le planning ou la pointeuse si tu veux saisir des heures." };
   }
 
-  const values = { day: p.data.day, endDay: p.data.endDay, startMinutes, endMinutes, pauseMinutes: p.data.pause, comment: p.data.comment || null };
+  const values = { day: p.data.day, endDay: p.data.endDay, startMinutes, endMinutes, pauseMinutes: p.data.pause, comment: p.data.comment || null, kind: p.data.kind };
   const raw = Number(fd.get("id") || 0);
   if (raw) await db.update(timeEntries).set(values).where(and(eq(timeEntries.id, raw), eq(timeEntries.userId, user.id)));
   else await db.insert(timeEntries).values({ ...values, userId: user.id });

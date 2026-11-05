@@ -763,6 +763,9 @@ export const workDays = mysqlTable(
 
 // Pointeuse : lignes d'heures saisies à la main (un jour peut avoir plusieurs lignes, ex. matin + après-midi).
 // Les jours « école », « congé » et « maladie » (work_days.kind) priment dessus : voir src/lib/pointeuse.ts.
+export const TIME_ENTRY_KINDS = ["travail", "rattrapage"] as const;
+export type TimeEntryKind = (typeof TIME_ENTRY_KINDS)[number];
+
 export const timeEntries = mysqlTable(
   "time_entries",
   {
@@ -775,6 +778,9 @@ export const timeEntries = mysqlTable(
     endMinutes: int("end_minutes").notNull(),
     pauseMinutes: int("pause_minutes").notNull().default(0),
     comment: varchar("comment", { length: 300 }),
+    // « rattrapage » : un créneau qui ne compte pas comme du temps travaillé, mais vient en déduction des heures sup
+    // de la semaine (ex. partir plus tôt ou arriver plus tard pour compenser des heures sup déjà faites).
+    kind: mysqlEnum("kind", TIME_ENTRY_KINDS).notNull().default("travail"),
     createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
   },
   (t) => [index("te_user_day_idx").on(t.userId, t.day)],

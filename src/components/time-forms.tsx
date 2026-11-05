@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import type { FormState } from "@/lib/actions";
-import type { DayHalf, WorkKind } from "@/db/schema";
+import type { DayHalf, TimeEntryKind, WorkKind } from "@/db/schema";
 import { saveTimeEntry, saveTimeSettings, setDayStatus } from "@/lib/time-actions";
 import { HALF_LABEL } from "@/lib/alternance";
 import { DateRangeField } from "@/components/DateRangeField";
@@ -14,8 +14,8 @@ function Feedback({ state }: { state: FormState }) {
 }
 
 export function TimeEntryForm({
-  today, id, day = today, endDay, start = "09:00", end = "17:00", pause = 60, comment = "",
-}: { today: string; id?: number; day?: string; endDay?: string; start?: string; end?: string; pause?: number; comment?: string }) {
+  today, id, day = today, endDay, start = "09:00", end = "17:00", pause = 60, comment = "", kind = "travail",
+}: { today: string; id?: number; day?: string; endDay?: string; start?: string; end?: string; pause?: number; comment?: string; kind?: TimeEntryKind }) {
   const [state, action, pending] = useActionState(saveTimeEntry, undefined);
   const k = id ?? "new";
   return (
@@ -25,10 +25,20 @@ export function TimeEntryForm({
       <div className="w-32"><label className="label" htmlFor={`ts${k}`}>Début</label><input id={`ts${k}`} name="start" type="time" defaultValue={start} required className="input" /></div>
       <div className="w-32"><label className="label" htmlFor={`te${k}`}>Fin</label><input id={`te${k}`} name="end" type="time" defaultValue={end} required className="input" /></div>
       <div className="w-28"><label className="label" htmlFor={`tp${k}`}>Pause (min)</label><input id={`tp${k}`} name="pause" type="number" min={0} max={600} step={5} defaultValue={pause} className="input" /></div>
+      <div className="w-56">
+        <label className="label" htmlFor={`tk${k}`}>Type</label>
+        <select id={`tk${k}`} name="kind" defaultValue={kind} className="input">
+          <option value="travail">Travail</option>
+          <option value="rattrapage">Rattrapage (sur heures sup)</option>
+        </select>
+      </div>
       <div className="min-w-48 flex-1"><label className="label" htmlFor={`tc${k}`}>Commentaire (facultatif)</label><input id={`tc${k}`} name="comment" defaultValue={comment} maxLength={300} placeholder="Astreinte, déplacement…" className="input" /></div>
       <button className="btn" disabled={pending}>{pending ? "…" : id ? "Enregistrer" : "Ajouter la ligne"}</button>
       <div className="basis-full"><Feedback state={state} /></div>
-      <p className="basis-full text-xs text-muted">Choisis un seul jour, ou deux jours qui se suivent si le travail finit après minuit (ex. 21h → 3h du matin).</p>
+      <p className="basis-full text-xs text-muted">
+        Choisis un seul jour, ou deux jours qui se suivent si le travail finit après minuit (ex. 21h → 3h du matin).
+        « Rattrapage » : le créneau (la matinée, la journée entière…) ne compte pas comme travaillé, mais vient en déduction des heures sup de la semaine.
+      </p>
     </form>
   );
 }

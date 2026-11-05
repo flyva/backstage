@@ -73,9 +73,12 @@ export default async function StatsPage({ searchParams }: PageProps<"/alternance
 
 function TotalsCards({ t, overtimeMinutes }: { t: Totals; overtimeMinutes: number }) {
   return (
-    <dl className="grid gap-3 text-sm sm:grid-cols-4">
+    <dl className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-5">
       <div className="rounded-xl border border-line bg-bg p-3"><dt className="text-muted">Effectif</dt><dd className="text-2xl font-bold tabular-nums">{fmtHours(t.effectiveMinutes)}</dd></div>
       <div className="rounded-xl border border-line bg-bg p-3"><dt className="text-muted">Heures sup</dt><dd className="text-2xl font-bold tabular-nums text-amber-600 dark:text-amber-400">{fmtHours(overtimeMinutes)}</dd></div>
+      {t.rattrapageMinutes > 0 && (
+        <div className="rounded-xl border border-line bg-bg p-3"><dt className="text-muted">Rattrapage pris</dt><dd className="text-2xl font-bold tabular-nums text-amber-600 dark:text-amber-400">{fmtHours(t.rattrapageMinutes)}</dd></div>
+      )}
       <div className="rounded-xl border border-line bg-bg p-3"><dt className="text-muted">Pause</dt><dd className="text-2xl font-bold tabular-nums">{fmtHours(t.pauseMinutes)}</dd></div>
       <div className="rounded-xl border border-line bg-bg p-3"><dt className="text-muted">Jours travaillés</dt><dd className="text-2xl font-bold tabular-nums">{t.days}</dd></div>
     </dl>

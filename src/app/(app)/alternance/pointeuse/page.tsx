@@ -29,10 +29,11 @@ export default async function PointeusePage({ searchParams }: PageProps<"/altern
   const entriesByDay = new Map<string, typeof entries>();
   for (const e of entries) entriesByDay.set(e.day, [...(entriesByDay.get(e.day) ?? []), e]);
 
-  const totalMonth = [...entriesByDay.entries()].reduce((s, [day, list]) => {
+  const entriesTotals = [...entriesByDay.entries()].reduce((s, [day, list]) => {
     const sum = daySummary(day, today, undefined, list, user.workDaysPerWeek);
-    return s + sum.effectiveMinutes;
-  }, 0) + fixedDays.reduce((s, d) => s + (d.half === "journee" ? STANDARD_DAY_MINUTES : STANDARD_DAY_MINUTES / 2), 0);
+    return { effective: s.effective + sum.effectiveMinutes, rattrapage: s.rattrapage + sum.rattrapageMinutes };
+  }, { effective: 0, rattrapage: 0 });
+  const totalMonth = entriesTotals.effective + fixedDays.reduce((s, d) => s + (d.half === "journee" ? STANDARD_DAY_MINUTES : STANDARD_DAY_MINUTES / 2), 0);
 
   return (
     <div className="space-y-6">
@@ -52,6 +53,9 @@ export default async function PointeusePage({ searchParams }: PageProps<"/altern
         <div className="rounded-xl border border-line bg-bg p-3 text-sm">
           <span className="text-muted">Effectif du mois (approximatif, voir les stats pour le détail) : </span>
           <strong className="tabular-nums">{fmtHours(totalMonth)}</strong>
+          {entriesTotals.rattrapage > 0 && (
+            <span className="ml-3 text-amber-700 dark:text-amber-300">+ {fmtHours(entriesTotals.rattrapage)} de rattrapage ce mois (non comptés ici, déduits des heures sup)</span>
+          )}
         </div>
       </section>
 
@@ -113,7 +117,14 @@ export default async function PointeusePage({ searchParams }: PageProps<"/altern
                 <span className="min-w-0 flex-1 font-medium capitalize">{dayLabel(e.day)}</span>
                 <span className="tabular-nums text-muted">{fmtTime(e.startMinutes)} – {fmtTime(e.endMinutes)}{crosses && <span className="ml-1 rounded-full border border-line px-1.5 py-0.5 text-[10px] font-medium">+1 j</span>}</span>
                 <span className="tabular-nums text-muted">Pause {fmtHours(e.pauseMinutes)}</span>
-                <span className="tabular-nums font-medium">{fmtHours(effective)} effectif</span>
+                {e.kind === "rattrapage" ? (
+                  <span className="flex items-center gap-1.5 tabular-nums font-medium text-amber-700 dark:text-amber-300">
+                    <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[11px] font-medium">Rattrapage</span>
+                    {fmtHours(effective)}
+                  </span>
+                ) : (
+                  <span className="tabular-nums font-medium">{fmtHours(effective)} effectif</span>
+                )}
                 {e.comment && <span className="text-xs text-muted">« {e.comment} »</span>}
                 <Link href={`/alternance/pointeuse/lignes/${e.id}`} className="flex items-center gap-1 text-xs text-muted hover:text-fg"><Pencil size={13} /> Modifier</Link>
                 <form action={deleteTimeEntry}>

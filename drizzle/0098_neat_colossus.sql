@@ -1,0 +1,1 @@
+ALTER TABLE `time_entries` ADD `kind` enum('travail','rattrapage') DEFAULT 'travail' NOT NULL;

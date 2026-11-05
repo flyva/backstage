@@ -35,6 +35,7 @@ export default async function PointeuseLinesPage() {
                 <th className="py-1.5 pr-3 font-medium">Horaires</th>
                 <th className="py-1.5 pr-3 font-medium">Pause</th>
                 <th className="py-1.5 pr-3 font-medium">Effectif</th>
+                <th className="py-1.5 pr-3 font-medium">Type</th>
                 <th className="py-1.5 pr-3 font-medium">Commentaire</th>
                 <th className="py-1.5 pr-3 font-medium" />
               </tr>
@@ -52,6 +53,9 @@ export default async function PointeuseLinesPage() {
                     </td>
                     <td className="py-1.5 pr-3 tabular-nums">{fmtHours(e.pauseMinutes)}</td>
                     <td className="py-1.5 pr-3 tabular-nums font-medium">{fmtHours(effective)}</td>
+                    <td className="py-1.5 pr-3">
+                      {e.kind === "rattrapage" && <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:text-amber-200">Rattrapage</span>}
+                    </td>
                     <td className="max-w-56 truncate py-1.5 pr-3 text-muted" title={e.comment ?? ""}>{e.comment ?? ""}</td>
                     <td className="py-1.5 pr-3">
                       <div className="flex items-center gap-3">
