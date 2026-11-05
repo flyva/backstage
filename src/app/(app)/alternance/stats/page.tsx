@@ -177,10 +177,13 @@ async function MonthStats({ sp, today, currentMonth, base, view, subject }: { sp
   const monthDays = summaries.filter((s) => inMonth(s.day));
   const total = sumDays(monthDays);
   const weekSums = weeks.map((w) => summarizeWeek(w.map((d) => byDay.get(d)).filter((d): d is DaySummary => !!d), subject.standardWorkMinutes, subject.workDaysPerWeek));
-  // Même périmètre que les heures sup (toutes les semaines affichées, pas que les jours du mois) : une semaine à
-  // cheval sur deux mois compte pour les deux, son rattrapage doit donc aussi compter pour les deux.
-  const rattrapageMinutes = rattrapageOf(weeks.flat(), byDay);
-  const overtimeMinutes = netOvertimeMinutes(weekSums.reduce((s, w) => s + w.overtimeMinutes, 0), rattrapageMinutes);
+  // Une semaine à cheval sur deux mois apparaît dans les deux grilles (pour que le calendrier reste complet), mais
+  // ne doit être comptée en heures sup / rattrapage que dans le total du mois de son lundi — sinon elle compte deux
+  // fois pour deux mois différents. Même convention que la vue Année (semaine rattachée au mois de son lundi).
+  const ownWeeks = weeks.filter((w) => w[0].startsWith(month));
+  const rattrapageMinutes = rattrapageOf(ownWeeks.flat(), byDay);
+  const grossOvertimeMinutes = ownWeeks.reduce((s, w) => s + summarizeWeek(w.map((d) => byDay.get(d)).filter((d): d is DaySummary => !!d), subject.standardWorkMinutes, subject.workDaysPerWeek).overtimeMinutes, 0);
+  const overtimeMinutes = netOvertimeMinutes(grossOvertimeMinutes, rattrapageMinutes);
   const bars: ChartBar[] = weekSums.map((w, i) => ({ label: `S${i + 1}`, effective: w.effectiveMinutes, overtime: w.overtimeMinutes }));
   const params = { ...base, mode: undefined, m: month };
 
@@ -276,10 +279,13 @@ async function RangeStats({ sp, today, base, subject }: { sp: Record<string, str
   const inPeriod = (d: string) => d >= from && d <= to;
   const total = sumDays(summaries.filter((s) => inPeriod(s.day)));
   const weekSums = weeks.map((w) => summarizeWeek(w.map((d) => byDay.get(d)).filter((d): d is DaySummary => !!d), subject.standardWorkMinutes, subject.workDaysPerWeek));
-  // Même périmètre que les heures sup (toutes les semaines affichées, bornes incluses) : rattrapage pris n'importe
-  // quand sur la période déduit des heures sup gagnées sur la période entière.
-  const rattrapageMinutes = rattrapageOf(weeks.flat(), byDay);
-  const overtimeMinutes = netOvertimeMinutes(weekSums.reduce((s, w) => s + w.overtimeMinutes, 0), rattrapageMinutes);
+  // Une semaine qui déborde avant « from » ou après « to » apparaît quand même dans le tableau (calendrier complet),
+  // mais ne doit compter dans les totaux que si son lundi tombe dans la période choisie — sinon une semaine bornée
+  // par « from » compterait aussi dans la période juste avant, qui ne l'affiche pourtant pas.
+  const ownWeeks = weeks.filter((w) => w[0] >= from && w[0] <= to);
+  const rattrapageMinutes = rattrapageOf(ownWeeks.flat(), byDay);
+  const grossOvertimeMinutes = ownWeeks.reduce((s, w) => s + summarizeWeek(w.map((d) => byDay.get(d)).filter((d): d is DaySummary => !!d), subject.standardWorkMinutes, subject.workDaysPerWeek).overtimeMinutes, 0);
+  const overtimeMinutes = netOvertimeMinutes(grossOvertimeMinutes, rattrapageMinutes);
   const bars: ChartBar[] = weekSums.map((w, i) => ({ label: `S${i + 1}`, effective: w.effectiveMinutes, overtime: w.overtimeMinutes }));
   const params = { ...base, mode: "range", from, to };
 
