@@ -3,7 +3,7 @@ import { CalendarDays, ChevronLeft, ChevronRight, Download, Printer, Table2 } fr
 import { requireUser } from "@/lib/auth";
 import { todayParis } from "@/lib/equipment";
 import { addDays, addMonths, dayLabel, fmtHours, isDay, isMonth, monthGrid, monthLabel } from "@/lib/alternance";
-import { SOURCE_CLASS, SOURCE_LABEL, isYear, monthWeeks, monthsOfYear, rangeWeeks, summarizeWeek, sumDays, type DaySummary, type Totals } from "@/lib/pointeuse";
+import { SOURCE_CLASS, SOURCE_LABEL, isYear, monthWeeks, monthsOfYear, netOvertimeMinutes, rangeWeeks, summarizeWeek, sumDays, type DaySummary, type Totals } from "@/lib/pointeuse";
 import { fetchDaySummaries } from "@/lib/time-query";
 import { resolveTimeSubject, tutees, type TimeSubject } from "@/lib/time-access";
 import { TimeBarChart, type ChartBar } from "@/components/TimeCharts";
@@ -75,7 +75,7 @@ function TotalsCards({ t, overtimeMinutes }: { t: Totals; overtimeMinutes: numbe
   return (
     <dl className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-5">
       <div className="rounded-xl border border-line bg-bg p-3"><dt className="text-muted">Effectif</dt><dd className="text-2xl font-bold tabular-nums">{fmtHours(t.effectiveMinutes)}</dd></div>
-      <div className="rounded-xl border border-line bg-bg p-3"><dt className="text-muted">Heures sup</dt><dd className="text-2xl font-bold tabular-nums text-amber-600 dark:text-amber-400">{fmtHours(overtimeMinutes)}</dd></div>
+      <div className="rounded-xl border border-line bg-bg p-3"><dt className="text-muted">Heures sup {t.rattrapageMinutes > 0 ? "restantes" : ""}</dt><dd className="text-2xl font-bold tabular-nums text-amber-600 dark:text-amber-400">{fmtHours(overtimeMinutes)}</dd></div>
       {t.rattrapageMinutes > 0 && (
         <div className="rounded-xl border border-line bg-bg p-3"><dt className="text-muted">Rattrapage pris</dt><dd className="text-2xl font-bold tabular-nums text-amber-600 dark:text-amber-400">{fmtHours(t.rattrapageMinutes)}</dd></div>
       )}
@@ -166,7 +166,8 @@ async function MonthStats({ sp, today, currentMonth, base, view, subject }: { sp
   const monthDays = summaries.filter((s) => inMonth(s.day));
   const total = sumDays(monthDays);
   const weekSums = weeks.map((w) => summarizeWeek(w.map((d) => byDay.get(d)).filter((d): d is DaySummary => !!d), subject.standardWorkMinutes, subject.workDaysPerWeek));
-  const overtimeMinutes = weekSums.reduce((s, w) => s + w.overtimeMinutes, 0);
+  // Rattrapage pris sur tout le mois (pas seulement sa propre semaine) déduit des heures sup gagnées sur le mois.
+  const overtimeMinutes = netOvertimeMinutes(weekSums.reduce((s, w) => s + w.overtimeMinutes, 0), total.rattrapageMinutes);
   const bars: ChartBar[] = weekSums.map((w, i) => ({ label: `S${i + 1}`, effective: w.effectiveMinutes, overtime: w.overtimeMinutes }));
   const params = { ...base, mode: undefined, m: month };
 
@@ -207,7 +208,9 @@ async function YearStats({ sp, today, currentYear, base, subject }: { sp: Record
   const months = monthsOfYear(year);
   const perMonth = months.map((m) => ({ m, t: sumDays(summaries.filter((s) => s.day.startsWith(m))), overtime: overtimeByMonth.get(m) ?? 0 }));
   const total = sumDays(summaries.filter((s) => s.day >= from && s.day <= to));
-  const overtimeMinutes = perMonth.reduce((s, p) => s + p.overtime, 0);
+  // Rattrapage pris n'importe quand dans l'année déduit des heures sup gagnées sur l'année entière, pas mois par mois :
+  // sinon un rattrapage pris un mois « creux » (pas assez d'heures sup ce mois-là) perdrait son effet.
+  const overtimeMinutes = netOvertimeMinutes(perMonth.reduce((s, p) => s + p.overtime, 0), total.rattrapageMinutes);
   const bars: ChartBar[] = perMonth.map(({ m, t, overtime }) => ({ label: m.slice(5), effective: t.effectiveMinutes, overtime }));
   const params = { ...base, mode: "year", y: year };
 
@@ -257,7 +260,8 @@ async function RangeStats({ sp, today, base, subject }: { sp: Record<string, str
   const inPeriod = (d: string) => d >= from && d <= to;
   const total = sumDays(summaries.filter((s) => inPeriod(s.day)));
   const weekSums = weeks.map((w) => summarizeWeek(w.map((d) => byDay.get(d)).filter((d): d is DaySummary => !!d), subject.standardWorkMinutes, subject.workDaysPerWeek));
-  const overtimeMinutes = weekSums.reduce((s, w) => s + w.overtimeMinutes, 0);
+  // Rattrapage pris n'importe quand sur la période déduit des heures sup gagnées sur la période entière.
+  const overtimeMinutes = netOvertimeMinutes(weekSums.reduce((s, w) => s + w.overtimeMinutes, 0), total.rattrapageMinutes);
   const bars: ChartBar[] = weekSums.map((w, i) => ({ label: `S${i + 1}`, effective: w.effectiveMinutes, overtime: w.overtimeMinutes }));
   const params = { ...base, mode: "range", from, to };
 

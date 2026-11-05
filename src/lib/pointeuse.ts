@@ -83,6 +83,17 @@ export function summarizeWeek(days: DaySummary[], standardWorkMinutes: number, w
   return { ...t, standardMinutes, overtimeMinutes: Math.max(0, t.effectiveMinutes - standardMinutes) };
 }
 
+/**
+ * Solde d'heures sup sur une période (mois, année…) : les heures sup gagnées (semaine par semaine, sans jamais
+ * descendre sous 0 une semaine creuse) moins tout le rattrapage pris sur la période, jamais négatif. Le rattrapage
+ * d'une semaine donnée peut ainsi rembourser des heures sup gagnées une autre semaine de la même période — ex. 3 h
+ * sup sur l'année et 2 h de rattrapage pris n'importe quand dans l'année : il reste 1 h, pas une déduction perdue
+ * parce que la semaine du rattrapage n'avait pas assez d'heures sup à elle seule.
+ */
+export function netOvertimeMinutes(grossOvertimeMinutes: number, rattrapageMinutes: number): number {
+  return Math.max(0, grossOvertimeMinutes - rattrapageMinutes);
+}
+
 /** Jours d'un mois en semaines complètes (lundi-dimanche), comme le planning — typiquement 4 à 6 semaines selon le mois. */
 export function monthWeeks(month: string): string[][] {
   const grid = monthGrid(month).map((d) => d.day);
