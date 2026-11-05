@@ -94,6 +94,16 @@ export function netOvertimeMinutes(grossOvertimeMinutes: number, rattrapageMinut
   return Math.max(0, grossOvertimeMinutes - rattrapageMinutes);
 }
 
+/**
+ * Rattrapage total sur un ensemble de jours — à utiliser avec les MÊMES jours que ceux dont on a sommé les heures
+ * sup (ex. `weeks.flat()`, pas seulement les jours du mois affiché) : une semaine à cheval sur deux mois compte pour
+ * chacun des deux mois (ses heures sup comme son rattrapage), sinon le rattrapage d'un jour « de l'autre mois » de
+ * cette semaine ne vient jamais en déduction alors que les heures sup de la semaine, elles, sont bien comptées.
+ */
+export function rattrapageOf(days: string[], byDay: Map<string, DaySummary>): number {
+  return days.reduce((s, d) => s + (byDay.get(d)?.rattrapageMinutes ?? 0), 0);
+}
+
 /** Jours d'un mois en semaines complètes (lundi-dimanche), comme le planning — typiquement 4 à 6 semaines selon le mois. */
 export function monthWeeks(month: string): string[][] {
   const grid = monthGrid(month).map((d) => d.day);

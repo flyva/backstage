@@ -3,7 +3,7 @@ import { CalendarDays, ChevronLeft, ChevronRight, Download, Printer, Table2 } fr
 import { requireUser } from "@/lib/auth";
 import { todayParis } from "@/lib/equipment";
 import { addDays, addMonths, dayLabel, fmtHours, isDay, isMonth, monthGrid, monthLabel } from "@/lib/alternance";
-import { SOURCE_CLASS, SOURCE_LABEL, isYear, monthWeeks, monthsOfYear, netOvertimeMinutes, rangeWeeks, summarizeWeek, sumDays, type DaySummary, type Totals } from "@/lib/pointeuse";
+import { SOURCE_CLASS, SOURCE_LABEL, isYear, monthWeeks, monthsOfYear, netOvertimeMinutes, rangeWeeks, rattrapageOf, summarizeWeek, sumDays, type DaySummary, type Totals } from "@/lib/pointeuse";
 import { fetchDaySummaries } from "@/lib/time-query";
 import { resolveTimeSubject, tutees, type TimeSubject } from "@/lib/time-access";
 import { TimeBarChart, type ChartBar } from "@/components/TimeCharts";
@@ -71,13 +71,13 @@ export default async function StatsPage({ searchParams }: PageProps<"/alternance
   );
 }
 
-function TotalsCards({ t, overtimeMinutes }: { t: Totals; overtimeMinutes: number }) {
+function TotalsCards({ t, overtimeMinutes, rattrapageMinutes }: { t: Totals; overtimeMinutes: number; rattrapageMinutes: number }) {
   return (
     <dl className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-5">
       <div className="rounded-xl border border-line bg-bg p-3"><dt className="text-muted">Effectif</dt><dd className="text-2xl font-bold tabular-nums">{fmtHours(t.effectiveMinutes)}</dd></div>
-      <div className="rounded-xl border border-line bg-bg p-3"><dt className="text-muted">Heures sup {t.rattrapageMinutes > 0 ? "restantes" : ""}</dt><dd className="text-2xl font-bold tabular-nums text-amber-600 dark:text-amber-400">{fmtHours(overtimeMinutes)}</dd></div>
-      {t.rattrapageMinutes > 0 && (
-        <div className="rounded-xl border border-line bg-bg p-3"><dt className="text-muted">Rattrapage pris</dt><dd className="text-2xl font-bold tabular-nums text-amber-600 dark:text-amber-400">{fmtHours(t.rattrapageMinutes)}</dd></div>
+      <div className="rounded-xl border border-line bg-bg p-3"><dt className="text-muted">Heures sup {rattrapageMinutes > 0 ? "restantes" : ""}</dt><dd className="text-2xl font-bold tabular-nums text-amber-600 dark:text-amber-400">{fmtHours(overtimeMinutes)}</dd></div>
+      {rattrapageMinutes > 0 && (
+        <div className="rounded-xl border border-line bg-bg p-3"><dt className="text-muted">Rattrapage pris</dt><dd className="text-2xl font-bold tabular-nums text-amber-600 dark:text-amber-400">{fmtHours(rattrapageMinutes)}</dd></div>
       )}
       <div className="rounded-xl border border-line bg-bg p-3"><dt className="text-muted">Pause</dt><dd className="text-2xl font-bold tabular-nums">{fmtHours(t.pauseMinutes)}</dd></div>
       <div className="rounded-xl border border-line bg-bg p-3"><dt className="text-muted">Jours travaillés</dt><dd className="text-2xl font-bold tabular-nums">{t.days}</dd></div>
@@ -99,10 +99,21 @@ function DayRow({ d, showDate = true }: { d: DaySummary; showDate?: boolean }) {
     <tr className={d.source === "futur" ? "opacity-40" : ""}>
       {showDate && <td className="py-1.5 pr-3 capitalize">{dayLabel(d.day)}</td>}
       <td className="py-1.5 pr-3"><span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${SOURCE_CLASS[d.source]}`}>{SOURCE_LABEL[d.source]}</span></td>
-      <td className="py-1.5 pr-3 tabular-nums text-muted">{d.entries.length > 0 ? d.entries.map((e) => `${Math.floor(e.startMinutes / 60)}h${String(e.startMinutes % 60).padStart(2, "0")}–${Math.floor(e.endMinutes / 60)}h${String(e.endMinutes % 60).padStart(2, "0")}${e.endDay > d.day ? " (+1j)" : ""}`).join(", ") : "—"}</td>
+      <td className="py-1.5 pr-3 tabular-nums text-muted">
+        {d.entries.length > 0
+          ? d.entries.map((e, i) => (
+              <span key={i} className={e.kind === "rattrapage" ? "text-amber-700 dark:text-amber-300" : undefined}>
+                {i > 0 && ", "}
+                {Math.floor(e.startMinutes / 60)}h{String(e.startMinutes % 60).padStart(2, "0")}–{Math.floor(e.endMinutes / 60)}h{String(e.endMinutes % 60).padStart(2, "0")}
+                {e.endDay > d.day && " (+1j)"}
+                {e.kind === "rattrapage" && " (rattrapage)"}
+              </span>
+            ))
+          : "—"}
+      </td>
       <td className="py-1.5 pr-3 tabular-nums">{d.pauseMinutes > 0 ? fmtHours(d.pauseMinutes) : "—"}</td>
       <td className="py-1.5 pr-3 tabular-nums font-medium">{d.effectiveMinutes > 0 ? fmtHours(d.effectiveMinutes) : "—"}</td>
-      <td className="py-1.5" aria-hidden />
+      <td className="py-1.5 pr-3 tabular-nums text-amber-700 dark:text-amber-300">{d.rattrapageMinutes > 0 ? fmtHours(d.rattrapageMinutes) : "—"}</td>
     </tr>
   );
 }
@@ -119,7 +130,7 @@ function WeekTable({ weeks, byDay, inPeriod, standardWorkMinutes, workDaysPerWee
         return (
           <div key={i} className="overflow-x-auto rounded-xl border border-line">
             <table className="w-full text-sm">
-              <thead><tr className="border-b border-line bg-bg text-left text-xs text-muted"><th className="py-1.5 pl-3 pr-3 font-medium">Semaine du {dayLabel(week[0])}</th><th className="py-1.5 pr-3 font-medium">Statut</th><th className="py-1.5 pr-3 font-medium">Horaires</th><th className="py-1.5 pr-3 font-medium">Pause</th><th className="py-1.5 pr-3 font-medium">Effectif</th><th className="py-1.5 pr-3 font-medium">Sup (semaine)</th></tr></thead>
+              <thead><tr className="border-b border-line bg-bg text-left text-xs text-muted"><th className="py-1.5 pl-3 pr-3 font-medium">Semaine du {dayLabel(week[0])}</th><th className="py-1.5 pr-3 font-medium">Statut</th><th className="py-1.5 pr-3 font-medium">Horaires</th><th className="py-1.5 pr-3 font-medium">Pause</th><th className="py-1.5 pr-3 font-medium">Effectif</th><th className="py-1.5 pr-3 font-medium">Rattrapage / Sup (semaine)</th></tr></thead>
               <tbody className="divide-y divide-line px-3">
                 {week.map((d) => { const s = byDay.get(d); return s ? <DayRow key={d} d={{ ...s, source: inPeriod(d) ? s.source : "futur" }} /> : null; })}
               </tbody>
@@ -166,8 +177,10 @@ async function MonthStats({ sp, today, currentMonth, base, view, subject }: { sp
   const monthDays = summaries.filter((s) => inMonth(s.day));
   const total = sumDays(monthDays);
   const weekSums = weeks.map((w) => summarizeWeek(w.map((d) => byDay.get(d)).filter((d): d is DaySummary => !!d), subject.standardWorkMinutes, subject.workDaysPerWeek));
-  // Rattrapage pris sur tout le mois (pas seulement sa propre semaine) déduit des heures sup gagnées sur le mois.
-  const overtimeMinutes = netOvertimeMinutes(weekSums.reduce((s, w) => s + w.overtimeMinutes, 0), total.rattrapageMinutes);
+  // Même périmètre que les heures sup (toutes les semaines affichées, pas que les jours du mois) : une semaine à
+  // cheval sur deux mois compte pour les deux, son rattrapage doit donc aussi compter pour les deux.
+  const rattrapageMinutes = rattrapageOf(weeks.flat(), byDay);
+  const overtimeMinutes = netOvertimeMinutes(weekSums.reduce((s, w) => s + w.overtimeMinutes, 0), rattrapageMinutes);
   const bars: ChartBar[] = weekSums.map((w, i) => ({ label: `S${i + 1}`, effective: w.effectiveMinutes, overtime: w.overtimeMinutes }));
   const params = { ...base, mode: undefined, m: month };
 
@@ -182,7 +195,7 @@ async function MonthStats({ sp, today, currentMonth, base, view, subject }: { sp
         <ExportLinks params={params} />
       </div>
       <p className="text-xs text-muted">Les heures sup se comptent par semaine complète (effectif de la semaine au-delà de {fmtHours(subject.standardWorkMinutes * subject.workDaysPerWeek)}), pas jour par jour.</p>
-      <TotalsCards t={total} overtimeMinutes={overtimeMinutes} />
+      <TotalsCards t={total} overtimeMinutes={overtimeMinutes} rattrapageMinutes={rattrapageMinutes} />
       <TimeBarChart bars={bars} title="Effectif et heures sup par semaine" />
       {view === "calendar" ? <MonthCalendar month={month} today={today} byDay={byDay} /> : <WeekTable weeks={weeks} byDay={byDay} inPeriod={inMonth} standardWorkMinutes={subject.standardWorkMinutes} workDaysPerWeek={subject.workDaysPerWeek} />}
     </div>
@@ -208,9 +221,12 @@ async function YearStats({ sp, today, currentYear, base, subject }: { sp: Record
   const months = monthsOfYear(year);
   const perMonth = months.map((m) => ({ m, t: sumDays(summaries.filter((s) => s.day.startsWith(m))), overtime: overtimeByMonth.get(m) ?? 0 }));
   const total = sumDays(summaries.filter((s) => s.day >= from && s.day <= to));
+  // Même périmètre que overtimeByMonth : chaque semaine ne compte que pour le mois de son lundi (évite de rater le
+  // rattrapage d'une semaine à cheval sur deux années, ou de compter en trop celui d'une semaine de débordement).
+  const rattrapageMinutes = rattrapageOf(weeks.filter((w) => months.includes(w[0].slice(0, 7))).flat(), byDay);
   // Rattrapage pris n'importe quand dans l'année déduit des heures sup gagnées sur l'année entière, pas mois par mois :
   // sinon un rattrapage pris un mois « creux » (pas assez d'heures sup ce mois-là) perdrait son effet.
-  const overtimeMinutes = netOvertimeMinutes(perMonth.reduce((s, p) => s + p.overtime, 0), total.rattrapageMinutes);
+  const overtimeMinutes = netOvertimeMinutes(perMonth.reduce((s, p) => s + p.overtime, 0), rattrapageMinutes);
   const bars: ChartBar[] = perMonth.map(({ m, t, overtime }) => ({ label: m.slice(5), effective: t.effectiveMinutes, overtime }));
   const params = { ...base, mode: "year", y: year };
 
@@ -225,7 +241,7 @@ async function YearStats({ sp, today, currentYear, base, subject }: { sp: Record
         <ExportLinks params={params} />
       </div>
       <p className="text-xs text-muted">Les heures sup se comptent par semaine complète ; chaque semaine est rattachée au mois de son lundi.</p>
-      <TotalsCards t={total} overtimeMinutes={overtimeMinutes} />
+      <TotalsCards t={total} overtimeMinutes={overtimeMinutes} rattrapageMinutes={rattrapageMinutes} />
       <TimeBarChart bars={bars} title="Effectif et heures sup par mois" />
       <div className="overflow-x-auto rounded-xl border border-line">
         <table className="w-full text-sm">
@@ -260,8 +276,10 @@ async function RangeStats({ sp, today, base, subject }: { sp: Record<string, str
   const inPeriod = (d: string) => d >= from && d <= to;
   const total = sumDays(summaries.filter((s) => inPeriod(s.day)));
   const weekSums = weeks.map((w) => summarizeWeek(w.map((d) => byDay.get(d)).filter((d): d is DaySummary => !!d), subject.standardWorkMinutes, subject.workDaysPerWeek));
-  // Rattrapage pris n'importe quand sur la période déduit des heures sup gagnées sur la période entière.
-  const overtimeMinutes = netOvertimeMinutes(weekSums.reduce((s, w) => s + w.overtimeMinutes, 0), total.rattrapageMinutes);
+  // Même périmètre que les heures sup (toutes les semaines affichées, bornes incluses) : rattrapage pris n'importe
+  // quand sur la période déduit des heures sup gagnées sur la période entière.
+  const rattrapageMinutes = rattrapageOf(weeks.flat(), byDay);
+  const overtimeMinutes = netOvertimeMinutes(weekSums.reduce((s, w) => s + w.overtimeMinutes, 0), rattrapageMinutes);
   const bars: ChartBar[] = weekSums.map((w, i) => ({ label: `S${i + 1}`, effective: w.effectiveMinutes, overtime: w.overtimeMinutes }));
   const params = { ...base, mode: "range", from, to };
 
@@ -276,7 +294,7 @@ async function RangeStats({ sp, today, base, subject }: { sp: Record<string, str
         <div className="ml-auto"><ExportLinks params={params} /></div>
       </form>
       <p className="text-xs text-muted">Les heures sup se comptent par semaine complète, pas jour par jour.</p>
-      <TotalsCards t={total} overtimeMinutes={overtimeMinutes} />
+      <TotalsCards t={total} overtimeMinutes={overtimeMinutes} rattrapageMinutes={rattrapageMinutes} />
       <TimeBarChart bars={bars} title="Effectif et heures sup par semaine" />
       <WeekTable weeks={weeks} byDay={byDay} inPeriod={inPeriod} standardWorkMinutes={subject.standardWorkMinutes} workDaysPerWeek={subject.workDaysPerWeek} />
     </div>
