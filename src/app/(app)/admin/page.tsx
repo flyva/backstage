@@ -2,7 +2,7 @@ import Link from "next/link";
 import { asc, eq } from "drizzle-orm";
 import {
   BarChart3, Building2, BookOpen, ClipboardCheck, CircleHelp, DatabaseBackup, FileLock2, GraduationCap,
-  History, HeartPulse, Link2, ListChecks, Settings2, ShieldCheck, Sparkles, Users, ChevronRight, type LucideIcon,
+  History, HeartPulse, Link2, ListChecks, Settings2, ShieldCheck, Sparkles, Users, Wallet, ChevronRight, type LucideIcon,
 } from "lucide-react";
 import { db } from "@/db";
 import { users } from "@/db/schema";
@@ -39,6 +39,12 @@ const GROUPS: Group[] = [
     title: "Entreprises",
     cards: [
       { href: "/admin/statuts-entreprises", label: "Statuts entreprises", hint: "Suivi des candidatures", icon: Building2 },
+    ],
+  },
+  {
+    title: "BDE",
+    cards: [
+      { href: "/admin/finances", label: "Comptabilité", hint: "Recettes, dépenses, rapport annuel", icon: Wallet },
     ],
   },
   {

@@ -647,6 +647,35 @@ export const bdeIdeaVotes = mysqlTable(
   (t) => [primaryKey({ columns: [t.ideaId, t.userId] })],
 );
 
+// Comptabilité du BDE (recettes/dépenses) : mêmes postes et mêmes champs que l'outil « Finances » d'Oasis
+// (repris tel quel, juste sans la notion d'association puisqu'il n'y a qu'un seul BDE ici).
+export const FINANCE_DIRECTIONS = ["income", "expense"] as const;
+export type FinanceDirection = (typeof FINANCE_DIRECTIONS)[number];
+
+export const FINANCE_CATEGORIES = [
+  "cotisations", "subventions", "dons", "evenements", "ventes", "prestations",
+  "fonctionnement", "deplacements", "materiel", "communication", "banque", "autre",
+] as const;
+export type FinanceCategory = (typeof FINANCE_CATEGORIES)[number];
+
+export const bdeFinancialEntries = mysqlTable(
+  "bde_financial_entries",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    direction: mysqlEnum("direction", FINANCE_DIRECTIONS).notNull().default("expense"),
+    category: mysqlEnum("category", FINANCE_CATEGORIES).notNull().default("autre"),
+    label: varchar("label", { length: 200 }).notNull(),
+    amountCents: int("amount_cents").notNull().default(0), // toujours positif ; le sens vient de « direction »
+    occurredOn: date("occurred_on", { mode: "string" }).notNull(),
+    method: varchar("method", { length: 40 }), // virement, CB, chèque, espèces… (texte libre)
+    reference: varchar("reference", { length: 120 }), // n° facture, chèque…
+    notes: text("notes"),
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+    createdBy: int("created_by").references(() => users.id, { onDelete: "set null" }),
+  },
+  (t) => [index("bde_fin_date_idx").on(t.occurredOn)],
+);
+
 // ---------- Galerie ----------
 
 export const galleryAlbums = mysqlTable("gallery_albums", {
