@@ -1,49 +1,72 @@
-import { asc } from "drizzle-orm";
+import Link from "next/link";
+import { asc, eq } from "drizzle-orm";
+import {
+  BarChart3, Building2, BookOpen, ClipboardCheck, CircleHelp, DatabaseBackup, FileLock2, GraduationCap,
+  History, HeartPulse, Link2, ListChecks, Settings2, ShieldCheck, Sparkles, Users, ChevronRight, type LucideIcon,
+} from "lucide-react";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
-import { getSettings } from "@/lib/settings";
-import { SettingsForm } from "@/components/forms";
-import { SiteIconForm } from "@/components/SiteIconForm";
-import { siteIconVersion } from "@/lib/site-icon";
-import { ImportGuideButton } from "@/components/guide-forms";
 import { approveUser, rejectUser } from "@/lib/actions";
 
 export const metadata = { title: "Administration" };
 
+type CardDef = { href: string; label: string; hint: string; icon: LucideIcon };
+type Group = { title: string; cards: CardDef[] };
+
+const GROUPS: Group[] = [
+  {
+    title: "Comptes",
+    cards: [
+      { href: "/admin/utilisateurs", label: "Utilisateurs", hint: "Comptes, rôles, validations", icon: Users },
+      { href: "/admin/roles", label: "Rôles", hint: "Droits par rôle", icon: ShieldCheck },
+      { href: "/admin/filieres", label: "Filières", hint: "Filières et classes de promo", icon: GraduationCap },
+      { href: "/admin/statistiques", label: "Statistiques", hint: "Usage de l'appli", icon: BarChart3 },
+    ],
+  },
+  {
+    title: "Contenu",
+    cards: [
+      { href: "/admin/faq", label: "FAQ", hint: "Questions fréquentes", icon: CircleHelp },
+      { href: "/admin/liens", label: "Liens utiles", hint: "Annuaire de liens", icon: Link2 },
+      { href: "/admin/nouveautes", label: "Nouveautés", hint: "Historique des évolutions", icon: Sparkles },
+      { href: "/admin/wiki", label: "Wiki", hint: "Pages et fichiers du wiki", icon: BookOpen },
+      { href: "/admin/checklists", label: "Checklists", hint: "Modèles de checklists projet", icon: ListChecks },
+      { href: "/admin/quiz", label: "Quiz", hint: "Questions des quiz", icon: ClipboardCheck },
+    ],
+  },
+  {
+    title: "Entreprises",
+    cards: [
+      { href: "/admin/statuts-entreprises", label: "Statuts entreprises", hint: "Suivi des candidatures", icon: Building2 },
+    ],
+  },
+  {
+    title: "Système",
+    cards: [
+      { href: "/admin/general", label: "Général", hint: "Guide de rentrée, icône, paramètres école", icon: Settings2 },
+      { href: "/admin/sauvegardes", label: "Sauvegardes", hint: "Exports et restaurations", icon: DatabaseBackup },
+      { href: "/admin/rgpd", label: "RGPD", hint: "Textes légaux, export des données", icon: FileLock2 },
+      { href: "/admin/audit", label: "Journal d'audit", hint: "Qui a fait quoi, côté admin", icon: History },
+      { href: "/admin/sante", label: "Santé", hint: "État du serveur et des services", icon: HeartPulse },
+    ],
+  },
+];
+
 export default async function AdminPage() {
   await requireAdmin();
-  const [settings, allUsers] = await Promise.all([
-    getSettings(),
-    db.select().from(users).orderBy(asc(users.createdAt)),
-  ]);
+  const pending = await db.select().from(users).where(eq(users.status, "pending")).orderBy(asc(users.createdAt));
 
   return (
     <div className="space-y-8">
-      <section className="card space-y-3">
-        <h2 className="font-semibold">Guide de rentrée de l&apos;école</h2>
-        <p className="text-sm text-muted">Remplit Backstage avec les informations du guide de rentrée 2026-2027 : annuaire des contacts, FAQ, liens utiles, pages du wiki, adresse de l&apos;école et Wi-Fi. Tu peux le relancer sans risque : rien de ce qui existe déjà n&apos;est écrasé.</p>
-        <ImportGuideButton />
-      </section>
-
-      <section className="card space-y-3">
-        <h2 className="font-semibold">Icône du site (favicon)</h2>
-        <SiteIconForm version={await siteIconVersion()} />
-      </section>
-
-      <section className="card space-y-3">
-        <h2 className="font-semibold">Paramètres de l&apos;école</h2>
-        <SettingsForm values={settings as Record<string, string>} />
-      </section>
-
-      {allUsers.some((u) => u.status === "pending") && (
+      {pending.length > 0 && (
         <section className="card space-y-3 border-accent">
-          <h2 className="font-semibold">En attente de validation ({allUsers.filter((u) => u.status === "pending").length})</h2>
+          <h2 className="font-semibold">En attente de validation ({pending.length})</h2>
           <p className="text-sm text-muted">
             Comptes Google personnels (adresse hors école) : ils n&apos;ont accès à rien tant que tu ne les as pas validés.
           </p>
           <ul className="divide-y divide-line text-sm">
-            {allUsers.filter((u) => u.status === "pending").map((u) => (
+            {pending.map((u) => (
               <li key={u.id} className="flex flex-wrap items-center gap-3 py-2">
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-medium">{u.name}</div>
@@ -62,6 +85,23 @@ export default async function AdminPage() {
         </section>
       )}
 
+      {GROUPS.map((g) => (
+        <section key={g.title} className="space-y-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">{g.title}</h2>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {g.cards.map((c) => (
+              <Link key={c.href} href={c.href} className="card anim-rise-in flex items-center gap-3 hover:-translate-y-0.5">
+                <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent"><c.icon size={20} /></span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-semibold">{c.label}</span>
+                  <span className="block truncate text-xs text-muted">{c.hint}</span>
+                </span>
+                <ChevronRight size={16} className="shrink-0 text-muted" />
+              </Link>
+            ))}
+          </div>
+        </section>
+      ))}
     </div>
   );
 }
