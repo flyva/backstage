@@ -715,6 +715,13 @@
       "when": 1795089389070,
       "tag": "0101_certain_raider",
       "breakpoints": true
+    },
+    {
+      "idx": 102,
+      "version": "5",
+      "when": 1795122361265,
+      "tag": "0102_mean_nightcrawler",
+      "breakpoints": true
     }
   ]
 }

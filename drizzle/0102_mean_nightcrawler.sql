@@ -1,0 +1,1 @@
+ALTER TABLE `bde_financial_entries` ADD `invoice_url` varchar(500);

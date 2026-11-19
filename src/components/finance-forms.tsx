@@ -1,11 +1,13 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useMemo, useState } from "react";
 import type { FormState } from "@/lib/actions";
 import type { FinanceCategory, FinanceDirection } from "@/db/schema";
-import { CATEGORY_LABEL, DIRECTION_LABEL } from "@/lib/finance";
+import { CATEGORY_LABEL, DIRECTION_LABEL, fmtEuros } from "@/lib/finance";
+import { isDay } from "@/lib/alternance";
+import { parseCsv } from "@/lib/csv";
 import {
-  importFinancialEntriesCsv, saveAccountingAccount, saveBankAccount, saveBudgetForecast,
+  confirmFinancialEntriesImport, saveAccountingAccount, saveBankAccount, saveBudgetForecast,
   saveFinancialEntry, saveFiscalYear,
 } from "@/lib/finance-actions";
 
@@ -27,6 +29,7 @@ export type FinanceEntryValues = {
   occurredOn?: string;
   method?: string;
   reference?: string;
+  invoiceUrl?: string;
   notes?: string;
 };
 
@@ -107,6 +110,11 @@ export function FinanceEntryForm({
           <label className="label" htmlFor="fe-reference">Référence / pièce (facultatif)</label>
           <input id="fe-reference" name="reference" maxLength={120} defaultValue={entry.reference} placeholder="N° facture, chèque…" className="input" />
         </div>
+      </div>
+
+      <div>
+        <label className="label" htmlFor="fe-invoice">Lien de la pièce (Drive…, facultatif)</label>
+        <input id="fe-invoice" name="invoiceUrl" type="url" maxLength={500} defaultValue={entry.invoiceUrl} placeholder="https://drive.google.com/…" className="input" />
       </div>
 
       <div>
@@ -194,11 +202,64 @@ export function BudgetForecastForm({
   );
 }
 
-/** Formulaire d'import CSV d'écritures, rattaché à un exercice et un compte bancaire par défaut. */
-export function CsvImportForm({ fiscalYears, bankAccounts, currentFiscalYearId }: { fiscalYears: FiscalYearOption[]; bankAccounts: BankAccountOption[]; currentFiscalYearId?: number }) {
-  const [state, action, pending] = useActionState(importFinancialEntriesCsv, undefined);
+type ImportRow = {
+  date: string; label: string; direction: FinanceDirection; amountCents: number;
+  reference?: string; method?: string; notes?: string; accountingAccountId: number | null | undefined; // undefined = pas encore choisi
+};
+
+/** Lit un CSV sans compte comptable (date;libellé;sens;montant;référence;moyen;notes) : on ne connaît pas le
+ *  compte au moment de l'import, chaque ligne se pointe ensuite dans l'aperçu. Rejette les lignes incomplètes. */
+function parseImportCsv(text: string): { rows: Omit<ImportRow, "accountingAccountId">[]; errors: string[] } {
+  let lines = parseCsv(text);
+  if (lines[0]?.[0]?.toLowerCase().startsWith("date")) lines = lines.slice(1); // en-tête facultative
+  const rows: Omit<ImportRow, "accountingAccountId">[] = [];
+  const errors: string[] = [];
+  lines.forEach((cols, i) => {
+    const [date, label, direction, amount, reference, method, notes] = cols.map((c) => c?.trim() ?? "");
+    if (!isDay(date) || !label || !amount) { errors.push(`Ligne ${i + 1} : incomplète.`); return; }
+    const cents = Math.round(Number(amount.replace(",", ".")) * 100);
+    if (!Number.isFinite(cents) || cents <= 0) { errors.push(`Ligne ${i + 1} : montant invalide.`); return; }
+    rows.push({
+      date, label: label.slice(0, 200), direction: direction?.toLowerCase().startsWith("rec") ? "income" : "expense",
+      amountCents: cents, reference: reference || undefined, method: method || undefined, notes: notes || undefined,
+    });
+  });
+  return { rows, errors };
+}
+
+/** Import CSV en deux temps : aperçu des lignes lues (sans compte comptable, on ne le connaît pas à l'import),
+ *  puis on pointe chaque ligne vers un compte avant de pouvoir valider — impossible tant qu'il en manque un. */
+export function CsvImportForm({ fiscalYears, bankAccounts, accountingAccounts, currentFiscalYearId }: { fiscalYears: FiscalYearOption[]; bankAccounts: BankAccountOption[]; accountingAccounts: AccountOption[]; currentFiscalYearId?: number }) {
+  const [state, action, pending] = useActionState(confirmFinancialEntriesImport, undefined);
+  const [rows, setRows] = useState<ImportRow[] | null>(null);
+  const [parseErrors, setParseErrors] = useState<string[]>([]);
+  const [fileError, setFileError] = useState("");
+
+  const allAssigned = useMemo(() => rows !== null && rows.every((r) => r.accountingAccountId !== undefined), [rows]);
+
+  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setFileError("");
+    const { rows: parsed, errors } = parseImportCsv(await file.text());
+    if (parsed.length === 0) { setFileError(errors[0] ?? "Aucune ligne valide dans le fichier."); setRows(null); return; }
+    setRows(parsed.map((r) => ({ ...r, accountingAccountId: undefined })));
+    setParseErrors(errors);
+  }
+
+  if (!rows) {
+    return (
+      <div className="space-y-2">
+        <label className="label" htmlFor="ci-file">Fichier CSV</label>
+        <input id="ci-file" name="file" type="file" accept=".csv,text/csv" onChange={onFile} className="input" />
+        {fileError && <p className="text-sm text-danger" role="alert">{fileError}</p>}
+      </div>
+    );
+  }
+
   return (
     <form action={action} className="space-y-4">
+      <input type="hidden" name="rows" value={JSON.stringify(rows)} />
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label className="label" htmlFor="ci-fy">Exercice de rattachement</label>
@@ -215,12 +276,48 @@ export function CsvImportForm({ fiscalYears, bankAccounts, currentFiscalYearId }
           </select>
         </div>
       </div>
-      <div>
-        <label className="label" htmlFor="ci-file">Fichier CSV</label>
-        <input id="ci-file" name="file" type="file" accept=".csv,text/csv" required className="input" />
+
+      {parseErrors.length > 0 && (
+        <p className="text-sm text-amber-600 dark:text-amber-400">{parseErrors.length} ligne(s) ignorée(s) (incomplètes) : {parseErrors.join(" ")}</p>
+      )}
+
+      <div className="card space-y-1 p-0">
+        <h3 className="border-b border-line px-4 py-3 font-semibold">Aperçu — pointe chaque ligne vers un compte ({rows.length})</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead><tr className="border-b border-line bg-bg text-left text-xs text-muted"><th className="px-4 py-1.5 font-medium">Date</th><th className="py-1.5 pr-3 font-medium">Libellé</th><th className="py-1.5 pr-3 text-right font-medium">Montant</th><th className="py-1.5 pr-4 font-medium">Compte comptable</th></tr></thead>
+            <tbody className="divide-y divide-line">
+              {rows.map((r, i) => (
+                <tr key={i} className={r.accountingAccountId === undefined ? "bg-danger/5" : undefined}>
+                  <td className="whitespace-nowrap px-4 py-1.5">{r.date}</td>
+                  <td className="py-1.5 pr-3">{r.label}</td>
+                  <td className={`py-1.5 pr-3 text-right tabular-nums ${r.direction === "income" ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>{r.direction === "income" ? "+ " : "− "}{fmtEuros(r.amountCents)}</td>
+                  <td className="py-1.5 pr-4">
+                    <select
+                      required value={r.accountingAccountId === undefined ? "" : (r.accountingAccountId ?? "none")}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setRows((prev) => prev!.map((row, j) => j === i ? { ...row, accountingAccountId: v === "none" ? null : Number(v) } : row));
+                      }}
+                      className="input"
+                    >
+                      <option value="" disabled>— Choisir —</option>
+                      <option value="none">Non classé</option>
+                      {accountingAccounts.map((a) => <option key={a.id} value={a.id}>{a.number} — {a.nameArranged}</option>)}
+                    </select>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
+
       <Feedback state={state} />
-      <button className="btn" disabled={pending}>{pending ? "Import…" : "Importer"}</button>
+      <div className="flex items-center gap-2">
+        <button type="button" onClick={() => { setRows(null); setParseErrors([]); }} className="btn-ghost">Changer de fichier</button>
+        <button className="btn" disabled={pending || !allAssigned}>{pending ? "Import…" : allAssigned ? "Valider l'import" : "Pointe toutes les lignes pour valider"}</button>
+      </div>
     </form>
   );
 }

@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { desc } from "drizzle-orm";
 import {
-  ArrowDownCircle, ArrowUpCircle, FileSpreadsheet, LineChart, Pencil, Plus, Printer, Scale, Settings2, TableProperties,
-  Trash2, Upload,
+  ArrowDownCircle, ArrowUpCircle, FileSpreadsheet, LineChart, Paperclip, Pencil, Plus, Printer, Scale, Settings2,
+  TableProperties, Trash2, Upload,
 } from "lucide-react";
 import { db } from "@/db";
 import { bdeFinancialEntries, FINANCE_CATEGORIES, FINANCE_DIRECTIONS, type FinanceCategory, type FinanceDirection } from "@/db/schema";
@@ -109,7 +109,10 @@ export default async function FinancesPage({ searchParams }: PageProps<"/admin/f
                 {entries.map((e) => (
                   <tr key={e.id}>
                     <td className="whitespace-nowrap px-4 py-1.5">{dateFmt.format(new Date(`${e.occurredOn}T12:00:00`))}</td>
-                    <td className="py-1.5 pr-3">{e.label}{e.reference && <span className="block text-xs text-muted">Réf. {e.reference}</span>}</td>
+                    <td className="py-1.5 pr-3">
+                      {e.label}{e.reference && <span className="block text-xs text-muted">Réf. {e.reference}</span>}
+                      {e.invoiceUrl && <a href={e.invoiceUrl} target="_blank" className="ml-1 inline-flex items-center gap-0.5 text-xs text-accent hover:underline"><Paperclip size={11} /> Pièce</a>}
+                    </td>
                     <td className="py-1.5 pr-3 text-muted">{CATEGORY_LABEL[e.category]}</td>
                     <td className="py-1.5 pr-3 text-muted">{e.accountingAccountId ? accountName.get(e.accountingAccountId) : "—"}</td>
                     <td className={`py-1.5 pr-3 text-right font-medium tabular-nums ${e.direction === "income" ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>{e.direction === "income" ? "+ " : "− "}{fmtEuros(e.amountCents)}</td>

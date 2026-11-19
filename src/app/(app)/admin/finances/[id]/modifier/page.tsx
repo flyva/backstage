@@ -28,7 +28,7 @@ export default async function EditFinancialEntryPage({ params }: PageProps<"/adm
           today={todayParis()} id={entry.id} direction={entry.direction} category={entry.category}
           accountingAccountId={entry.accountingAccountId} bankAccountId={entry.bankAccountId} fiscalYearId={entry.fiscalYearId}
           label={entry.label} amount={entry.amountCents / 100} occurredOn={entry.occurredOn}
-          method={entry.method ?? ""} reference={entry.reference ?? ""} notes={entry.notes ?? ""}
+          method={entry.method ?? ""} reference={entry.reference ?? ""} invoiceUrl={entry.invoiceUrl ?? ""} notes={entry.notes ?? ""}
           accountingAccounts={accountingAccounts} bankAccounts={bankAccounts} fiscalYears={fiscalYears}
         />
       </div>

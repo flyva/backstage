@@ -5,10 +5,10 @@ import { toCsv } from "@/lib/csv";
 export async function GET() {
   await requireAdmin();
   const csv = toCsv(
-    ["Date", "Libellé", "Sens", "Montant", "N° compte comptable", "Compte bancaire", "Référence", "Moyen de paiement", "Notes"],
+    ["Date", "Libellé", "Sens", "Montant", "Référence", "Moyen de paiement", "Notes"],
     [
-      ["2026-09-15", "Cotisation rentrée", "Recette", "15.00", "756", "Compte courant", "", "Espèces", ""],
-      ["2026-09-20", "Achat fournitures soirée", "Dépense", "42.50", "606", "Compte courant", "F2026-014", "CB", ""],
+      ["2026-09-15", "Cotisation rentrée", "Recette", "15.00", "", "Espèces", ""],
+      ["2026-09-20", "Achat fournitures soirée", "Dépense", "42.50", "F2026-014", "CB", ""],
     ],
   );
   return new Response(csv, {

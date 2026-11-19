@@ -718,6 +718,7 @@ export const bdeFinancialEntries = mysqlTable(
     occurredOn: date("occurred_on", { mode: "string" }).notNull(),
     method: varchar("method", { length: 40 }), // virement, CB, chèque, espèces… (texte libre)
     reference: varchar("reference", { length: 120 }), // n° facture, chèque…
+    invoiceUrl: varchar("invoice_url", { length: 500 }), // lien vers la pièce (Drive…) ; ajouté après coup, jamais depuis l'import CSV
     notes: text("notes"),
     createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
     createdBy: int("created_by").references(() => users.id, { onDelete: "set null" }),

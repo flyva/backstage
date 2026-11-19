@@ -12,7 +12,6 @@ import {
 import { requireAdmin } from "@/lib/auth";
 import { logAdminAction } from "@/lib/audit";
 import { isDay } from "@/lib/alternance";
-import { parseCsv } from "@/lib/csv";
 import { fmtEuros } from "@/lib/finance";
 import { getCurrentFiscalYear, getDefaultBankAccount } from "@/lib/finance-data";
 import type { FormState } from "@/lib/actions";
@@ -35,6 +34,7 @@ const entrySchema = z.object({
   occurredOn: z.string().refine(isDay, "Date invalide"),
   method: z.string().trim().max(40),
   reference: z.string().trim().max(120),
+  invoiceUrl: z.string().trim().max(500),
   notes: z.string().trim().max(2000),
 });
 
@@ -50,9 +50,11 @@ export async function saveFinancialEntry(_: FormState, fd: FormData): Promise<Fo
     occurredOn: fd.get("occurredOn"),
     method: fd.get("method") ?? "",
     reference: fd.get("reference") ?? "",
+    invoiceUrl: fd.get("invoiceUrl") ?? "",
     notes: fd.get("notes") ?? "",
   });
   if (!p.success) return { error: p.error.issues[0].message };
+  if (p.data.invoiceUrl && !/^https?:\/\//i.test(p.data.invoiceUrl)) return { error: "Le lien de la pièce doit être une URL http(s)." };
 
   const bankAccountId = optionalId(fd.get("bankAccountId")) ?? (await getDefaultBankAccount())?.id ?? null;
   const fiscalYearId = optionalId(fd.get("fiscalYearId")) ?? (await getCurrentFiscalYear())?.id ?? null;
@@ -68,6 +70,7 @@ export async function saveFinancialEntry(_: FormState, fd: FormData): Promise<Fo
     occurredOn: p.data.occurredOn,
     method: p.data.method || null,
     reference: p.data.reference || null,
+    invoiceUrl: p.data.invoiceUrl || null,
     notes: p.data.notes || null,
   };
 
@@ -250,41 +253,49 @@ export async function deleteBudgetForecast(fd: FormData) {
 
 // ---------- Import CSV ----------
 
-/** Parse un CSV simple : date;libellé;sens;montant;numéro de compte;compte bancaire;référence;moyen;notes */
-export async function importFinancialEntriesCsv(_: FormState, fd: FormData): Promise<FormState> {
+/** Une ligne du CSV (date;libellé;sens;montant;référence;moyen;notes — sans compte comptable : on ne le connaît
+ *  pas à l'import) parsée côté client, puis pointée vers un compte comptable dans l'aperçu avant confirmation. */
+const importRowSchema = z.object({
+  date: z.string().refine(isDay, "Date invalide"),
+  label: z.string().trim().min(1).max(200),
+  direction: z.enum(FINANCE_DIRECTIONS),
+  amountCents: z.number().int().positive(),
+  reference: z.string().trim().max(120).optional(),
+  method: z.string().trim().max(40).optional(),
+  notes: z.string().trim().max(2000).optional(),
+  accountingAccountId: z.number().int().positive().nullable(),
+});
+
+/** Confirme l'import : chaque ligne a déjà été pointée vers un compte comptable dans l'aperçu (ou explicitement
+ *  laissée « Non classé »). Le lien vers la pièce (Drive…) ne vient jamais de l'import, il s'ajoute après coup. */
+export async function confirmFinancialEntriesImport(_: FormState, fd: FormData): Promise<FormState> {
   const admin = await requireAdmin();
-  const file = fd.get("file");
-  if (!(file instanceof File) || file.size === 0) return { error: "Choisis un fichier CSV." };
+  const raw = fd.get("rows");
+  if (typeof raw !== "string") return { error: "Rien à importer." };
+  let parsed: unknown;
+  try { parsed = JSON.parse(raw); } catch { return { error: "Données invalides." }; }
+  const rows = z.array(importRowSchema).min(1, "Aucune ligne à importer.").safeParse(parsed);
+  if (!rows.success) return { error: "Certaines lignes sont invalides." };
+
   const fiscalYearId = optionalId(fd.get("fiscalYearId")) ?? (await getCurrentFiscalYear())?.id ?? null;
-  const defaultBankAccountId = optionalId(fd.get("bankAccountId")) ?? (await getDefaultBankAccount())?.id ?? null;
+  const bankAccountId = optionalId(fd.get("bankAccountId")) ?? (await getDefaultBankAccount())?.id ?? null;
 
-  const text = await file.text();
-  const accounts = await db.select().from(bdeAccountingAccounts);
-  const accountByNumber = new Map(accounts.map((a) => [a.number, a.id]));
+  const values: (typeof bdeFinancialEntries.$inferInsert)[] = rows.data.map((r) => ({
+    direction: r.direction,
+    category: "autre",
+    accountingAccountId: r.accountingAccountId,
+    bankAccountId, fiscalYearId,
+    label: r.label,
+    amountCents: r.amountCents,
+    occurredOn: r.date,
+    method: r.method || null,
+    reference: r.reference || null,
+    notes: r.notes || null,
+    createdBy: admin.id,
+  }));
 
-  let lines = parseCsv(text);
-  if (lines[0]?.[0]?.toLowerCase().startsWith("date")) lines = lines.slice(1); // en-tête facultative
-
-  const rows: (typeof bdeFinancialEntries.$inferInsert)[] = [];
-  const errors: string[] = [];
-  lines.forEach((cols, i) => {
-    const [date, label, direction, amount, accountNumber, , reference, method, notes] = cols.map((c) => c?.trim() ?? "");
-    if (!isDay(date) || !label || !amount) { errors.push(`Ligne ${i + 1} : incomplète.`); return; }
-    const dir = direction?.toLowerCase().startsWith("rec") ? "income" : "expense";
-    const cents = Math.round(Number(amount.replace(",", ".")) * 100);
-    if (!Number.isFinite(cents) || cents <= 0) { errors.push(`Ligne ${i + 1} : montant invalide.`); return; }
-    rows.push({
-      direction: dir, category: "autre", label: label.slice(0, 200),
-      accountingAccountId: accountByNumber.get(accountNumber) ?? null,
-      bankAccountId: defaultBankAccountId, fiscalYearId,
-      amountCents: cents, occurredOn: date, method: method || null, reference: reference || null, notes: notes || null,
-      createdBy: admin.id,
-    });
-  });
-
-  if (rows.length === 0) return { error: errors[0] ?? "Aucune ligne valide dans le fichier." };
-  await db.insert(bdeFinancialEntries).values(rows);
-  await logAdminAction(admin.id, "finance-import-csv", null, `${rows.length} écriture(s) importée(s)`);
+  await db.insert(bdeFinancialEntries).values(values);
+  await logAdminAction(admin.id, "finance-import-csv", null, `${values.length} écriture(s) importée(s)`);
   refresh();
-  return { ok: `${rows.length} écriture(s) importée(s)${errors.length ? `, ${errors.length} ligne(s) ignorée(s)` : ""}.` };
+  return { ok: `${values.length} écriture(s) importée(s).` };
 }
