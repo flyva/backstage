@@ -20,6 +20,16 @@ export const SETTING_KEYS = [
   "cgu_body", // conditions générales d'utilisation (markdown), voir /cgu
   "mentions_legales_body", // mentions légales (markdown), voir /mentions-legales
   "politique_confidentialite_body", // politique de confidentialité (markdown), voir /politique-de-confidentialite
+  // Fiche officielle de l'association (RNA, SIREN/SIRET, adresses…), voir /admin/association. Les champs marqués
+  // d'une étoile dans la demande d'origine apparaissent sur le document imprimable (recto officiel, sans mention Backstage).
+  "asso_rna",
+  "asso_titre",
+  "asso_adresse_siege",
+  "asso_adresse_gestion",
+  "asso_siren",
+  "asso_siret",
+  "asso_doc_recu_rna", // nom de fichier dans data/uploads
+  "asso_doc_lettre_intention", // nom de fichier dans data/uploads
 ] as const;
 export type SettingKey = (typeof SETTING_KEYS)[number];
 

@@ -6,7 +6,8 @@ import { db } from "@/db";
 import { roles, tracks, users } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
 import { logAdminAction } from "@/lib/audit";
-import { AnonymizeUserForm, DeleteUserForm, ResetPasswordForm, UserEditForm } from "@/components/admin-user-forms";
+import { AnonymizeUserForm, BdeRoleForm, DeleteUserForm, ResetPasswordForm, UserEditForm } from "@/components/admin-user-forms";
+import { getOfficerTitles } from "@/lib/association-data";
 
 export const metadata = { title: "Modifier une personne" };
 
@@ -21,6 +22,7 @@ export default async function EditUserPage({ params }: PageProps<"/admin/utilisa
   if (!user) notFound();
   if (user.id !== admin.id) await logAdminAction(admin.id, "view", user.id, user.name); // pas la peine de tracer la consultation de sa propre fiche
   const allRoles = await db.select({ id: roles.id, name: roles.name }).from(roles).orderBy(asc(roles.name));
+  const officerTitles = await getOfficerTitles();
   const [track] = user.trackId ? await db.select({ name: tracks.name }).from(tracks).where(eq(tracks.id, user.trackId)).limit(1) : [];
   const ssoLinked = !!user.googleSub || !!user.msOid;
   const signIn = user.googleSub ? "Google" : user.msOid ? "Microsoft" : "Mot de passe";
@@ -57,6 +59,12 @@ export default async function EditUserPage({ params }: PageProps<"/admin/utilisa
             <p className="mt-1 whitespace-pre-line text-sm">{user.requestNote}</p>
           </div>
         )}
+      </section>
+
+      <section className="card space-y-3">
+        <h3 className="font-semibold">Statut BDE</h3>
+        <p className="text-sm text-muted">Affiché dans l&apos;organigramme, visible de tous. Si membre du bureau, précise sa qualification.</p>
+        <BdeRoleForm userId={user.id} bdeStatus={user.bdeStatus} bdeTitle={user.bdeTitle} officerTitles={officerTitles} />
       </section>
 
       {!user.googleSub && !user.msOid && (

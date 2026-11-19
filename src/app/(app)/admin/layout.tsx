@@ -5,7 +5,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   await requireAdmin();
   return (
     <div className="space-y-5">
-      <div className="space-y-1">
+      <div className="space-y-1 print:hidden">
         <AdminBackLink />
         <h1 className="text-2xl font-bold">Administration</h1>
       </div>

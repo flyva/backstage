@@ -2,13 +2,13 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { getUser } from "@/lib/auth";
 
-const TYPES: Record<string, string> = { png: "image/png", jpg: "image/jpeg", webp: "image/webp" };
+const TYPES: Record<string, string> = { png: "image/png", jpg: "image/jpeg", webp: "image/webp", pdf: "application/pdf" };
 
 export async function GET(req: Request, ctx: { params: Promise<{ name: string }> }) {
   if (!(await getUser())) return new Response("Non autorisé", { status: 401 });
   const { name } = await ctx.params;
   // Liste blanche stricte : aucune traversée de répertoire possible.
-  const m = /^[a-z0-9-]+\.(png|jpg|webp)$/.exec(name);
+  const m = /^[a-z0-9-]+\.(png|jpg|webp|pdf)$/.exec(name);
   if (!m) return new Response("Introuvable", { status: 404 });
   if (req.headers.get("if-none-match") === `"${name}"`) return new Response(null, { status: 304 });
   try {

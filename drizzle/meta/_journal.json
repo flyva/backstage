@@ -708,6 +708,13 @@
       "when": 1795088439062,
       "tag": "0100_dapper_mad_thinker",
       "breakpoints": true
+    },
+    {
+      "idx": 101,
+      "version": "5",
+      "when": 1795089389070,
+      "tag": "0101_certain_raider",
+      "breakpoints": true
     }
   ]
 }

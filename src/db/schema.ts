@@ -77,6 +77,9 @@ export const pageStats = mysqlTable("page_stats", {
   lastVisitAt: datetime("last_visit_at").notNull().$defaultFn(() => new Date()),
 }, (t) => [uniqueIndex("page_stats_path_device_idx").on(t.path, t.device)]);
 
+export const BDE_STATUSES = ["bureau", "ca", "liste"] as const;
+export type BdeStatus = (typeof BDE_STATUSES)[number];
+
 export const users = mysqlTable("users", {
   id: int("id").primaryKey().autoincrement(),
   email: varchar("email", { length: 190 }).notNull().unique(),
@@ -161,6 +164,10 @@ export const users = mysqlTable("users", {
   restoTrCents: int("resto_tr_cents"),
   restoTrMoment: mysqlEnum("resto_tr_moment", ["midi", "soir", "matin", "les_deux", "journee_entiere"]).notNull().default("midi"),
   restoAutreCents: int("resto_autre_cents"),
+  // Statut BDE affiché dans l'organigramme : liste simple, membre du CA, ou membre du bureau (avec sa qualification —
+  // Président, Trésorier adjoint…). Visible de tous, mais modifiable uniquement par un admin (fiche personne).
+  bdeStatus: mysqlEnum("bde_status", BDE_STATUSES),
+  bdeTitle: varchar("bde_title", { length: 80 }),
   createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
 });
 
@@ -626,6 +633,14 @@ export const bdePollVotes = mysqlTable(
   },
   (t) => [primaryKey({ columns: [t.pollId, t.userId] })],
 );
+
+// Titres du bureau (Président, Trésorier adjoint…) : liste à autocomplétion qui garde tout nouveau titre saisi,
+// pour le réutiliser plus tard même si on ne s'en sert plus sur personne pour l'instant.
+export const bdeOfficerTitles = mysqlTable("bde_officer_titles", {
+  id: int("id").primaryKey().autoincrement(),
+  label: varchar("label", { length: 80 }).notNull().unique(),
+  createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+});
 
 export const IDEA_STATUSES = ["new", "planned", "done", "rejected"] as const;
 export type IdeaStatus = (typeof IDEA_STATUSES)[number];

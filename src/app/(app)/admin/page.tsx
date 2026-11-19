@@ -2,7 +2,7 @@ import Link from "next/link";
 import { asc, eq } from "drizzle-orm";
 import {
   BarChart3, Building2, BookOpen, ClipboardCheck, CircleHelp, DatabaseBackup, FileLock2, FileSpreadsheet, GraduationCap,
-  History, HeartPulse, Link2, ListChecks, Settings2, ShieldCheck, SlidersHorizontal, Sparkles, Users, Wallet, ChevronRight, type LucideIcon,
+  History, HeartPulse, Landmark, Link2, ListChecks, Settings2, ShieldCheck, SlidersHorizontal, Sparkles, Users, Wallet, ChevronRight, type LucideIcon,
 } from "lucide-react";
 import { db } from "@/db";
 import { users } from "@/db/schema";
@@ -47,6 +47,7 @@ const GROUPS: Group[] = [
       { href: "/admin/finances", label: "Comptabilité", hint: "Recettes, dépenses, rapport annuel", icon: Wallet },
       { href: "/admin/finances/normal", label: "Comptabilité normale", hint: "Pour les impôts / le DAF de l'école", icon: FileSpreadsheet },
       { href: "/admin/comptabilite-parametres", label: "Paramètres comptabilité", hint: "Comptes bancaires, plan comptable, exercices", icon: SlidersHorizontal },
+      { href: "/admin/association", label: "Association", hint: "RNA, SIREN/SIRET, documents officiels", icon: Landmark },
     ],
   },
   {

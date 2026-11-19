@@ -4,6 +4,9 @@ import { useActionState, useState } from "react";
 import { EyeOff, RefreshCw, Trash2 } from "lucide-react";
 import type { FormState } from "@/lib/actions";
 import { anonymizeUser, createUser, deleteRole, deleteUser, resetUserPassword, saveRole, updateUser } from "@/lib/user-admin-actions";
+import { saveUserBdeRole } from "@/lib/association-actions";
+import { BDE_STATUS_LABEL } from "@/lib/association";
+import type { BdeStatus } from "@/db/schema";
 import { ADMIN_PERM, COURSE_PAGES, LEVEL_FIELDS, LEVEL_LABEL, levelOf, SECTION_FIELDS, TICKETS_PERM, type Level } from "@/lib/perms";
 import { TOGGLEABLE_GROUPS } from "@/lib/nav-data";
 import { PasswordField } from "@/components/PasswordField";
@@ -326,6 +329,33 @@ export function AnonymizeUserForm({ id, name }: { id: number; name: string }) {
       <input type="hidden" name="id" value={id} />
       <button className="flex items-center gap-1 text-sm text-muted hover:text-danger" disabled={pending}><EyeOff size={14} /> Anonymiser cette personne</button>
       <Feedback state={state} />
+    </form>
+  );
+}
+
+/** Statut BDE de la personne (liste / CA / bureau + qualification), affiché dans l'organigramme. */
+export function BdeRoleForm({ userId, bdeStatus, bdeTitle, officerTitles }: { userId: number; bdeStatus: BdeStatus | null; bdeTitle: string | null; officerTitles: string[] }) {
+  const [state, action, pending] = useActionState(saveUserBdeRole, undefined);
+  const [status, setStatus] = useState<BdeStatus | "">(bdeStatus ?? "");
+  return (
+    <form action={action} className="grid gap-3 sm:grid-cols-2">
+      <input type="hidden" name="userId" value={userId} />
+      <div>
+        <label className="label" htmlFor="br-status">Statut BDE</label>
+        <select id="br-status" name="bdeStatus" value={status} onChange={(e) => setStatus(e.target.value as BdeStatus | "")} className="input">
+          <option value="">Aucun</option>
+          {(Object.keys(BDE_STATUS_LABEL) as BdeStatus[]).map((s) => <option key={s} value={s}>{BDE_STATUS_LABEL[s]}</option>)}
+        </select>
+      </div>
+      {status === "bureau" && (
+        <div>
+          <label className="label" htmlFor="br-title">Qualification</label>
+          <input id="br-title" name="bdeTitle" list="officer-titles" defaultValue={bdeTitle ?? ""} maxLength={80} placeholder="Président, Trésorier adjoint…" className="input" />
+          <datalist id="officer-titles">{officerTitles.map((t) => <option key={t} value={t} />)}</datalist>
+          <p className="mt-1 text-xs text-muted">Pas dans la liste ? Tape le titre exact : il sera proposé ensuite pour les prochaines personnes.</p>
+        </div>
+      )}
+      <div className="sm:col-span-2"><Feedback state={state} /><button className="btn" disabled={pending}>{pending ? "Enregistrement…" : "Enregistrer"}</button></div>
     </form>
   );
 }

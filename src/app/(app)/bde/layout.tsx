@@ -15,6 +15,7 @@ export default async function BdeLayout({ children }: LayoutProps<"/bde">) {
           { slug: "", label: "Évènements" },
           { slug: "sondages", label: "Sondages" },
           { slug: "idees", label: "Boîte à idées" },
+          { slug: "organigramme", label: "Organigramme" },
         ]}
       />
       {children}
