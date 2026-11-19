@@ -729,6 +729,13 @@
       "when": 1795128294690,
       "tag": "0103_mixed_jackpot",
       "breakpoints": true
+    },
+    {
+      "idx": 104,
+      "version": "5",
+      "when": 1795129262175,
+      "tag": "0104_hard_gabe_jones",
+      "breakpoints": true
     }
   ]
 }

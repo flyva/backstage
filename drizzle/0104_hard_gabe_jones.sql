@@ -1,0 +1,1 @@
+ALTER TABLE `inventory_stock_lots` ADD `alerted_on` date;

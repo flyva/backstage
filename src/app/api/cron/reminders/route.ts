@@ -1,7 +1,10 @@
 import { timingSafeEqual } from "node:crypto";
-import { and, eq, inArray, isNotNull, isNull, lt, lte, or } from "drizzle-orm";
+import { and, eq, gt, inArray, isNotNull, isNull, lt, lte, or } from "drizzle-orm";
 import { db } from "@/db";
-import { altCompanies, altCompanySearches, equipmentItems, loans, roles, timeEntries, users, workDays } from "@/db/schema";
+import {
+  altCompanies, altCompanySearches, equipmentItems, inventoryProducts, inventoryStockLots, loans, roles,
+  timeEntries, users, workDays,
+} from "@/db/schema";
 import { addDays, weekday } from "@/lib/alternance";
 import { daysBetween, todayParis } from "@/lib/equipment";
 import { publicBaseUrl, sendMail } from "@/lib/mail";
@@ -116,6 +119,42 @@ async function run(req: Request) {
     delayAlerts++;
   }
 
+  // Inventaire : alertes DLC (J-7, J-3, jour même, puis tous les jours tant que le lot n'est pas retiré).
+  // Un lot n'est alerté qu'une fois par jour (alertedOn), même si le cron tourne plusieurs fois.
+  const expiringLots = await db
+    .select({
+      id: inventoryStockLots.id, quantity: inventoryStockLots.quantity, expiresOn: inventoryStockLots.expiresOn,
+      alertedOn: inventoryStockLots.alertedOn, label: inventoryProducts.label,
+    })
+    .from(inventoryStockLots)
+    .innerJoin(inventoryProducts, eq(inventoryProducts.id, inventoryStockLots.productId))
+    .where(and(isNotNull(inventoryStockLots.expiresOn), gt(inventoryStockLots.quantity, 0)));
+
+  const dueLots = expiringLots.filter((l) => {
+    if (l.alertedOn === today) return false;
+    const daysUntil = daysBetween(today, l.expiresOn!);
+    return daysUntil === 7 || daysUntil === 3 || daysUntil <= 0;
+  });
+
+  let dlcAlerts = 0;
+  if (dueLots.length > 0) {
+    const lines = dueLots.map((l) => {
+      const days = daysBetween(today, l.expiresOn!);
+      const when = days > 0 ? `dans ${days} jour(s)` : days === 0 ? "aujourd'hui" : `en retard de ${-days} jour(s)`;
+      return `${l.label} (${l.quantity}) — DLC ${when} (${l.expiresOn})`;
+    });
+    const link = base ? `${base}/inventaire` : "/inventaire";
+    const body = `Produits à surveiller :\n${lines.join("\n")}`;
+    const html = `<p>Produits à surveiller :</p><ul>${lines.map((l) => `<li>${l}</li>`).join("")}</ul><p><a href="${link}">Voir le stock</a></p>`;
+    const staff = await db.select({ email: users.email }).from(users).innerJoin(roles, eq(roles.id, users.roleId))
+      .where(and(eq(users.status, "active"), or(eq(roles.isAdmin, true), eq(roles.permInventaire, true))));
+    for (const s of staff) {
+      await sendMail(s.email, "Alerte DLC — Inventaire", body, html);
+      dlcAlerts++;
+    }
+    await db.update(inventoryStockLots).set({ alertedOn: today }).where(inArray(inventoryStockLots.id, dueLots.map((l) => l.id)));
+  }
+
   // Purge RGPD : les comptes jamais activés ne doivent pas s'accumuler indéfiniment (voir Admin > RGPD).
   const RETENTION = { rejected: 90, pending: 180 }; // jours depuis la création
   const purged = { rejected: 0, pending: 0 };
@@ -127,7 +166,7 @@ async function run(req: Request) {
     }
   }
 
-  return Response.json({ ok: true, remindedTasks: reminded, remindedPlanning: planned, loansConcerned: due.length, overdue, notifiedBorrowers: borrowers, notifiedManagers: managers, remindedEmptyPointeuse: emptyPointeuse, delayAlerts, purged });
+  return Response.json({ ok: true, remindedTasks: reminded, remindedPlanning: planned, loansConcerned: due.length, overdue, notifiedBorrowers: borrowers, notifiedManagers: managers, remindedEmptyPointeuse: emptyPointeuse, delayAlerts, dlcLotsConcerned: dueLots.length, dlcAlerts, purged });
 }
 
 export const GET = run;

@@ -786,6 +786,9 @@ export const inventoryStockLots = mysqlTable(
     locationId: int("location_id").notNull().references(() => inventoryLocations.id, { onDelete: "restrict" }),
     quantity: int("quantity").notNull().default(0),
     expiresOn: date("expires_on", { mode: "string" }), // DLC de ce lot (null si le produit n'en a pas)
+    // Dernier jour où une alerte DLC a déjà été envoyée pour ce lot : évite de la renvoyer plusieurs fois le même
+    // jour (le cron peut tourner plus d'une fois). Remis à zéro implicitement : jamais réinitialisé, juste comparé au jour courant.
+    alertedOn: date("alerted_on", { mode: "string" }),
     createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
   },
   (t) => [index("inv_lot_product_idx").on(t.productId), uniqueIndex("inv_lot_unique_idx").on(t.productId, t.locationId, t.expiresOn)],
