@@ -1,4 +1,4 @@
-// Graphique en barres (SVG, sans dépendance) : recettes / dépenses par mois — même info que le graphique Chart.js d'Oasis.
+// Graphique en barres (SVG, sans dépendance) : crédits / débits par mois — même info que le graphique Chart.js d'Oasis.
 import type { MonthRow } from "@/lib/finance";
 
 const MONTHS = ["Janv.", "Févr.", "Mars", "Avr.", "Mai", "Juin", "Juil.", "Août", "Sept.", "Oct.", "Nov.", "Déc."];
@@ -14,7 +14,7 @@ export function FinanceChart({ byMonth }: { byMonth: MonthRow[] }) {
   const height = BAR_H + 30;
   return (
     <div className="overflow-x-auto rounded-xl border border-line bg-bg p-3">
-      <svg viewBox={`0 0 ${width} ${height}`} width={width} height={height} role="img" aria-label="Recettes et dépenses par mois" className="block">
+      <svg viewBox={`0 0 ${width} ${height}`} width={width} height={height} role="img" aria-label="Crédits et débits par mois" className="block">
         {byMonth.map((m, i) => {
           const x = GROUP_GAP + i * (groupW + GROUP_GAP);
           const incH = (m.incomeCents / max) * BAR_H;
@@ -30,8 +30,8 @@ export function FinanceChart({ byMonth }: { byMonth: MonthRow[] }) {
         <line x1={0} y1={BAR_H} x2={width} y2={BAR_H} stroke="var(--border)" strokeWidth={1} />
       </svg>
       <p className="mt-1 flex gap-3 text-[11px] text-muted">
-        <span className="inline-flex items-center gap-1"><span className="inline-block size-2 rounded-full bg-[#22c55e]" /> Recettes</span>
-        <span className="inline-flex items-center gap-1"><span className="inline-block size-2 rounded-full bg-[#ef4444]" /> Dépenses</span>
+        <span className="inline-flex items-center gap-1"><span className="inline-block size-2 rounded-full bg-[#22c55e]" /> Crédits</span>
+        <span className="inline-flex items-center gap-1"><span className="inline-block size-2 rounded-full bg-[#ef4444]" /> Débits</span>
       </p>
     </div>
   );

@@ -220,7 +220,7 @@ function parseImportCsv(text: string): { rows: Omit<ImportRow, "accountingAccoun
     const cents = Math.round(Number(amount.replace(",", ".")) * 100);
     if (!Number.isFinite(cents) || cents <= 0) { errors.push(`Ligne ${i + 1} : montant invalide.`); return; }
     rows.push({
-      date, label: label.slice(0, 200), direction: direction?.toLowerCase().startsWith("rec") ? "income" : "expense",
+      date, label: label.slice(0, 200), direction: direction?.toLowerCase().startsWith("créd") ? "income" : "expense",
       amountCents: cents, reference: reference || undefined, method: method || undefined, notes: notes || undefined,
     });
   });

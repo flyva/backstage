@@ -39,8 +39,8 @@ export default async function FinancesPrintPage({ searchParams }: PageProps<"/ad
       </header>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded-xl border border-line p-3"><div className="text-xs text-muted">Total des recettes</div><div className="font-bold text-emerald-700 dark:text-emerald-400">{fmtEuros(summary.incomeCents)}</div></div>
-        <div className="rounded-xl border border-line p-3"><div className="text-xs text-muted">Total des dépenses</div><div className="font-bold text-red-700 dark:text-red-400">{fmtEuros(summary.expenseCents)}</div></div>
+        <div className="rounded-xl border border-line p-3"><div className="text-xs text-muted">Total des crédits</div><div className="font-bold text-emerald-700 dark:text-emerald-400">{fmtEuros(summary.incomeCents)}</div></div>
+        <div className="rounded-xl border border-line p-3"><div className="text-xs text-muted">Total des débits</div><div className="font-bold text-red-700 dark:text-red-400">{fmtEuros(summary.expenseCents)}</div></div>
         <div className="rounded-xl border border-line p-3"><div className="text-xs text-muted">Résultat de l&apos;exercice</div><div className={`font-bold ${summary.balanceCents >= 0 ? "text-emerald-700 dark:text-emerald-400" : "text-red-700 dark:text-red-400"}`}>{fmtEuros(summary.balanceCents)}</div></div>
         <div className="rounded-xl border border-line p-3"><div className="text-xs text-muted">dont subventions</div><div className="font-bold text-emerald-700 dark:text-emerald-400">{fmtEuros(summary.subventionsCents)}</div></div>
       </div>
@@ -48,7 +48,7 @@ export default async function FinancesPrintPage({ searchParams }: PageProps<"/ad
       <section>
         <h2 className="mb-1 border-b border-line pb-1 font-semibold">Compte de résultat par poste</h2>
         <table className="w-full text-sm">
-          <thead><tr className="border-b border-line text-left text-xs text-muted"><th className="py-1 pr-2 font-medium">Poste analytique</th><th className="py-1 pr-2 text-right font-medium">Recettes</th><th className="py-1 pr-2 text-right font-medium">Dépenses</th><th className="py-1 text-right font-medium">Solde</th></tr></thead>
+          <thead><tr className="border-b border-line text-left text-xs text-muted"><th className="py-1 pr-2 font-medium">Poste analytique</th><th className="py-1 pr-2 text-right font-medium">Crédits</th><th className="py-1 pr-2 text-right font-medium">Débits</th><th className="py-1 text-right font-medium">Solde</th></tr></thead>
           <tbody className="divide-y divide-line">
             {summary.byCategory.length === 0 && <tr><td colSpan={4} className="py-3 text-center text-muted">Aucune écriture sur l&apos;exercice.</td></tr>}
             {summary.byCategory.map((row) => (
@@ -69,8 +69,8 @@ export default async function FinancesPrintPage({ searchParams }: PageProps<"/ad
         <table className="w-full text-xs">
           <thead><tr className="border-b border-line text-left text-muted"><th className="py-1 pr-2 font-medium">Mois</th>{MONTHS.map((m) => <th key={m} className="py-1 pr-2 text-right font-medium">{m.slice(0, 1)}</th>)}</tr></thead>
           <tbody>
-            <tr><td className="py-1 pr-2">Recettes</td>{summary.byMonth.map((m, i) => <td key={i} className="py-1 pr-2 text-right tabular-nums">{Math.round(m.incomeCents / 100)}</td>)}</tr>
-            <tr><td className="py-1 pr-2">Dépenses</td>{summary.byMonth.map((m, i) => <td key={i} className="py-1 pr-2 text-right tabular-nums">{Math.round(m.expenseCents / 100)}</td>)}</tr>
+            <tr><td className="py-1 pr-2">Crédits</td>{summary.byMonth.map((m, i) => <td key={i} className="py-1 pr-2 text-right tabular-nums">{Math.round(m.incomeCents / 100)}</td>)}</tr>
+            <tr><td className="py-1 pr-2">Débits</td>{summary.byMonth.map((m, i) => <td key={i} className="py-1 pr-2 text-right tabular-nums">{Math.round(m.expenseCents / 100)}</td>)}</tr>
           </tbody>
         </table>
       </section>
@@ -78,7 +78,7 @@ export default async function FinancesPrintPage({ searchParams }: PageProps<"/ad
       <section>
         <h2 className="mb-1 border-b border-line pb-1 font-semibold">Détail des écritures ({summary.count})</h2>
         <table className="w-full text-sm">
-          <thead><tr className="border-b border-line text-left text-xs text-muted"><th className="py-1 pr-2 font-medium">Date</th><th className="py-1 pr-2 font-medium">Libellé</th><th className="py-1 pr-2 font-medium">Poste</th><th className="py-1 pr-2 text-right font-medium">Recette</th><th className="py-1 text-right font-medium">Dépense</th></tr></thead>
+          <thead><tr className="border-b border-line text-left text-xs text-muted"><th className="py-1 pr-2 font-medium">Date</th><th className="py-1 pr-2 font-medium">Libellé</th><th className="py-1 pr-2 font-medium">Poste</th><th className="py-1 pr-2 text-right font-medium">Crédit</th><th className="py-1 text-right font-medium">Débit</th></tr></thead>
           <tbody className="divide-y divide-line">
             {entries.map((e) => (
               <tr key={e.id} className="break-inside-avoid">

@@ -3,8 +3,8 @@
 import type { FinanceCategory, FinanceDirection } from "@/db/schema";
 
 export const DIRECTION_LABEL: Record<FinanceDirection, string> = {
-  income: "Recette",
-  expense: "Dépense",
+  income: "Crédit",
+  expense: "Débit",
 };
 
 /** Postes analytiques (communs recette/dépense, filtrés à l'affichage) — repris d'Oasis. */

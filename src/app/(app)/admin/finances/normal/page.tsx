@@ -39,7 +39,7 @@ export default async function NormalFinancesPage({ searchParams }: PageProps<"/a
 
       <div className="card p-0">
         <table className="w-full text-sm">
-          <thead><tr className="border-b border-line bg-bg text-left text-xs text-muted"><th className="px-4 py-1.5 font-medium">N° compte</th><th className="py-1.5 pr-3 font-medium">Intitulé</th><th className="py-1.5 pr-3 text-right font-medium text-emerald-600 dark:text-emerald-400">Recettes</th><th className="py-1.5 pr-4 text-right font-medium text-red-600 dark:text-red-400">Dépenses</th></tr></thead>
+          <thead><tr className="border-b border-line bg-bg text-left text-xs text-muted"><th className="px-4 py-1.5 font-medium">N° compte</th><th className="py-1.5 pr-3 font-medium">Intitulé</th><th className="py-1.5 pr-3 text-right font-medium text-emerald-600 dark:text-emerald-400">Crédits</th><th className="py-1.5 pr-4 text-right font-medium text-red-600 dark:text-red-400">Débits</th></tr></thead>
           <tbody className="divide-y divide-line">
             {byAccount.length === 0 && <tr><td colSpan={4} className="px-4 py-4 text-center text-muted">Aucune écriture.</td></tr>}
             {byAccount.map((row) => (

@@ -61,8 +61,8 @@ export default async function FinancesPage({ searchParams }: PageProps<"/admin/f
       <FinanceFilterForm fiscalYears={fiscalYears} fiscalYearId={fiscalYearId} direction={direction} category={category} />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="card flex items-center gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"><ArrowDownCircle size={20} /></span><div><div className="text-xs text-muted">Recettes</div><div className="text-xl font-bold tabular-nums">{fmtEuros(summary.incomeCents)}</div></div></div>
-        <div className="card flex items-center gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-red-500/15 text-red-600 dark:text-red-400"><ArrowUpCircle size={20} /></span><div><div className="text-xs text-muted">Dépenses</div><div className="text-xl font-bold tabular-nums">{fmtEuros(summary.expenseCents)}</div></div></div>
+        <div className="card flex items-center gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"><ArrowDownCircle size={20} /></span><div><div className="text-xs text-muted">Crédits</div><div className="text-xl font-bold tabular-nums">{fmtEuros(summary.incomeCents)}</div></div></div>
+        <div className="card flex items-center gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-red-500/15 text-red-600 dark:text-red-400"><ArrowUpCircle size={20} /></span><div><div className="text-xs text-muted">Débits</div><div className="text-xl font-bold tabular-nums">{fmtEuros(summary.expenseCents)}</div></div></div>
         <div className="card flex items-center gap-3"><span className={`grid size-10 shrink-0 place-items-center rounded-xl ${summary.balanceCents >= 0 ? "bg-accent/15 text-accent" : "bg-amber-500/15 text-amber-600 dark:text-amber-400"}`}><Scale size={20} /></span><div><div className="text-xs text-muted">Solde</div><div className="text-xl font-bold tabular-nums">{fmtEuros(summary.balanceCents)}</div></div></div>
         <div className="card flex items-center gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-sky-500/15 text-sky-600 dark:text-sky-400"><ArrowDownCircle size={20} /></span><div><div className="text-xs text-muted">Subventions</div><div className="text-xl font-bold tabular-nums">{fmtEuros(summary.subventionsCents)}</div></div></div>
       </div>
@@ -72,7 +72,7 @@ export default async function FinancesPage({ searchParams }: PageProps<"/admin/f
         <div className="card p-0">
           <h2 className="border-b border-line px-4 py-3 font-semibold">Par poste</h2>
           <table className="w-full text-sm">
-            <thead><tr className="text-left text-xs text-muted"><th className="px-4 py-1.5 font-medium">Poste</th><th className="px-2 py-1.5 text-right font-medium text-emerald-600 dark:text-emerald-400">Recettes</th><th className="px-4 py-1.5 text-right font-medium text-red-600 dark:text-red-400">Dépenses</th></tr></thead>
+            <thead><tr className="text-left text-xs text-muted"><th className="px-4 py-1.5 font-medium">Poste</th><th className="px-2 py-1.5 text-right font-medium text-emerald-600 dark:text-emerald-400">Crédits</th><th className="px-4 py-1.5 text-right font-medium text-red-600 dark:text-red-400">Débits</th></tr></thead>
             <tbody className="divide-y divide-line">
               {summary.byCategory.length === 0 && <tr><td colSpan={3} className="px-4 py-4 text-center text-muted">Aucune donnée.</td></tr>}
               {summary.byCategory.map((row) => (
@@ -87,7 +87,7 @@ export default async function FinancesPage({ searchParams }: PageProps<"/admin/f
         <div className="card p-0">
           <h2 className="border-b border-line px-4 py-3 font-semibold">Par compte</h2>
           <table className="w-full text-sm">
-            <thead><tr className="text-left text-xs text-muted"><th className="px-4 py-1.5 font-medium">N°</th><th className="py-1.5 pr-3 font-medium">Compte</th><th className="px-2 py-1.5 text-right font-medium text-emerald-600 dark:text-emerald-400">Recettes</th><th className="px-4 py-1.5 text-right font-medium text-red-600 dark:text-red-400">Dépenses</th></tr></thead>
+            <thead><tr className="text-left text-xs text-muted"><th className="px-4 py-1.5 font-medium">N°</th><th className="py-1.5 pr-3 font-medium">Compte</th><th className="px-2 py-1.5 text-right font-medium text-emerald-600 dark:text-emerald-400">Crédits</th><th className="px-4 py-1.5 text-right font-medium text-red-600 dark:text-red-400">Débits</th></tr></thead>
             <tbody className="divide-y divide-line">
               {byAccount.map((row) => (
                 <tr key={row.id ?? "none"}><td className="px-4 py-1.5 text-muted">{row.number}</td><td className="py-1.5 pr-3">{row.name}</td><td className="px-2 py-1.5 text-right tabular-nums">{fmtEuros(row.incomeCents)}</td><td className="px-4 py-1.5 text-right tabular-nums">{fmtEuros(row.expenseCents)}</td></tr>

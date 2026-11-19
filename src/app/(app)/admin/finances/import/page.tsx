@@ -20,7 +20,7 @@ export default async function ImportFinancesPage() {
       <h2 className="text-xl font-semibold">Importer des écritures (CSV)</h2>
       <div className="card space-y-3">
         <p className="text-sm text-muted">
-          Colonnes attendues, séparées par des points-virgules : <code>Date (AAAA-MM-JJ) ; Libellé ; Sens (Recette/Dépense) ;
+          Colonnes attendues, séparées par des points-virgules : <code>Date (AAAA-MM-JJ) ; Libellé ; Sens (Crédit/Débit) ;
           Montant ; Référence ; Moyen de paiement ; Notes</code>. Pas de compte comptable dans le fichier : tu pointes
           chaque ligne vers un compte dans l&apos;aperçu, juste après avoir choisi le fichier. La première ligne peut
           être un en-tête, elle est ignorée automatiquement.
