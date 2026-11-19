@@ -658,12 +658,46 @@ export const FINANCE_CATEGORIES = [
 ] as const;
 export type FinanceCategory = (typeof FINANCE_CATEGORIES)[number];
 
+// Comptes bancaires de l'asso (compte courant, livret A…) : chacun a un solde affiché dans les paramètres.
+export const bdeBankAccounts = mysqlTable("bde_bank_accounts", {
+  id: int("id").primaryKey().autoincrement(),
+  name: varchar("name", { length: 80 }).notNull(), // "Compte courant", "Livret A"…
+  bankName: varchar("bank_name", { length: 120 }),
+  isDefault: boolean("is_default").notNull().default(false),
+  balanceCents: int("balance_cents").notNull().default(0),
+  balanceUpdatedAt: date("balance_updated_at", { mode: "string" }),
+  createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+});
+
+// Plan comptable simplifié : chaque compte a un nom "normal" (pour les impôts / le DAF de l'école)
+// et un nom "arrangé" (pour que le commun des mortels comprenne le tableau général).
+export const bdeAccountingAccounts = mysqlTable("bde_accounting_accounts", {
+  id: int("id").primaryKey().autoincrement(),
+  number: varchar("number", { length: 20 }).notNull(),
+  nameNormal: varchar("name_normal", { length: 150 }).notNull(),
+  nameArranged: varchar("name_arranged", { length: 150 }).notNull(),
+  createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+});
+
+// Exercices comptables : les écritures, imports et exports s'y rattachent. Par défaut on prend le dernier en cours.
+export const bdeFiscalYears = mysqlTable("bde_fiscal_years", {
+  id: int("id").primaryKey().autoincrement(),
+  label: varchar("label", { length: 40 }).notNull(), // "2025-2026"
+  startDate: date("start_date", { mode: "string" }).notNull(),
+  endDate: date("end_date", { mode: "string" }).notNull(),
+  isCurrent: boolean("is_current").notNull().default(false),
+  createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+});
+
 export const bdeFinancialEntries = mysqlTable(
   "bde_financial_entries",
   {
     id: int("id").primaryKey().autoincrement(),
     direction: mysqlEnum("direction", FINANCE_DIRECTIONS).notNull().default("expense"),
     category: mysqlEnum("category", FINANCE_CATEGORIES).notNull().default("autre"),
+    accountingAccountId: int("accounting_account_id").references(() => bdeAccountingAccounts.id, { onDelete: "set null" }),
+    bankAccountId: int("bank_account_id").references(() => bdeBankAccounts.id, { onDelete: "set null" }),
+    fiscalYearId: int("fiscal_year_id").references(() => bdeFiscalYears.id, { onDelete: "set null" }),
     label: varchar("label", { length: 200 }).notNull(),
     amountCents: int("amount_cents").notNull().default(0), // toujours positif ; le sens vient de « direction »
     occurredOn: date("occurred_on", { mode: "string" }).notNull(),
@@ -674,6 +708,20 @@ export const bdeFinancialEntries = mysqlTable(
     createdBy: int("created_by").references(() => users.id, { onDelete: "set null" }),
   },
   (t) => [index("bde_fin_date_idx").on(t.occurredOn)],
+);
+
+// Prévisionnel budgétaire : une ligne par poste comptable et par exercice, montant attendu sur l'année.
+export const bdeBudgetForecasts = mysqlTable(
+  "bde_budget_forecasts",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    fiscalYearId: int("fiscal_year_id").notNull().references(() => bdeFiscalYears.id, { onDelete: "cascade" }),
+    accountingAccountId: int("accounting_account_id").notNull().references(() => bdeAccountingAccounts.id, { onDelete: "cascade" }),
+    direction: mysqlEnum("direction", FINANCE_DIRECTIONS).notNull().default("expense"),
+    amountCents: int("amount_cents").notNull().default(0),
+    notes: varchar("notes", { length: 500 }),
+  },
+  (t) => [index("bde_budget_fy_idx").on(t.fiscalYearId)],
 );
 
 // ---------- Galerie ----------

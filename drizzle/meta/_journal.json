@@ -701,6 +701,13 @@
       "when": 1795027641866,
       "tag": "0099_yummy_toro",
       "breakpoints": true
+    },
+    {
+      "idx": 100,
+      "version": "5",
+      "when": 1795088439062,
+      "tag": "0100_dapper_mad_thinker",
+      "breakpoints": true
     }
   ]
 }

@@ -3,8 +3,8 @@ import { desc } from "drizzle-orm";
 import { db } from "@/db";
 import { bdeFinancialEntries } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
-import { todayParis } from "@/lib/equipment";
 import { CATEGORY_LABEL, fmtEuros, summarizeFinance } from "@/lib/finance";
+import { getFiscalYears } from "@/lib/finance-data";
 import { PrintButton } from "@/components/PrintButton";
 
 export const metadata = { title: "Rapport financier" };
@@ -13,27 +13,28 @@ const MONTHS = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet"
 const dateFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", day: "2-digit", month: "2-digit", year: "numeric" });
 
 // Rapport financier annuel (recettes/dépenses, par poste, par mois, détail des écritures) : même contenu que le
-// rapport PDF d'Oasis, destiné à l'assemblée générale et aux demandes de subventions.
+// rapport PDF d'Oasis, destiné à l'assemblée générale et aux demandes de subventions. Rattaché à un exercice.
 export default async function FinancesPrintPage({ searchParams }: PageProps<"/admin/finances/imprimer">) {
   const admin = await requireAdmin();
   const sp = await searchParams;
-  const currentYear = Number(todayParis().slice(0, 4));
-  const yParam = Number(sp.year);
-  const year = Number.isInteger(yParam) && yParam >= 2000 && yParam <= currentYear + 1 ? yParam : currentYear;
+  const fiscalYears = await getFiscalYears();
+  const current = fiscalYears.find((f) => f.isCurrent) ?? fiscalYears[0];
+  const fyParam = Number(sp.fy);
+  const fiscalYear = fiscalYears.find((f) => f.id === fyParam) ?? current;
 
   const all = await db.select().from(bdeFinancialEntries).orderBy(desc(bdeFinancialEntries.occurredOn));
-  const entries = all.filter((e) => e.occurredOn.startsWith(String(year))).reverse();
+  const entries = (fiscalYear ? all.filter((e) => e.fiscalYearId === fiscalYear.id) : all).reverse();
   const summary = summarizeFinance(entries);
   const generatedAt = new Date();
 
   return (
     <div className="mx-auto max-w-4xl space-y-5 print:max-w-none">
       <div className="flex items-center justify-between print:hidden">
-        <Link href={`/admin/finances?year=${year}`} className="text-sm text-muted hover:text-fg">← Comptabilité</Link>
+        <Link href={`/admin/finances${fiscalYear ? `?fy=${fiscalYear.id}` : ""}`} className="text-sm text-muted hover:text-fg">← Comptabilité</Link>
         <PrintButton />
       </div>
       <header className="border-b border-line pb-3">
-        <h1 className="text-2xl font-bold">Rapport financier {year}</h1>
+        <h1 className="text-2xl font-bold">Rapport financier {fiscalYear?.label ?? ""}</h1>
         <p className="text-sm text-muted">BDE · Document établi le {dateFmt.format(generatedAt)} par {admin.name} — destiné à l&apos;assemblée générale et aux demandes de subventions.</p>
       </header>
 

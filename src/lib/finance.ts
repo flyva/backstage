@@ -74,3 +74,33 @@ export function summarizeFinance(entries: FinanceEntryLike[]): FinanceSummary {
     subventionsCents: byCategory.get("subventions")?.incomeCents ?? 0,
   };
 }
+
+export type AccountingAccountLike = { id: number; number: string; nameNormal: string; nameArranged: string };
+export type AccountRow = { id: number | null; number: string; name: string; incomeCents: number; expenseCents: number };
+
+/**
+ * Regroupe les écritures par compte comptable (plan comptable), au lieu du poste analytique.
+ * `arranged` choisit le nom affiché : le nom "arrangé" (pour tout le monde) ou le nom normal (pour le DAF/les impôts).
+ */
+export function summarizeByAccount(
+  entries: (FinanceEntryLike & { accountingAccountId: number | null })[],
+  accounts: AccountingAccountLike[],
+  arranged: boolean,
+): AccountRow[] {
+  const byId = new Map(accounts.map((a) => [a.id, a]));
+  const rows = new Map<number | null, AccountRow>();
+  for (const e of entries) {
+    const acc = e.accountingAccountId != null ? byId.get(e.accountingAccountId) : undefined;
+    const key = acc?.id ?? null;
+    const row = rows.get(key) ?? { id: key, number: acc?.number ?? "—", name: acc ? (arranged ? acc.nameArranged : acc.nameNormal) : "Non classé", incomeCents: 0, expenseCents: 0 };
+    if (e.direction === "income") row.incomeCents += e.amountCents; else row.expenseCents += e.amountCents;
+    rows.set(key, row);
+  }
+  return [...rows.values()].sort((a, b) => (b.incomeCents + b.expenseCents) - (a.incomeCents + a.expenseCents));
+}
+
+/** Solde cumulé mois par mois sur l'exercice, à partir d'un solde d'ouverture (pour l'espace « courbe »). */
+export function cumulativeBalance(byMonth: MonthRow[], openingCents: number): number[] {
+  let running = openingCents;
+  return byMonth.map((m) => (running += m.incomeCents - m.expenseCents));
+}
