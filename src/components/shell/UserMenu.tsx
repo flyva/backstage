@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { LogOut, Settings, Shield, Ticket, User } from "lucide-react";
+import { LogOut, Settings, Ticket, User } from "lucide-react";
 import { logout } from "@/lib/actions";
 
 type MenuItem = { href: string; label: string; icon: typeof User; hint?: string; badge?: number };
@@ -12,13 +12,12 @@ const BASE_ITEMS: MenuItem[] = [
   { href: "/parametres", label: "Paramètres", icon: Settings, hint: "Personnalisation, notifications, sécurité" },
 ];
 
-const ADMIN_ITEM = { href: "/admin", label: "Administration", icon: Shield, hint: "Utilisateurs, rôles, réglages" };
 const TICKETS_GESTION_ITEM = { href: "/tickets/gestion", label: "Gestion des tickets", icon: Ticket, hint: "Tous les tickets de la promo" };
 
 // Bouton « Paramètres » (engrenage) avec menu déroulant, et lien vers la page complète.
 export function UserMenu({
-  name, email, footer, isAdmin = false, canManageTickets = false, ticketsBadge = 0,
-}: { name: string; email: string; footer?: ReactNode; isAdmin?: boolean; canManageTickets?: boolean; ticketsBadge?: number }) {
+  name, email, footer, canManageTickets = false, ticketsBadge = 0,
+}: { name: string; email: string; footer?: ReactNode; canManageTickets?: boolean; ticketsBadge?: number }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
 
@@ -36,7 +35,6 @@ export function UserMenu({
     { href: "/tickets", label: "Mes tickets", icon: Ticket, hint: "Tes demandes de support", badge: ticketsBadge },
     ...BASE_ITEMS.slice(1),
     ...(canManageTickets ? [TICKETS_GESTION_ITEM] : []),
-    ...(isAdmin ? [ADMIN_ITEM] : []),
   ];
 
   return (

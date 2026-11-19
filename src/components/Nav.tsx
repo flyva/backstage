@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Shield } from "lucide-react";
 import { GROUPS, type Badge, type Item } from "@/lib/nav-data";
 
 // Une couleur par rubrique : casse le monochrome du menu, aide à repérer la section d'un coup d'œil.
@@ -87,6 +87,11 @@ export function Nav({ isAdmin, loanBadge, views, hiddenPages }: { isAdmin: boole
 
   return (
     <nav className="space-y-0.5" aria-label="Navigation principale">
+      {isAdmin && (
+        <div className="mb-2 border-b border-side-line pb-2">
+          {renderLink({ href: "/admin", label: "Administration", icon: Shield }, 0, "#ef4444")}
+        </div>
+      )}
       {GROUPS.map((g) => {
         if (views[g.id] === false) return null; // section entière masquée pour ce rôle (Savoirs, Promo, Vie étudiante)
         const items = g.items.filter((i) => itemRendersSomething(i, isAdmin, views, hidden));

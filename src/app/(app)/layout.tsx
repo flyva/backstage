@@ -12,7 +12,6 @@ import { UserMenu } from "@/components/shell/UserMenu";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const user = await requireUser();
-  const admin = user.perms.administration;
   const { items, unread, loanBadge, messageBadge, ticketsBadge } = await loadNotifications(user);
 
   return (
@@ -20,7 +19,7 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
       sidebar={<Sidebar user={{ name: user.name, email: user.email, roleName: user.roleName, isAdmin: user.perms.administration, views: { ...user.perms.view, ...user.perms.sections, ...user.perms.courses }, hiddenPages: user.perms.hiddenPages, avatar: avatarUrl(user.avatarFile) }} loanBadge={loanBadge} />}
       messages={<MessagesButton unread={messageBadge} />}
       bell={<><HeaderClock /><QuickTheme initial={skinFrom(user)} /><NotificationBell items={items} unread={unread} /></>}
-      menu={<UserMenu name={user.name} email={user.email} isAdmin={admin} canManageTickets={user.perms.tickets} ticketsBadge={ticketsBadge} />}
+      menu={<UserMenu name={user.name} email={user.email} canManageTickets={user.perms.tickets} ticketsBadge={ticketsBadge} />}
     >
       {children}
     </AppShell>
