@@ -11,10 +11,12 @@ export type RoleFlags = {
   permActus: boolean;
   permGalerie: boolean;
   permTickets: boolean;
+  permInventaire: boolean;
   viewMateriel: boolean;
   viewBde: boolean;
   viewActus: boolean;
   viewGalerie: boolean;
+  viewInventaire: boolean;
   viewSavoirs: boolean;
   viewPromo: boolean;
   viewVie: boolean;
@@ -26,7 +28,7 @@ export type RoleFlags = {
   hiddenPages: string | null;
 };
 
-export type Module = "materiel" | "bde" | "actus" | "galerie";
+export type Module = "materiel" | "bde" | "actus" | "galerie" | "inventaire";
 export type Section = "savoirs" | "promo" | "vie" | "detente" | "rechercheEntreprises";
 
 /** Pages du sous-menu « Cours » (dans Travail). D'autres s'ajouteront avec le temps : chacune a une clé stable, à cocher
@@ -59,6 +61,7 @@ export type Perms = {
   bde: boolean;
   actus: boolean;
   galerie: boolean;
+  inventaire: boolean;
   /** Voit et gère tous les tickets (sans besoin d'être administrateur). */
   tickets: boolean;
   /** Peut ouvrir le domaine (lecture) : « Voir » ou « Gérer ». */
@@ -81,8 +84,8 @@ export function permsOf(r: RoleFlags | null | undefined): Perms {
       admin: false,
       companyOnly: true,
       administration: false,
-      materiel: false, bde: false, actus: false, galerie: false, tickets: false,
-      view: { materiel: false, bde: false, actus: false, galerie: false },
+      materiel: false, bde: false, actus: false, galerie: false, tickets: false, inventaire: false,
+      view: { materiel: false, bde: false, actus: false, galerie: false, inventaire: false },
       sections: { savoirs: false, promo: false, vie: false, detente: false, rechercheEntreprises: false },
       courses: Object.fromEntries(COURSE_PAGES.map((p) => [p.key, false])) as Record<CoursePageKey, boolean>,
       hiddenPages: allHrefs.filter((href) => !COMPANY_ALLOWED_PATHS.includes(href as (typeof COMPANY_ALLOWED_PATHS)[number])),
@@ -97,11 +100,13 @@ export function permsOf(r: RoleFlags | null | undefined): Perms {
     actus: a || !!r?.permActus,
     galerie: a || !!r?.permGalerie,
     tickets: a || !!r?.permTickets,
+    inventaire: a || !!r?.permInventaire,
     view: {
       materiel: a || !!r?.permMateriel || (r ? !!r.viewMateriel : true),
       bde: a || !!r?.permBde || (r ? !!r.viewBde : true),
       actus: a || !!r?.permActus || (r ? !!r.viewActus : true),
       galerie: a || !!r?.permGalerie || (r ? !!r.viewGalerie : true),
+      inventaire: a || !!r?.permInventaire || (r ? !!r.viewInventaire : true),
     },
     sections: {
       savoirs: a || (r ? !!r.viewSavoirs : true),
@@ -138,6 +143,7 @@ export const LEVEL_FIELDS = [
   { module: "bde", manage: "permBde", view: "viewBde", label: "BDE", hint: "Voir : consulter les évènements et sondages, s'inscrire, proposer une idée. Gérer : créer des évènements et des sondages, publier pour le BDE." },
   { module: "actus", manage: "permActus", view: "viewActus", label: "Actualités de l'école", hint: "Voir : lire les articles. Gérer : publier et modifier des articles de la rubrique École." },
   { module: "galerie", manage: "permGalerie", view: "viewGalerie", label: "Galerie", hint: "Voir : parcourir les albums et ajouter ses photos. Gérer : créer et modifier tous les albums." },
+  { module: "inventaire", manage: "permInventaire", view: "viewInventaire", label: "Inventaire", hint: "Voir : consulter les stocks. Gérer : ajouter/transférer du stock, gérer produits/adresses/entrepôts, et recevoir les alertes DLC par mail." },
 ] as const;
 
 export type Level = "none" | "view" | "manage";

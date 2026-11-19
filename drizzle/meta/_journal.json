@@ -722,6 +722,13 @@
       "when": 1795122361265,
       "tag": "0102_mean_nightcrawler",
       "breakpoints": true
+    },
+    {
+      "idx": 103,
+      "version": "5",
+      "when": 1795128294690,
+      "tag": "0103_mixed_jackpot",
+      "breakpoints": true
     }
   ]
 }

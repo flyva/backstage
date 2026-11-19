@@ -44,12 +44,13 @@ function levels(fd: FormData) {
     const v = String(fd.get(name) ?? "view");
     return { view: v === "view" || v === "manage", manage: v === "manage" };
   };
-  const m = lv("level_materiel"), b = lv("level_bde"), a = lv("level_actus"), g = lv("level_galerie");
+  const m = lv("level_materiel"), b = lv("level_bde"), a = lv("level_actus"), g = lv("level_galerie"), i = lv("level_inventaire");
   return {
     viewMateriel: m.view, permMateriel: m.manage,
     viewBde: b.view, permBde: b.manage,
     viewActus: a.view, permActus: a.manage,
     viewGalerie: g.view, permGalerie: g.manage,
+    viewInventaire: i.view, permInventaire: i.manage,
   };
 }
 

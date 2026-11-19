@@ -1,5 +1,5 @@
 import {
-  BookOpen, BookUser, Bot, Briefcase, Building2, Calculator, Car, CalendarDays, Camera, CircleHelp, ClipboardList, Clock, Cog, Gamepad2, Globe, Home, Images, Laptop, Lightbulb, Link2, Mail, Network, Newspaper, PartyPopper, Receipt, School, NotebookPen, ShieldCheck, SquareKanban, TramFront, Users, Contact, Megaphone, CalendarClock, Wrench, Zap, BarChart3,
+  BookOpen, BookUser, Bot, Briefcase, Building2, Calculator, Car, CalendarDays, Camera, CircleHelp, ClipboardList, Clock, Cog, Gamepad2, Globe, Home, Images, Laptop, Lightbulb, Link2, Mail, Network, Newspaper, Package, PartyPopper, Receipt, School, NotebookPen, ShieldCheck, SquareKanban, TramFront, Users, Contact, Megaphone, CalendarClock, Wrench, Zap, BarChart3,
   type LucideIcon,
 } from "lucide-react";
 
@@ -83,6 +83,7 @@ export const GROUPS: Group[] = [
     id: "vie", title: "Vie étudiante",
     items: [
       { href: "/bde", label: "BDE", icon: PartyPopper, module: "bde" },
+      { href: "/inventaire", label: "Inventaire", icon: Package, module: "inventaire" },
       { href: "/galerie", label: "Galerie", icon: Images, module: "galerie" },
       { href: "/instagram", label: "Instagram", icon: Camera },
     ],

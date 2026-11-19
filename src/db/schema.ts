@@ -29,12 +29,14 @@ export const roles = mysqlTable("roles", {
   permActus: boolean("perm_actus").notNull().default(false), // publier des actus de l'école
   permGalerie: boolean("perm_galerie").notNull().default(false), // gérer la galerie
   permTickets: boolean("perm_tickets").notNull().default(false), // voir et gérer tous les tickets (pas besoin d'être admin)
+  permInventaire: boolean("perm_inventaire").notNull().default(false), // gérer les stocks (produits, adresses, DLC) ; reçoit les alertes DLC par mail
   // Niveau « Voir » de chaque domaine : accès en lecture (les étudiants voient sans gérer). Aucun = ni voir ni gérer ;
   // Gérer (perm_*) inclut toujours Voir.
   viewMateriel: boolean("view_materiel").notNull().default(true),
   viewBde: boolean("view_bde").notNull().default(true),
   viewActus: boolean("view_actus").notNull().default(true),
   viewGalerie: boolean("view_galerie").notNull().default(true),
+  viewInventaire: boolean("view_inventaire").notNull().default(true),
   // Sections entières du menu (pas de niveau « Gérer », juste visible ou pas) : utile pour un rôle externe réduit à l'essentiel.
   viewSavoirs: boolean("view_savoirs").notNull().default(true),
   viewPromo: boolean("view_promo").notNull().default(true),
@@ -738,6 +740,55 @@ export const bdeBudgetForecasts = mysqlTable(
     notes: varchar("notes", { length: 500 }),
   },
   (t) => [index("bde_budget_fy_idx").on(t.fiscalYearId)],
+);
+
+// ---------- Inventaire (stocks, adresses, DLC) ----------
+
+export const inventoryWarehouses = mysqlTable("inventory_warehouses", {
+  id: int("id").primaryKey().autoincrement(),
+  name: varchar("name", { length: 100 }).notNull(),
+  createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+});
+
+// Adresse de rangement (ex. "A1-03") à l'intérieur d'un entrepôt ; c'est elle qu'on choisit en autocomplétion à
+// l'ajout de stock, et qui devient l'adresse « de base » d'un code-barre la première fois qu'on l'y range.
+export const inventoryLocations = mysqlTable(
+  "inventory_locations",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    warehouseId: int("warehouse_id").notNull().references(() => inventoryWarehouses.id, { onDelete: "cascade" }),
+    code: varchar("code", { length: 40 }).notNull(),
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [uniqueIndex("inv_location_code_idx").on(t.warehouseId, t.code)],
+);
+
+// Un produit est créé une seule fois (par code-barre ou libellé) et réutilisé ensuite à chaque ajout de stock.
+export const inventoryProducts = mysqlTable("inventory_products", {
+  id: int("id").primaryKey().autoincrement(),
+  barcode: varchar("barcode", { length: 64 }).unique(),
+  label: varchar("label", { length: 200 }).notNull(),
+  hasExpiry: boolean("has_expiry").notNull().default(false), // ce produit a une DLC à chaque ajout
+  lowStockThreshold: int("low_stock_threshold"), // en dessous de cette quantité totale : alerte stock bas
+  // Adresse « de base » de ce code-barre : proposée par défaut (modifiable) au prochain ajout de stock.
+  defaultLocationId: int("default_location_id").references(() => inventoryLocations.id, { onDelete: "set null" }),
+  createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+});
+
+// Un lot = une quantité d'un produit à une adresse, avec sa propre DLC (deux lots du même produit à la même
+// adresse mais avec des DLC différentes restent distincts). Un transfert déplace de la quantité d'un lot vers un
+// lot du MÊME produit à une autre adresse, jamais en négatif.
+export const inventoryStockLots = mysqlTable(
+  "inventory_stock_lots",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    productId: int("product_id").notNull().references(() => inventoryProducts.id, { onDelete: "cascade" }),
+    locationId: int("location_id").notNull().references(() => inventoryLocations.id, { onDelete: "restrict" }),
+    quantity: int("quantity").notNull().default(0),
+    expiresOn: date("expires_on", { mode: "string" }), // DLC de ce lot (null si le produit n'en a pas)
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [index("inv_lot_product_idx").on(t.productId), uniqueIndex("inv_lot_unique_idx").on(t.productId, t.locationId, t.expiresOn)],
 );
 
 // ---------- Galerie ----------
