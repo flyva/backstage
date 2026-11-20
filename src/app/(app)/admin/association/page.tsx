@@ -1,10 +1,8 @@
 import Link from "next/link";
-import { and, eq } from "drizzle-orm";
 import { FileText, Printer } from "lucide-react";
-import { db } from "@/db";
-import { users } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
+import { getDirigeants } from "@/lib/association-data";
 import { AssociationDocForm, AssociationInfoForm } from "@/components/association-forms";
 
 export const metadata = { title: "Association" };
@@ -14,8 +12,7 @@ export const metadata = { title: "Association" };
 export default async function AssociationSettingsPage() {
   await requireAdmin();
   const s = await getSettings();
-  const [president] = await db.select({ name: users.name })
-    .from(users).where(and(eq(users.bdeStatus, "bureau"), eq(users.bdeTitle, "Président"))).limit(1);
+  const dirigeants = await getDirigeants();
 
   return (
     <div className="space-y-6">
@@ -31,8 +28,12 @@ export default async function AssociationSettingsPage() {
           adresseGestion={s.asso_adresse_gestion} siren={s.asso_siren} siret={s.asso_siret}
         />
         <p className="text-sm text-muted">
-          Dirigeant : <strong>{president?.name ?? "Non défini"}</strong>
-          {!president && <span> — renseigne le Président dans l&apos;<Link href="/admin/utilisateurs" className="underline">onglet Statut BDE</Link> de sa fiche.</span>}
+          Dirigeants (toute personne au bureau) :{" "}
+          {dirigeants.length === 0 ? (
+            <>Non défini — renseigne le statut « Bureau » dans l&apos;<Link href="/admin/utilisateurs" className="underline">onglet Statut BDE</Link> de la fiche de chacun.</>
+          ) : (
+            <strong>{dirigeants.map((d) => `${d.name}${d.bdeTitle ? ` (${d.bdeTitle})` : ""}`).join(", ")}</strong>
+          )}
         </p>
       </section>
 

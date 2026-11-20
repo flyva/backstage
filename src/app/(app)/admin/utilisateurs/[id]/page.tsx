@@ -64,7 +64,7 @@ export default async function EditUserPage({ params }: PageProps<"/admin/utilisa
       <section className="card space-y-3">
         <h3 className="font-semibold">Statut BDE</h3>
         <p className="text-sm text-muted">Affiché dans l&apos;organigramme, visible de tous. Si membre du bureau, précise sa qualification.</p>
-        <BdeRoleForm userId={user.id} bdeStatus={user.bdeStatus} bdeTitle={user.bdeTitle} officerTitles={officerTitles} />
+        <BdeRoleForm key={user.bdeStatus ?? "none"} userId={user.id} bdeStatus={user.bdeStatus} bdeTitle={user.bdeTitle} officerTitles={officerTitles} />
       </section>
 
       {!user.googleSub && !user.msOid && (

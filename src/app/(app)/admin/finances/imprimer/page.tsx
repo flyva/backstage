@@ -5,6 +5,8 @@ import { bdeFinancialEntries } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
 import { CATEGORY_LABEL, fmtEuros, summarizeFinance } from "@/lib/finance";
 import { getFiscalYears } from "@/lib/finance-data";
+import { getSettings } from "@/lib/settings";
+import { getDirigeants } from "@/lib/association-data";
 import { PrintButton } from "@/components/PrintButton";
 
 export const metadata = { title: "Rapport financier" };
@@ -17,7 +19,7 @@ const dateFmt = new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", day
 export default async function FinancesPrintPage({ searchParams }: PageProps<"/admin/finances/imprimer">) {
   const admin = await requireAdmin();
   const sp = await searchParams;
-  const fiscalYears = await getFiscalYears();
+  const [s, dirigeants, fiscalYears] = await Promise.all([getSettings(), getDirigeants(), getFiscalYears()]);
   const current = fiscalYears.find((f) => f.isCurrent) ?? fiscalYears[0];
   const fyParam = Number(sp.fy);
   const fiscalYear = fiscalYears.find((f) => f.id === fyParam) ?? current;
@@ -35,8 +37,16 @@ export default async function FinancesPrintPage({ searchParams }: PageProps<"/ad
       </div>
       <header className="border-b border-line pb-3">
         <h1 className="text-2xl font-bold">Rapport financier {fiscalYear?.label ?? ""}</h1>
-        <p className="text-sm text-muted">BDE · Document établi le {dateFmt.format(generatedAt)} par {admin.name} — destiné à l&apos;assemblée générale et aux demandes de subventions.</p>
+        <p className="text-sm text-muted">{s.asso_titre || "BDE"} · Document établi le {dateFmt.format(generatedAt)} par {admin.name} — destiné à l&apos;assemblée générale et aux demandes de subventions.</p>
       </header>
+
+      <section className="grid grid-cols-2 gap-x-4 gap-y-1 border-b border-line pb-3 text-xs text-muted sm:grid-cols-4">
+        <div><span className="font-medium text-fg">RNA</span> {s.asso_rna || "—"}</div>
+        <div><span className="font-medium text-fg">SIREN</span> {s.asso_siren || "—"}</div>
+        <div><span className="font-medium text-fg">SIRET</span> {s.asso_siret || "—"}</div>
+        <div><span className="font-medium text-fg">Dirigeant{dirigeants.length > 1 ? "s" : ""}</span> {dirigeants.length ? dirigeants.map((d) => d.name).join(", ") : "—"}</div>
+        {s.asso_adresse_siege && <div className="col-span-full"><span className="font-medium text-fg">Siège</span> {s.asso_adresse_siege}</div>}
+      </section>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="rounded-xl border border-line p-3"><div className="text-xs text-muted">Total des crédits</div><div className="font-bold text-emerald-700 dark:text-emerald-400">{fmtEuros(summary.incomeCents)}</div></div>

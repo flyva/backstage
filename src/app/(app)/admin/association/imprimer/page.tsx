@@ -1,9 +1,7 @@
 import Link from "next/link";
-import { and, eq } from "drizzle-orm";
-import { db } from "@/db";
-import { users } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
+import { getDirigeants } from "@/lib/association-data";
 import { PrintButton } from "@/components/PrintButton";
 
 export const metadata = { title: "Fiche association" };
@@ -13,8 +11,7 @@ export const metadata = { title: "Fiche association" };
 export default async function AssociationPrintPage() {
   await requireAdmin();
   const s = await getSettings();
-  const [president] = await db.select({ name: users.name })
-    .from(users).where(and(eq(users.bdeStatus, "bureau"), eq(users.bdeTitle, "Président"))).limit(1);
+  const dirigeants = await getDirigeants();
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 print:max-w-none">
@@ -40,7 +37,10 @@ export default async function AssociationPrintPage() {
           <dt className="font-medium text-muted">SIRET</dt>
           <dd>{s.asso_siret || "—"}<span className="block text-xs text-muted">Identifie un établissement précis (SIREN + 5 chiffres de localisation).</span></dd>
         </div>
-        <div className="grid grid-cols-[180px_1fr] gap-2 pb-2"><dt className="font-medium text-muted">Dirigeant</dt><dd>{president?.name ?? "—"}</dd></div>
+        <div className="grid grid-cols-[180px_1fr] gap-2 pb-2">
+          <dt className="font-medium text-muted">Dirigeant{dirigeants.length > 1 ? "s" : ""}</dt>
+          <dd>{dirigeants.length === 0 ? "—" : dirigeants.map((d) => `${d.name}${d.bdeTitle ? ` (${d.bdeTitle})` : ""}`).join(", ")}</dd>
+        </div>
       </dl>
     </div>
   );

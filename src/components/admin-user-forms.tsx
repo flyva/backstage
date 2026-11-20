@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import { EyeOff, RefreshCw, Trash2 } from "lucide-react";
+import { useActionState, useEffect, useRef, useState } from "react";
+import { Check, EyeOff, RefreshCw, Trash2 } from "lucide-react";
 import type { FormState } from "@/lib/actions";
 import { anonymizeUser, createUser, deleteRole, deleteUser, resetUserPassword, saveRole, updateUser } from "@/lib/user-admin-actions";
 import { saveUserBdeRole } from "@/lib/association-actions";
@@ -39,7 +39,7 @@ export function RoleForm({ role = {} }: { role?: RoleValues }) {
       </div>
 
       <fieldset className="space-y-2">
-        <legend className="label">Droits</legend>
+        <legend className="label">Droits globaux</legend>
         <label className="flex items-start gap-3 rounded-xl border border-line p-3 text-sm has-[:checked]:border-accent has-[:checked]:bg-accent/5">
           <input type="checkbox" name="isAdmin" defaultChecked={role.isAdmin} disabled={role.system && role.isAdmin} className="mt-0.5 size-4 accent-[var(--accent)]" />
           <span><strong>Administrateur</strong><span className="block text-xs text-muted">Tous les droits ci-dessous, y compris ceux qu&apos;on ajoutera plus tard. À réserver à peu de personnes.</span></span>
@@ -57,6 +57,14 @@ export function RoleForm({ role = {} }: { role?: RoleValues }) {
           <input type="checkbox" name={TICKETS_PERM.field} defaultChecked={!!role[TICKETS_PERM.field]} className="mt-0.5 size-4 accent-[var(--accent)]" />
           <span><strong>{TICKETS_PERM.label}</strong><span className="block text-xs text-muted">{TICKETS_PERM.hint}</span></span>
         </label>
+      </fieldset>
+
+      <fieldset className="space-y-2">
+        <legend className="label">Secteurs</legend>
+        <p className="text-xs text-muted">
+          Pour chaque secteur de Backstage, choisis le niveau d&apos;accès de ce rôle : <strong>Aucun</strong> (invisible),{" "}
+          <strong>Voir</strong> (juste observer, aucune modification possible) ou <strong>Gérer</strong> (administration complète de ce secteur).
+        </p>
         <div className="space-y-2">
           {LEVEL_FIELDS.map((f) => {
             const cur = levelOf(role, f);
@@ -78,10 +86,6 @@ export function RoleForm({ role = {} }: { role?: RoleValues }) {
             );
           })}
         </div>
-      </fieldset>
-
-      <fieldset className="space-y-2">
-        <legend className="label">Sections du menu</legend>
         <p className="text-xs text-muted">« Aucun » retire toute la section du menu pour ce rôle (utile pour un accès externe réduit à l&apos;essentiel). L&apos;assistant en bas à droite reste toujours disponible.</p>
         <div className="space-y-2">
           {SECTION_FIELDS.map((sf) => {
@@ -333,7 +337,66 @@ export function AnonymizeUserForm({ id, name }: { id: number; name: string }) {
   );
 }
 
-/** Statut BDE de la personne (liste / CA / bureau + qualification), affiché dans l'organigramme. */
+/** Qualification du bureau : autocomplétion maison (liste cliquable, filtrée en tapant) à la place du
+ *  <datalist> natif, peu fiable selon les navigateurs (suggestion qui ne s'applique pas, Entrée qui soumet
+ *  le formulaire avant que la valeur ne soit prise en compte…). */
+function OfficerTitleField({ id, name, defaultValue, options }: { id: string; name: string; defaultValue: string; options: string[] }) {
+  const [value, setValue] = useState(defaultValue);
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(-1);
+  const boxRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onDown = (e: MouseEvent) => { if (!boxRef.current?.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, []);
+
+  const q = value.trim().toLowerCase();
+  const matches = q ? options.filter((o) => o.toLowerCase().includes(q)) : options;
+
+  const choose = (v: string) => { setValue(v); setOpen(false); setActive(-1); };
+
+  return (
+    <div ref={boxRef} className="relative">
+      <input
+        id={id} name={name} value={value} autoComplete="off" maxLength={80} placeholder="Président, Trésorier adjoint…"
+        className="input"
+        onChange={(e) => { setValue(e.target.value); setOpen(true); setActive(-1); }}
+        onFocus={() => setOpen(true)}
+        onKeyDown={(e) => {
+          if (!open || matches.length === 0) return;
+          if (e.key === "ArrowDown") { e.preventDefault(); setActive((a) => (a + 1) % matches.length); }
+          else if (e.key === "ArrowUp") { e.preventDefault(); setActive((a) => (a <= 0 ? matches.length - 1 : a - 1)); }
+          else if (e.key === "Enter" && active >= 0) { e.preventDefault(); choose(matches[active]); }
+          else if (e.key === "Escape") setOpen(false);
+        }}
+      />
+      {open && matches.length > 0 && (
+        <ul className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-xl border border-line bg-surface shadow-lg">
+          {matches.map((o, i) => (
+            <li key={o}>
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => choose(o)}
+                onMouseEnter={() => setActive(i)}
+                className={`flex w-full items-center justify-between px-3 py-1.5 text-left text-sm ${i === active ? "bg-accent/15" : ""}`}
+              >
+                {o}
+                {o === value && <Check size={14} className="text-accent" />}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/** Statut BDE de la personne (liste / CA / bureau + qualification), affiché dans l'organigramme.
+ *  À appeler avec `key={bdeStatus ?? "none"}` : l'état local (statut choisi) doit repartir des props à jour
+ *  après enregistrement, sinon le <select> reste figé sur la toute première valeur reçue au montage. */
 export function BdeRoleForm({ userId, bdeStatus, bdeTitle, officerTitles }: { userId: number; bdeStatus: BdeStatus | null; bdeTitle: string | null; officerTitles: string[] }) {
   const [state, action, pending] = useActionState(saveUserBdeRole, undefined);
   const [status, setStatus] = useState<BdeStatus | "">(bdeStatus ?? "");
@@ -350,8 +413,7 @@ export function BdeRoleForm({ userId, bdeStatus, bdeTitle, officerTitles }: { us
       {status === "bureau" && (
         <div>
           <label className="label" htmlFor="br-title">Qualification</label>
-          <input id="br-title" name="bdeTitle" list="officer-titles" defaultValue={bdeTitle ?? ""} maxLength={80} placeholder="Président, Trésorier adjoint…" className="input" />
-          <datalist id="officer-titles">{officerTitles.map((t) => <option key={t} value={t} />)}</datalist>
+          <OfficerTitleField id="br-title" name="bdeTitle" defaultValue={bdeTitle ?? ""} options={officerTitles} />
           <p className="mt-1 text-xs text-muted">Pas dans la liste ? Tape le titre exact : il sera proposé ensuite pour les prochaines personnes.</p>
         </div>
       )}
