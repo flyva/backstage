@@ -19,13 +19,13 @@ export function Sidebar({ user, loanBadge }: { user: { name: string; email: stri
       <Link href="/profil" className="mx-3 mt-3 flex items-center gap-3 rounded-xl border-b border-side-line px-2 pb-3 text-side-strong transition hover:bg-side-hover">
         {user.avatar ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={user.avatar} alt="" width={40} height={40} className="size-10 shrink-0 rounded-full object-cover shadow-md ring-2 ring-side-line" />
+          <img src={user.avatar} alt="" width={40} height={40} className="size-10 shrink-0 self-center rounded-full object-cover shadow-md ring-2 ring-side-line" />
         ) : (
-          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-accent text-sm font-bold text-accent-fg shadow-md ring-2 ring-side-line">{initials(user.name)}</span>
+          <span className="grid size-10 shrink-0 self-center place-items-center rounded-full bg-accent text-sm font-bold text-accent-fg shadow-md ring-2 ring-side-line">{initials(user.name)}</span>
         )}
-        <span className="min-w-0">
+        <span className="min-w-0 self-center leading-tight">
           <span className="block truncate text-sm font-medium">{user.name}</span>
-          <span className="flex items-center gap-1.5 text-xs text-side-text"><i className="size-1.5 rounded-full bg-[#28a745] shadow-[0_0_6px_#28a745]" /> {user.roleName}</span>
+          <span className="mt-0.5 flex items-center gap-1.5 text-xs text-side-text"><i className="size-1.5 shrink-0 rounded-full bg-[#28a745] shadow-[0_0_6px_#28a745]" /> {user.roleName}</span>
         </span>
       </Link>
 
