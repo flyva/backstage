@@ -16,7 +16,7 @@ export function Sidebar({ user, loanBadge }: { user: { name: string; email: stri
       </div>
 
       {/* Profil en haut du menu, comme le « user panel » d'AdminLTE */}
-      <Link href="/profil" className="mx-3 mt-3 flex items-center gap-3 rounded-xl border-b border-side-line px-2 pb-3 text-side-strong transition hover:bg-side-hover">
+      <Link href="/profil" className="mx-3 mt-6 flex items-center gap-3 rounded-xl border-b border-side-line px-2 pb-4 text-side-strong transition hover:bg-side-hover">
         {user.avatar ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={user.avatar} alt="" width={40} height={40} className="size-10 shrink-0 self-center rounded-full object-cover shadow-md ring-2 ring-side-line" />
