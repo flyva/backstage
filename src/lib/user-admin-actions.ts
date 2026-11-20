@@ -100,11 +100,12 @@ export async function saveRole(_: FormState, fd: FormData): Promise<FormState> {
       if (Number(others?.n ?? 0) === 0) return { error: "Il doit rester au moins un administrateur actif" };
     }
     await db.update(roles).set(values).where(eq(roles.id, raw));
-  } else {
-    await db.insert(roles).values(values);
+    refresh();
+    return { ok: "Rôle enregistré" };
   }
+  const [res] = await db.insert(roles).values(values);
   refresh();
-  return { ok: raw ? "Rôle enregistré" : "Rôle créé" };
+  redirect(`/admin/roles/${res.insertId}`);
 }
 
 export async function deleteRole(_: FormState, fd: FormData): Promise<FormState> {
@@ -117,7 +118,7 @@ export async function deleteRole(_: FormState, fd: FormData): Promise<FormState>
   if (Number(used.n) > 0) return { error: `Ce rôle est encore utilisé par ${used.n} personne(s) : change d'abord leur rôle` };
   await db.delete(roles).where(eq(roles.id, rid));
   refresh();
-  return { ok: "Rôle supprimé" };
+  redirect("/admin/roles");
 }
 
 // ---------- Utilisateurs ----------
