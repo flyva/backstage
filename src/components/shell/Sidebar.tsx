@@ -1,44 +1,39 @@
 import Link from "next/link";
 import { AdminLink, Nav } from "@/components/Nav";
 
-
-const initials = (name: string) =>
-  name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join("") || "?";
+const initial = (name: string) => (name.trim()[0] ?? "?").toUpperCase();
+const firstName = (name: string) => name.trim().split(/\s+/)[0] ?? name;
 
 export function Sidebar({ user, loanBadge }: { user: { name: string; email: string; roleName: string; isAdmin: boolean; views: Record<string, boolean>; hiddenPages: string[]; avatar?: string | null }; loanBadge: number }) {
   return (
     <>
-      <div className="flex h-14 shrink-0 items-center gap-2 border-b border-side-line px-4">
-        <span className="grid size-8 shrink-0 self-center place-items-center rounded-lg bg-accent text-[13px] font-extrabold leading-none tracking-tight text-accent-fg shadow-[0_2px_8px_-1px_color-mix(in_srgb,var(--accent)_65%,transparent)]">3IS</span>
-        <Link href="/" className="self-center text-lg font-semibold leading-none tracking-tight text-side-strong">
-          Back<span className="text-side-text">stage</span>
-        </Link>
-      </div>
-
-      {/* Profil en haut du menu, comme le « user panel » d'AdminLTE */}
-      <Link href="/profil" className="mx-3 mt-6 flex items-center gap-3 rounded-xl border-b border-side-line px-2 py-3 text-side-strong transition hover:bg-side-hover">
-        {user.avatar ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={user.avatar} alt="" width={40} height={40} className="size-10 shrink-0 self-center rounded-full object-cover shadow-md ring-2 ring-side-line" />
-        ) : (
-          <span className="grid size-10 shrink-0 self-center place-items-center rounded-full bg-accent text-sm font-bold text-accent-fg shadow-md ring-2 ring-side-line">{initials(user.name)}</span>
-        )}
-        <span className="min-w-0 self-center leading-tight">
-          <span className="block truncate text-sm font-medium">{user.name}</span>
-          <span className="mt-0.5 flex items-center gap-1.5 text-xs text-side-text"><i className="size-1.5 shrink-0 rounded-full bg-[#28a745] shadow-[0_0_6px_#28a745]" /> {user.roleName}</span>
-        </span>
+      {/* En-tête : logo + nom, comme chez BDE. */}
+      <Link href="/" className="flex shrink-0 items-center gap-2.5 px-5 pb-5 pt-5">
+        <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-accent text-[13px] font-bold text-accent-fg">3IS</span>
+        <span className="text-[15px] font-bold text-side-strong">Backstage</span>
       </Link>
 
-      <div className="no-scrollbar flex-1 overflow-y-auto p-3">
+      <div className="no-scrollbar flex-1 overflow-y-auto px-2.5">
         <Nav isAdmin={user.isAdmin} views={user.views} hiddenPages={user.hiddenPages} loanBadge={loanBadge} />
       </div>
 
-      {/* Même emplacement que BDE : juste au-dessus du bas du menu, hors du défilement. */}
+      {/* Même emplacement que BDE : lien Administration puis profil, tout en bas, hors du défilement. */}
       {user.isAdmin && (
-        <div className="border-t border-side-line p-3">
+        <div className="px-2.5 pt-1">
           <AdminLink />
         </div>
       )}
+      <div className="border-t border-side-line p-2.5">
+        <Link href="/profil" className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-side-text transition hover:bg-side-hover hover:text-side-strong">
+          {user.avatar ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={user.avatar} alt="" width={26} height={26} className="size-[26px] shrink-0 rounded-full object-cover" />
+          ) : (
+            <span className="grid size-[26px] shrink-0 place-items-center rounded-full bg-accent text-[11px] font-bold text-accent-fg">{initial(user.name)}</span>
+          )}
+          <span className="truncate text-[13.5px]">{firstName(user.name)}</span>
+        </Link>
+      </div>
     </>
   );
 }
