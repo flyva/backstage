@@ -9,10 +9,11 @@ type MenuItem = { href: string; label: string; badge?: number };
 const initials = (name: string) =>
   name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join("") || "?";
 
-// Bouton avatar (initiales) avec menu déroulant — repris tel quel du menu utilisateur de BDE.
+// Bouton avatar (initiales) avec menu déroulant — repris tel quel du menu utilisateur de BDE
+// (mêmes groupes : profil/réglages, puis aide, puis déconnexion).
 export function UserMenu({
-  name, email, footer, canManageTickets = false, ticketsBadge = 0,
-}: { name: string; email: string; footer?: ReactNode; canManageTickets?: boolean; ticketsBadge?: number }) {
+  name, email, footer, canManageTickets = false, ticketsBadge = 0, showAlternance = true,
+}: { name: string; email: string; footer?: ReactNode; canManageTickets?: boolean; ticketsBadge?: number; showAlternance?: boolean }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
 
@@ -27,10 +28,25 @@ export function UserMenu({
 
   const profileItems: MenuItem[] = [
     { href: "/profil", label: "Mon profil" },
-    { href: "/tickets", label: "Mes tickets", badge: ticketsBadge },
     { href: "/parametres", label: "Paramètres" },
-    ...(canManageTickets ? [{ href: "/tickets/gestion", label: "Gestion des tickets" }] : []),
+    { href: "/profil?onglet=confidentialite", label: "Confidentialité & mes données" },
+    ...(showAlternance ? [{ href: "/profil?onglet=alternance", label: "Alternance" }] : []),
   ];
+
+  const aideItems: MenuItem[] = [
+    { href: "/tickets", label: "Mes tickets", badge: ticketsBadge },
+    ...(canManageTickets ? [{ href: "/tickets/gestion", label: "Gestion des tickets" }] : []),
+    { href: "/faq", label: "FAQ" },
+  ];
+
+  const renderItem = ({ href, label, badge }: MenuItem) => (
+    <Link key={href} href={href} role="menuitem" onClick={() => setOpen(false)} className="flex items-center justify-between rounded-md px-3.5 py-[7px] text-[13px] hover:bg-bg">
+      {label}
+      {!!badge && (
+        <span className="shrink-0 rounded-full bg-[#dc3545] px-1.5 text-[10px] font-semibold text-white" aria-label={`${badge} à traiter`}>{badge}</span>
+      )}
+    </Link>
+  );
 
   return (
     <div ref={box} className="relative">
@@ -50,14 +66,9 @@ export function UserMenu({
             <div className="truncate text-[13.5px] font-semibold">{name}</div>
             <div className="truncate text-xs text-muted">{email}</div>
           </div>
-          {profileItems.map(({ href, label, badge }) => (
-            <Link key={href} href={href} role="menuitem" onClick={() => setOpen(false)} className="flex items-center justify-between rounded-md px-3.5 py-[7px] text-[13px] hover:bg-bg">
-              {label}
-              {!!badge && (
-                <span className="shrink-0 rounded-full bg-[#dc3545] px-1.5 text-[10px] font-semibold text-white" aria-label={`${badge} à traiter`}>{badge}</span>
-              )}
-            </Link>
-          ))}
+          {profileItems.map(renderItem)}
+          <div className="my-1 border-t border-line" />
+          {aideItems.map(renderItem)}
           {footer && <div className="my-1 border-t border-line pt-1">{footer}</div>}
           <div className="my-1 border-t border-line" />
           <form action={logout}>
