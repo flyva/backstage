@@ -6,18 +6,6 @@ import { useState } from "react";
 import { ChevronRight, Shield } from "lucide-react";
 import { GROUPS, type Badge, type Item } from "@/lib/nav-data";
 
-// Une couleur par rubrique : casse le monochrome du menu, aide à repérer la section d'un coup d'œil.
-const GROUP_COLOR: Record<string, string> = {
-  quotidien: "#60a5fa",
-  alternance: "#f59e0b",
-  travail: "#34d399",
-  savoirs: "#a78bfa",
-  promo: "#f472b6",
-  vie: "#fb923c",
-  detente: "#22d3ee",
-  ecole: "#94a3b8",
-};
-
 // Six groupes par thème, dépliés UN SEUL à la fois (accordéon) : le menu ne dépasse jamais la hauteur de l'écran, donc il ne défile pas.
 // Le groupe de la page en cours est ouvert ; un clic sur un titre ouvre ce groupe (et referme l'autre).
 // « / » et « /alternance » sont aussi le préfixe d'autres items (Planning a des pages sœurs comme /alternance/carnet) : correspondance exacte pour eux.
@@ -50,16 +38,15 @@ export function Nav({ isAdmin, loanBadge, views, hiddenPages }: { isAdmin: boole
   const folderOpen = (id: string, hasActiveChild: boolean) => (folderChoice && folderChoice.path === pathname ? folderChoice.id === id : hasActiveChild);
   const countOf = (badge?: Badge) => (badge === "loans" ? loanBadge : 0);
 
-  const renderLink = (i: Item, count: number, color: string) => {
+  const renderLink = (i: Item, count: number) => {
     const active = i.href ? isActive(pathname, i.href) : false;
     if (i.variant === "button") {
       return (
         <Link
           href={i.href!}
           aria-current={active ? "page" : undefined}
-          style={active ? { background: color, borderColor: color } : { borderColor: `color-mix(in srgb, ${color} 50%, transparent)`, color }}
-          className={`flex items-center justify-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-            active ? "text-white" : "hover:bg-side-hover"
+          className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
+            active ? "border-accent bg-accent text-accent-fg" : "border-side-line text-side-text hover:bg-side-hover"
           }`}
         >
           <i.icon size={15} />
@@ -71,12 +58,11 @@ export function Nav({ isAdmin, loanBadge, views, hiddenPages }: { isAdmin: boole
       <Link
         href={i.href!}
         aria-current={active ? "page" : undefined}
-        style={active ? { background: `linear-gradient(135deg, ${color}, color-mix(in srgb, ${color} 70%, var(--accent)))`, boxShadow: `0 3px 10px -2px color-mix(in srgb, ${color} 65%, transparent)` } : undefined}
-        className={`flex items-center gap-3 rounded-xl px-3 py-1.5 text-sm font-medium transition ${
-          active ? "text-white" : "text-side-text hover:translate-x-0.5 hover:bg-side-hover hover:text-side-strong"
+        className={`flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13px] transition ${
+          active ? "bg-side-hover font-semibold text-side-strong" : "text-side-text hover:bg-side-hover hover:text-side-strong"
         }`}
       >
-        <i.icon size={18} style={active ? undefined : { color }} className={active ? "" : "opacity-90"} />
+        <i.icon size={15} className="shrink-0 text-side-muted" />
         <span className="flex-1">{i.label}</span>
         {count > 0 && (
           <span className="rounded-full bg-[#dc3545] px-1.5 text-[10px] font-semibold text-white" aria-label={`${count} à traiter`}>{count}</span>
@@ -89,7 +75,7 @@ export function Nav({ isAdmin, loanBadge, views, hiddenPages }: { isAdmin: boole
     <nav className="space-y-0.5" aria-label="Navigation principale">
       {isAdmin && (
         <div className="mb-2 border-b border-side-line pb-2">
-          {renderLink({ href: "/admin", label: "Administration", icon: Shield }, 0, "#ef4444")}
+          {renderLink({ href: "/admin", label: "Administration", icon: Shield }, 0)}
         </div>
       )}
       {GROUPS.map((g) => {
@@ -98,7 +84,6 @@ export function Nav({ isAdmin, loanBadge, views, hiddenPages }: { isAdmin: boole
         if (items.length === 0) return null; // ex. « Travail » sans aucune page de Cours ni rien d'autre d'activé
         const open = openId === g.id;
         const pending = items.reduce((n, i) => n + countOf(i.badge), 0);
-        const color = GROUP_COLOR[g.id] ?? "var(--accent)";
         return (
           <div key={g.id}>
             <button
@@ -106,14 +91,13 @@ export function Nav({ isAdmin, loanBadge, views, hiddenPages }: { isAdmin: boole
               onClick={() => toggle(g.id)}
               aria-expanded={open}
               aria-controls={`nav-${g.id}`}
-              className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-side-muted transition hover:text-side-strong"
+              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-side-muted transition hover:text-side-strong"
             >
-              <span className="size-1.5 shrink-0 rounded-full" style={{ background: color, boxShadow: `0 0 6px ${color}` }} aria-hidden />
-              <ChevronRight size={13} className={`transition-transform ${open ? "rotate-90" : ""}`} aria-hidden />
               <span className="flex-1 text-left">{g.title}</span>
               {!open && pending > 0 && (
                 <span className="rounded-full bg-[#dc3545] px-1.5 text-[10px] font-semibold normal-case tracking-normal text-white" aria-label={`${pending} à traiter`}>{pending}</span>
               )}
+              <ChevronRight size={11} strokeWidth={2.5} className={`transition-transform ${open ? "rotate-90" : ""}`} aria-hidden />
             </button>
             {open && (
               <ul id={`nav-${g.id}`} className="mb-1.5 space-y-0.5">
@@ -132,21 +116,21 @@ export function Nav({ isAdmin, loanBadge, views, hiddenPages }: { isAdmin: boole
                           onClick={() => toggleFolder(folderId, hasActiveChild)}
                           aria-expanded={fOpen}
                           aria-controls={`nav-folder-${folderId}`}
-                          className={`flex w-full items-center gap-3 rounded-xl px-3 py-1.5 text-sm transition ${hasActiveChild && !fOpen ? "text-side-strong" : "text-side-text"} hover:bg-side-hover hover:text-side-strong`}
+                          className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1 text-[13px] transition ${hasActiveChild && !fOpen ? "text-side-strong" : "text-side-text"} hover:bg-side-hover hover:text-side-strong`}
                         >
-                          <i.icon size={18} style={{ color }} className="opacity-90" />
+                          <i.icon size={14} className="shrink-0 text-side-muted" />
                           <span className="flex-1 text-left">{i.label}</span>
-                          <ChevronRight size={14} className={`transition-transform ${fOpen ? "rotate-90" : ""}`} aria-hidden />
+                          <span className={`text-xs transition-transform ${fOpen ? "rotate-90" : ""}`} aria-hidden>›</span>
                         </button>
                         {fOpen && (
-                          <ul id={`nav-folder-${folderId}`} className="ml-4 space-y-0.5 border-l-2 pl-2" style={{ borderColor: `color-mix(in srgb, ${color} 40%, transparent)` }}>
-                            {kids.map((c) => <li key={c.href}>{renderLink(c, countOf(c.badge), color)}</li>)}
+                          <ul id={`nav-folder-${folderId}`} className="ml-4 space-y-0.5 border-l border-side-line pl-2">
+                            {kids.map((c) => <li key={c.href}>{renderLink(c, countOf(c.badge))}</li>)}
                           </ul>
                         )}
                       </li>
                     );
                   }
-                  return <li key={i.href}>{renderLink(i, count, color)}</li>;
+                  return <li key={i.href}>{renderLink(i, count)}</li>;
                 })}
               </ul>
             )}
