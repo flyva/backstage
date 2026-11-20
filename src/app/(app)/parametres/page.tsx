@@ -8,8 +8,8 @@ export const metadata = { title: "Personnalisation" };
 export default async function PersonalizationPage() {
   await requireUser();
   const jar = await cookies();
-  // Le skin affiché est celui des cookies (comme <html>) : le réglage montre exactement ce qui est appliqué.
-  const skin = skinFrom({ theme: jar.get("theme")?.value, accent: jar.get("accent")?.value, sidebar: jar.get("sidebar")?.value, background: jar.get("background")?.value });
+  // Le thème affiché est celui des cookies (comme <html>) : le réglage montre exactement ce qui est appliqué.
+  const skin = skinFrom({ theme: jar.get("theme")?.value });
 
   return (
     <div className="space-y-5">

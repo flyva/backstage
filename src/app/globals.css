@@ -1,77 +1,40 @@
 @import "tailwindcss";
 
-/* Jetons de couleur — style « Mix » : menu ardoise façon AdminLTE, cartes arrondies façon TailAdmin.
-   Clair (blanc) par défaut ; sombre via .dark. La couleur d'accent (data-accent) et la couleur du menu
-   (data-sidebar) sont choisies par chaque personne dans le panneau de droite. */
+/* Jetons de couleur — thème repris de BDE (bleu, menu ardoise foncé). Clair par défaut ; sombre via .dark. */
 :root {
-  --bg: #f3f5f8;
+  --bg: #f4f6f9;
   --surface: #ffffff;
-  --border: #e3e7ee;
-  --fg: #1d2530;
-  --muted: #667085;
+  --border: #dee2e6;
+  --fg: #1f2937;
+  --muted: #5a6169;
   --danger: #dc2626;
-  --accent: #b45309;
+  --accent: #1d4ed8;
   --accent-fg: #ffffff;
-  /* Menu latéral (sombre par défaut, y compris en thème clair) */
-  --side: #2f353b;
+  --side: #1f2733;
   --side-text: #c2c7d0;
-  --side-muted: #8b949e;
-  --side-hover: rgba(255, 255, 255, 0.07);
-  --side-line: rgba(255, 255, 255, 0.1);
+  --side-muted: #9aa4b2;
+  --side-hover: rgba(255, 255, 255, 0.08);
+  --side-line: #2a3441;
   --side-strong: #ffffff;
   color-scheme: light;
 }
-:root[data-accent="bleu"] { --accent: #0069d9; }
-:root[data-accent="indigo"] { --accent: #4f46e5; }
-:root[data-accent="vert"] { --accent: #047857; }
-:root[data-accent="rose"] { --accent: #be185d; }
-:root[data-accent="blanc"] { --accent: #111111; --accent-fg: #ffffff; }
-:root[data-accent="noir"] { --accent: #e5e7eb; --accent-fg: #111111; }
-
-/* Teinte de fond (option du panneau de personnalisation) */
-:root[data-bg="chaud"] { --bg: #f7f3ee; --surface: #fffdfa; }
-:root[data-bg="froid"] { --bg: #eef2f7; --surface: #ffffff; }
-:root[data-bg="vert"] { --bg: #f1f5ee; --surface: #fcfefb; }
 
 :root.dark {
-  --bg: #1f2428;
-  --surface: #2b3035;
-  --border: #3b4249;
-  --fg: #eef0f3;
-  --muted: #9aa3ad;
+  --bg: #14171b;
+  --surface: #1e2228;
+  --border: #2c313a;
+  --fg: #e7e9ec;
+  --muted: #9aa1a9;
   --danger: #f87171;
-  --accent: #f59e0b;
-  --accent-fg: #1a1204;
-  --side: #262b30;
-  color-scheme: dark;
-}
-:root.dark[data-accent="bleu"] { --accent: #4da3ff; --accent-fg: #06121f; }
-:root.dark[data-accent="indigo"] { --accent: #8b93ff; --accent-fg: #0d0f2b; }
-:root.dark[data-accent="vert"] { --accent: #34d399; --accent-fg: #04140d; }
-:root.dark[data-accent="rose"] { --accent: #f472b6; --accent-fg: #1f0511; }
-:root.dark[data-accent="blanc"] { --accent: #ffffff; --accent-fg: #111111; }
-:root.dark[data-accent="noir"] { --accent: #000000; --accent-fg: #ffffff; }
-
-:root.dark[data-bg="chaud"] { --bg: #221f1a; --surface: #2d2a24; }
-:root.dark[data-bg="froid"] { --bg: #1b2027; --surface: #252b33; }
-:root.dark[data-bg="vert"] { --bg: #1d211c; --surface: #272d24; }
-
-/* Menu blanc (option « Blanc » du panneau de personnalisation) */
-:root[data-sidebar="light"] {
-  --side: #ffffff;
-  --side-text: #344054;
-  --side-muted: #98a2b3;
-  --side-hover: rgba(16, 24, 40, 0.05);
-  --side-line: #e3e7ee;
-  --side-strong: #101828;
-}
-:root.dark[data-sidebar="light"] {
-  --side: #2b3035;
-  --side-text: #d0d5dd;
-  --side-muted: #98a2b3;
-  --side-hover: rgba(255, 255, 255, 0.06);
-  --side-line: #3b4249;
+  --accent: #3b82f6;
+  --accent-fg: #ffffff;
+  --side: #121519;
+  --side-text: #c2c7d0;
+  --side-muted: #9aa4b2;
+  --side-hover: rgba(255, 255, 255, 0.08);
+  --side-line: #232b35;
   --side-strong: #ffffff;
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -93,7 +56,7 @@
 }
 
 @media print {
-  :root, :root.dark { --bg: #fff; --surface: #fff; --border: #ccc; --fg: #000; --muted: #444; --accent: #b45309; color-scheme: light; }
+  :root, :root.dark { --bg: #fff; --surface: #fff; --border: #ccc; --fg: #000; --muted: #444; --accent: #1d4ed8; color-scheme: light; }
   body { background: #fff; }
 }
 
@@ -104,7 +67,7 @@ html, body { max-width: 100%; overflow-x: clip; }
 body {
   background: var(--bg);
   color: var(--fg);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
 }
 
 /* Barre de défilement fine et discrète (menu latéral, menu du wiki) : invisible au repos, visible au survol. */
@@ -125,32 +88,21 @@ body {
 /* Cases à cocher et boutons radio natifs : couleur d'accent du thème. */
 input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
 
-/* Accent « noir » : la couleur d'accent se confond avec le fond (noir sur noir en sombre, gris clair sur blanc en clair).
-   Les textes et bordures d'accent reprennent la couleur du texte, et les boutons pleins reçoivent un contour. */
-:root[data-accent="noir"] .text-accent,
-:root[data-accent="noir"] .prose-wiki a { color: var(--fg); }
-:root[data-accent="noir"] .border-accent,
-:root[data-accent="noir"] .border-l-accent { border-color: color-mix(in srgb, var(--fg) 55%, transparent); }
-:root[data-accent="noir"] .btn { border: 1px solid color-mix(in srgb, var(--fg) 45%, transparent); }
-:root[data-accent="noir"] .bg-accent\/5,
-:root[data-accent="noir"] .bg-accent\/10,
-:root[data-accent="noir"] .bg-accent\/15 { background-color: color-mix(in srgb, var(--fg) 10%, transparent); }
-
 @layer components {
   .card {
-    @apply rounded-2xl border border-line bg-surface p-5 shadow-[0_1px_2px_rgba(16,24,40,0.05),0_8px_20px_-12px_rgba(16,24,40,0.12)] transition-shadow duration-200;
+    @apply rounded-lg border border-line bg-surface p-5 shadow-[0_1px_1px_rgba(16,24,40,0.08)] transition-shadow duration-200;
   }
   a.card:hover, button.card:hover {
-    @apply shadow-[0_2px_4px_rgba(16,24,40,0.06),0_14px_28px_-12px_rgba(16,24,40,0.18)];
+    @apply shadow-[0_2px_4px_rgba(16,24,40,0.1)];
   }
   .input {
-    @apply w-full rounded-xl border border-line bg-bg px-3 py-2 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/30;
+    @apply w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/30;
   }
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2 text-sm font-medium text-accent-fg shadow-[0_1px_2px_rgba(16,24,40,0.05),0_4px_10px_-4px_color-mix(in_srgb,var(--accent)_55%,transparent)] transition hover:-translate-y-px hover:opacity-90 hover:shadow-[0_2px_4px_rgba(16,24,40,0.06),0_8px_16px_-4px_color-mix(in_srgb,var(--accent)_60%,transparent)] active:translate-y-0 disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-fg shadow-[0_1px_2px_rgba(16,24,40,0.05)] transition hover:opacity-90 active:translate-y-0 disabled:translate-y-0 disabled:opacity-50 disabled:shadow-none;
   }
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-line px-3 py-2 text-sm transition hover:border-accent/40 hover:bg-bg;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-line px-3 py-2 text-sm transition hover:border-accent/40 hover:bg-bg;
   }
   .prose-wiki { @apply text-sm leading-relaxed; }
   .prose-wiki > * + * { @apply mt-3; }
