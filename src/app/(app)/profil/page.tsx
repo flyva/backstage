@@ -1,7 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import Link from "next/link";
 import { and, asc, eq, ne } from "drizzle-orm";
-import { Download } from "lucide-react";
+import { CircleHelp, Download, LifeBuoy, Shield } from "lucide-react";
 import QRCode from "qrcode";
 import { db } from "@/db";
 import { agendaViewers, classes, tracks, userLinks, users } from "@/db/schema";
@@ -22,6 +22,8 @@ const TABS = [
   { id: "reseaux", label: "Réseaux", short: "Réseaux" },
   { id: "alternance", label: "Alternance", short: "Alt." },
   { id: "partage", label: "Carte et calendrier", short: "Carte" },
+  { id: "confidentialite", label: "Confidentialité", short: "Confid." },
+  { id: "aide", label: "Aide", short: "Aide" },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
 
@@ -77,17 +79,6 @@ export default async function ProfilPage({ searchParams }: PageProps<"/profil">)
               Ce lien donne accès à ton planning : ne le partage pas. Backstage l&apos;utilisera pour ton agenda.
             </p>
           </div>
-          <div className="card space-y-2">
-            <h2 className="font-semibold">Mes données</h2>
-            <p className="text-sm text-muted">Télécharge un fichier avec tes données personnelles : profil, journal de bord, pointeuse, messages envoyés, avis, notes de frais.</p>
-            <a href="/api/rgpd/export" className="btn-ghost w-fit"><Download size={15} aria-hidden /> Exporter mes données</a>
-            <p className="text-xs text-muted"><Link href="/cgu" className="underline">CGU</Link> · <Link href="/mentions-legales" className="underline">Mentions légales</Link></p>
-          </div>
-          <div className="card space-y-2 border-danger">
-            <h2 className="font-semibold">Supprimer mon compte</h2>
-            <p className="text-sm text-muted">Efface définitivement ton compte et tes données. Impossible si tu as créé du contenu partagé (projets, annonces, articles, prêts…) : demande à un administrateur de désactiver ton compte à la place.</p>
-            <DeleteMyAccountForm email={user.email} />
-          </div>
           </div>
         </div>
       )}
@@ -96,6 +87,8 @@ export default async function ProfilPage({ searchParams }: PageProps<"/profil">)
       {tab === "reseaux" && <NetworksTab userId={user.id} />}
       {tab === "alternance" && <AlternanceTab user={user} />}
       {tab === "partage" && <ShareTab user={user} />}
+      {tab === "confidentialite" && <ConfidentialiteTab email={user.email} />}
+      {tab === "aide" && <AideTab />}
     </div>
   );
 }
@@ -212,6 +205,43 @@ async function ShareTab({ user }: { user: User }) {
       <div className="card space-y-3">
         <h2 className="font-semibold">Mon calendrier Backstage (abonnement)</h2>
         <FeedPanel enabled={!!user.feedToken} httpsUrl={feedUrl} />
+      </div>
+    </div>
+  );
+}
+
+function ConfidentialiteTab({ email }: { email: string }) {
+  return (
+    <div className="max-w-xl space-y-4">
+      <div className="card space-y-2">
+        <h2 className="flex items-center gap-2 font-semibold"><Shield size={16} className="text-accent" aria-hidden /> Exporter mes données</h2>
+        <p className="text-sm text-muted">Télécharge un fichier avec tes données personnelles : profil, journal de bord, pointeuse, messages envoyés, avis, notes de frais.</p>
+        <a href="/api/rgpd/export" className="btn-ghost w-fit"><Download size={15} aria-hidden /> Exporter mes données</a>
+      </div>
+      <div className="card space-y-2 border-danger">
+        <h2 className="font-semibold">Supprimer mon compte</h2>
+        <p className="text-sm text-muted">Efface définitivement ton compte et tes données. Impossible si tu as créé du contenu partagé (projets, annonces, articles, prêts…) : demande à un administrateur de désactiver ton compte à la place.</p>
+        <DeleteMyAccountForm email={email} />
+      </div>
+      <p className="text-xs text-muted">
+        <Link href="/politique-de-confidentialite" className="underline">Politique de confidentialité</Link> · <Link href="/cgu" className="underline">CGU</Link> · <Link href="/mentions-legales" className="underline">Mentions légales</Link>
+      </p>
+    </div>
+  );
+}
+
+function AideTab() {
+  return (
+    <div className="max-w-xl space-y-4">
+      <div className="card space-y-2">
+        <h2 className="flex items-center gap-2 font-semibold"><LifeBuoy size={16} className="text-accent" aria-hidden /> Support / Tickets</h2>
+        <p className="text-sm text-muted">Crée un ticket ou consulte l&apos;avancement de tes demandes auprès de l&apos;équipe.</p>
+        <Link href="/tickets" className="btn-ghost w-fit">Voir mes tickets</Link>
+      </div>
+      <div className="card space-y-2">
+        <h2 className="flex items-center gap-2 font-semibold"><CircleHelp size={16} className="text-accent" aria-hidden /> FAQ</h2>
+        <p className="text-sm text-muted">Questions fréquentes sur l&apos;appli et les services de la promo.</p>
+        <Link href="/faq" className="btn-ghost w-fit">Consulter la FAQ</Link>
       </div>
     </div>
   );
