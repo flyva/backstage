@@ -76,11 +76,6 @@ export function Nav({ isAdmin, loanBadge, views, hiddenPages }: { isAdmin: boole
 
   return (
     <nav className="space-y-0.5" aria-label="Navigation principale">
-      {isAdmin && (
-        <div className="mb-2 border-b border-side-line pb-2">
-          {renderLink({ href: "/admin", label: "Administration", icon: Shield }, 0)}
-        </div>
-      )}
       {pinned && (
         <div className="mb-2 space-y-0.5 border-b border-side-line pb-2">
           {pinned.items.filter((i) => itemRendersSomething(i, isAdmin, views, hidden)).map((i) => (
@@ -148,5 +143,23 @@ export function Nav({ isAdmin, loanBadge, views, hiddenPages }: { isAdmin: boole
         );
       })}
     </nav>
+  );
+}
+
+// Placé hors du menu déroulant, juste au-dessus du profil — même emplacement que le lien Administration de BDE.
+export function AdminLink() {
+  const pathname = usePathname();
+  const active = isActive(pathname, "/admin");
+  return (
+    <Link
+      href="/admin"
+      aria-current={active ? "page" : undefined}
+      className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider transition ${
+        active ? "bg-side-hover text-side-strong" : "text-side-muted hover:bg-side-hover hover:text-side-strong"
+      }`}
+    >
+      <Shield size={13} className="shrink-0" />
+      Administration
+    </Link>
   );
 }

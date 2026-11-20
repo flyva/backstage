@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Nav } from "@/components/Nav";
+import { AdminLink, Nav } from "@/components/Nav";
 
 
 const initials = (name: string) =>
@@ -32,6 +32,13 @@ export function Sidebar({ user, loanBadge }: { user: { name: string; email: stri
       <div className="no-scrollbar flex-1 overflow-y-auto p-3">
         <Nav isAdmin={user.isAdmin} views={user.views} hiddenPages={user.hiddenPages} loanBadge={loanBadge} />
       </div>
+
+      {/* Même emplacement que BDE : juste au-dessus du bas du menu, hors du défilement. */}
+      {user.isAdmin && (
+        <div className="border-t border-side-line p-3">
+          <AdminLink />
+        </div>
+      )}
     </>
   );
 }
