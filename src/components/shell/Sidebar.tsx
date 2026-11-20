@@ -4,7 +4,7 @@ import { AdminLink, Nav } from "@/components/Nav";
 const initial = (name: string) => (name.trim()[0] ?? "?").toUpperCase();
 const firstName = (name: string) => name.trim().split(/\s+/)[0] ?? name;
 
-export function Sidebar({ user, loanBadge }: { user: { name: string; email: string; roleName: string; isAdmin: boolean; views: Record<string, boolean>; hiddenPages: string[]; avatar?: string | null }; loanBadge: number }) {
+export function Sidebar({ user, loanBadge }: { user: { name: string; email: string; roleName: string; isAdmin: boolean; isAlternant: boolean; views: Record<string, boolean>; hiddenPages: string[]; avatar?: string | null }; loanBadge: number }) {
   return (
     <>
       {/* En-tête : logo + nom, comme chez BDE. */}
@@ -14,7 +14,7 @@ export function Sidebar({ user, loanBadge }: { user: { name: string; email: stri
       </Link>
 
       <div className="no-scrollbar flex-1 overflow-y-auto px-2.5">
-        <Nav isAdmin={user.isAdmin} views={user.views} hiddenPages={user.hiddenPages} loanBadge={loanBadge} />
+        <Nav isAdmin={user.isAdmin} views={user.views} hiddenPages={user.hiddenPages} loanBadge={loanBadge} isAlternant={user.isAlternant} />
       </div>
 
       {/* Même emplacement que BDE : lien Administration puis profil, tout en bas, hors du défilement. */}

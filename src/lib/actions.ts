@@ -159,9 +159,6 @@ const profileSchema = z.object({
   homeAddress: z.string().trim().max(255),
   companyName: z.string().trim().max(120),
   companyAddress: z.string().trim().max(255),
-  icalUrl: z
-    .string().trim().max(1000)
-    .refine((v) => v === "" || /^(https?|webcal):\/\//i.test(v), "Le lien doit commencer par https://"),
 });
 
 export async function updateProfile(_: FormState, fd: FormData): Promise<FormState> {
@@ -172,10 +169,9 @@ export async function updateProfile(_: FormState, fd: FormData): Promise<FormSta
     homeAddress: fd.get("homeAddress") ?? "",
     companyName: fd.get("companyName") ?? "",
     companyAddress: fd.get("companyAddress") ?? "",
-    icalUrl: fd.get("icalUrl") ?? "",
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
-  const { homeAddress, companyName, companyAddress, icalUrl } = parsed.data;
+  const { homeAddress, companyName, companyAddress } = parsed.data;
   const firstName = parsed.data.firstName.replace(/\s+/g, " ");
   const lastName = parsed.data.lastName.replace(/\s+/g, " ");
   let place = null;
@@ -188,15 +184,6 @@ export async function updateProfile(_: FormState, fd: FormData): Promise<FormSta
     company = await geocode(companyAddress);
     if (!company) return { error: "Adresse de l'entreprise introuvable : essaie avec numéro, rue et ville" };
   }
-  // On vérifie que le lien iCal est bien lisible avant de l'enregistrer.
-  const ical = icalUrl ? icalUrl.replace(/^webcal:/i, "https:") : "";
-  if (ical) {
-    try {
-      await fetchIcal(ical, { force: true });
-    } catch (e) {
-      return { error: `Lien iCalendar inutilisable : ${e instanceof Error ? e.message : "erreur inconnue"}` };
-    }
-  }
   await db.update(users).set({
     firstName,
     lastName,
@@ -208,11 +195,32 @@ export async function updateProfile(_: FormState, fd: FormData): Promise<FormSta
     companyAddress: company?.label ?? null,
     companyLat: company?.lat ?? null,
     companyLng: company?.lng ?? null,
-    icalUrl: ical || null,
     onboarded: true,
   }).where(eq(users.id, user.id));
   revalidatePath("/", "layout");
   return { ok: "Profil enregistré" };
+}
+
+const icalSchema = z
+  .string().trim().max(1000)
+  .refine((v) => v === "" || /^(https?|webcal):\/\//i.test(v), "Le lien doit commencer par https://");
+
+/** Onglet Agenda du profil : juste le lien iCalendar, vérifié avant d'être enregistré. */
+export async function updateIcalUrl(_: FormState, fd: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const parsed = icalSchema.safeParse(fd.get("icalUrl") ?? "");
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const ical = parsed.data ? parsed.data.replace(/^webcal:/i, "https:") : "";
+  if (ical) {
+    try {
+      await fetchIcal(ical, { force: true });
+    } catch (e) {
+      return { error: `Lien iCalendar inutilisable : ${e instanceof Error ? e.message : "erreur inconnue"}` };
+    }
+  }
+  await db.update(users).set({ icalUrl: ical || null }).where(eq(users.id, user.id));
+  revalidatePath("/", "layout");
+  return { ok: "Lien iCalendar enregistré" };
 }
 
 /** Message d'une personne en attente de validation : il s'affiche à l'administrateur avec sa demande. */

@@ -12,8 +12,8 @@ const initials = (name: string) =>
 // Bouton avatar (initiales) avec menu déroulant — repris tel quel du menu utilisateur de BDE
 // (mêmes groupes : profil/réglages, puis aide, puis déconnexion).
 export function UserMenu({
-  name, email, footer, canManageTickets = false, ticketsBadge = 0, showAlternance = true,
-}: { name: string; email: string; footer?: ReactNode; canManageTickets?: boolean; ticketsBadge?: number; showAlternance?: boolean }) {
+  name, email, footer, canManageTickets = false, ticketsBadge = 0, showAlternance = true, isAlternant = true,
+}: { name: string; email: string; footer?: ReactNode; canManageTickets?: boolean; ticketsBadge?: number; showAlternance?: boolean; isAlternant?: boolean }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
 
@@ -30,7 +30,7 @@ export function UserMenu({
     { href: "/profil", label: "Mon profil" },
     { href: "/parametres", label: "Paramètres" },
     { href: "/profil?onglet=confidentialite", label: "Confidentialité & mes données" },
-    ...(showAlternance ? [{ href: "/profil?onglet=alternance", label: "Alternance" }] : []),
+    ...(showAlternance ? [{ href: "/profil?onglet=alternance", label: isAlternant ? "Alternance" : "Stage" }] : []),
   ];
 
   const aideItems: MenuItem[] = [

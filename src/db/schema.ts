@@ -139,6 +139,10 @@ export const users = mysqlTable("users", {
   discord: varchar("discord", { length: 40 }), // pseudo Discord : visible dans l'annuaire dès qu'il est renseigné
   cardShowDiscord: boolean("card_show_discord").notNull().default(false), // pseudo Discord visible sur la carte de visite (publique)
   habilitation: varchar("habilitation", { length: 12 }), // symbole d'habilitation électrique (B0, BS, B1V…) : visible dans l'annuaire dès qu'il est renseigné
+  // Statut étudiant : « alternant » (contrat en entreprise) ou « initial » (formation classique, éventuellement avec un stage).
+  // Change le libellé « Alternance »/« Stage » dans le menu et sur l'onglet du profil. Alternant par défaut : c'est le
+  // profil historique de Backstage, pour ne rien changer aux comptes existants.
+  studentStatus: mysqlEnum("student_status", ["initial", "alternant"]).notNull().default("alternant"),
   cardShowSchool: boolean("card_show_school").notNull().default(false), // lien vers le site de l'école (3iS Bègles) sur la carte de visite
   cardSlug: varchar("card_slug", { length: 16 }).unique(), // adresse publique non devinable de la carte
   cardEnabled: boolean("card_enabled").notNull().default(false),

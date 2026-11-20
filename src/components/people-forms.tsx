@@ -8,7 +8,7 @@ import { Toggle } from "@/components/Toggle";
 import { LINK_KINDS, type LinkKind } from "@/db/schema";
 import { HABILITATION_SYMBOLS, LINK_LABEL, initialsOf } from "@/lib/people-shared";
 import {
-  addLink, deleteLink, deleteMyAccount, regenerateCardSlug, removeAvatar, saveClass, saveCompanyProfile, saveFiche, saveNetworkContact, saveTrack, setCardEnabled, uploadAvatar,
+  addLink, deleteLink, deleteMyAccount, regenerateCardSlug, removeAvatar, saveAnnuaire, saveCardVisibility, saveClass, saveCompanyProfile, saveNetworkContact, saveTrack, setCardEnabled, uploadAvatar,
   deleteClass, deleteNetworkContact, deleteTrack, setFeedEnabled, regenerateFeedToken,
 } from "@/lib/people-actions";
 
@@ -122,14 +122,14 @@ export function CompanyProfileForm({ firstName, lastName, companyName, headline 
 
 // ---------- Fiche ----------
 
-export function FicheForm(props: {
+export function AnnuaireForm(props: {
   tracks: { id: number; name: string }[]; trackId: number | null;
   classes: { id: number; name: string }[]; classId: number | null;
   headline: string; phone: string; contactEmail: string;
-  showInDirectory: boolean; showPhone: boolean; cardShowPhone: boolean; discord: string; cardShowDiscord: boolean; cardShowSchool: boolean; showCompany: boolean; companyName: string; loginEmail: string;
+  showInDirectory: boolean; showPhone: boolean; discord: string; showCompany: boolean; companyName: string; loginEmail: string;
   habilitation: string;
 }) {
-  const [state, action, pending] = useActionState(saveFiche, undefined);
+  const [state, action, pending] = useActionState(saveAnnuaire, undefined);
   return (
     <form action={action} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
@@ -185,17 +185,27 @@ export function FicheForm(props: {
           hint={props.companyName ? <>Seul le nom est montré : « {props.companyName} ». L&apos;adresse reste privée.</> : "Renseigne d'abord « Entreprise d'alternance » dans les informations de ton profil, plus haut."}
         />
       </fieldset>
-      <fieldset className="space-y-2">
-        <legend className="mb-1 text-sm font-semibold">Sur ma carte de visite publique</legend>
-        <Toggle name="cardShowPhone" defaultChecked={props.cardShowPhone} title="Afficher mon téléphone" />
-        <Toggle name="cardShowDiscord" defaultChecked={props.cardShowDiscord} title="Afficher mon Discord" hint="Il figure toujours dans l'annuaire : cette case ne concerne que la carte partageable." />
-        <Toggle name="cardShowSchool" defaultChecked={props.cardShowSchool} title="Afficher l'école (3iS Bègles)" hint="Un bouton vers le site de l'école sur ta carte." />
-      </fieldset>
       <p className="text-xs text-muted">
         L&apos;annuaire montre ton adresse <strong className="text-fg">{props.loginEmail}</strong> seulement si elle se termine par @3is.fr. Il est réservé aux personnes connectées à Backstage.
       </p>
       <Feedback state={state} />
       <button className="btn" disabled={pending}>{pending ? "Enregistrement…" : "Enregistrer ma fiche"}</button>
+    </form>
+  );
+}
+
+export function CardVisibilityForm({ cardShowPhone, cardShowDiscord, cardShowSchool }: { cardShowPhone: boolean; cardShowDiscord: boolean; cardShowSchool: boolean }) {
+  const [state, action, pending] = useActionState(saveCardVisibility, undefined);
+  return (
+    <form action={action} className="space-y-3">
+      <fieldset className="space-y-2">
+        <legend className="mb-1 text-sm font-semibold">Sur ma carte de visite publique</legend>
+        <Toggle name="cardShowPhone" defaultChecked={cardShowPhone} title="Afficher mon téléphone" />
+        <Toggle name="cardShowDiscord" defaultChecked={cardShowDiscord} title="Afficher mon Discord" hint="Il figure toujours dans l'annuaire : cette case ne concerne que la carte partageable." />
+        <Toggle name="cardShowSchool" defaultChecked={cardShowSchool} title="Afficher l'école (3iS Bègles)" hint="Un bouton vers le site de l'école sur ta carte." />
+      </fieldset>
+      <Feedback state={state} />
+      <button className="btn" disabled={pending}>{pending ? "Enregistrement…" : "Enregistrer"}</button>
     </form>
   );
 }

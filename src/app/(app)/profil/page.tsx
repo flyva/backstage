@@ -5,23 +5,32 @@ import { CircleHelp, Download, LifeBuoy, Shield } from "lucide-react";
 import QRCode from "qrcode";
 import { db } from "@/db";
 import { agendaViewers, classes, tracks, userLinks, users } from "@/db/schema";
-import { ProfileForm } from "@/components/forms";
-import { AvatarForm, CardPanel, CompanyProfileForm, DeleteMyAccountForm, FeedPanel, FicheForm, LinksEditor } from "@/components/people-forms";
+import { IcalForm, ProfileForm } from "@/components/forms";
+import { AnnuaireForm, AvatarForm, CardPanel, CardVisibilityForm, CompanyProfileForm, DeleteMyAccountForm, FeedPanel, LinksEditor } from "@/components/people-forms";
 import { TimeSettingsForm } from "@/components/time-forms";
 import { RestoSettingsForm } from "@/components/alternance-forms";
+import { SkinControls } from "@/components/shell/SkinControls";
+import { NotificationSettings } from "@/components/NotificationSettings";
+import { setStudentStatus } from "@/lib/people-actions";
+import { skinFrom } from "@/lib/skin";
+import { pushEnabled, vapidPublicKey } from "@/lib/push";
 import { avatarUrl } from "@/lib/avatar-files";
 import { absoluteUrl } from "@/lib/base-url";
 
 export const metadata = { title: "Profil" };
 
-// Cinq onglets : la page était une longue suite de cartes. L'onglet se choisit par l'adresse (?onglet=…), sans JavaScript.
-// « short » : libellé court pour les téléphones, afin que les onglets tiennent sans faire défiler la barre.
+// Mêmes rubriques que le menu profil de BDE (Profil, Annuaire, Carte de visite, Apparence, Notifications, Agenda),
+// plus Réseaux, Alternance/Stage, Confidentialité et Aide, propres à Backstage. L'onglet se choisit par l'adresse
+// (?onglet=…), sans JavaScript. « short » : libellé court pour les téléphones.
 const TABS = [
-  { id: "general", label: "Général", short: "Général" },
-  { id: "fiche", label: "Photo et fiche", short: "Fiche" },
+  { id: "general", label: "Profil", short: "Profil" },
+  { id: "annuaire", label: "Annuaire", short: "Annuaire" },
+  { id: "carte", label: "Carte de visite", short: "Carte" },
+  { id: "apparence", label: "Apparence", short: "Appar." },
+  { id: "notifications", label: "Notifications", short: "Notifs" },
+  { id: "agenda", label: "Agenda", short: "Agenda" },
   { id: "reseaux", label: "Réseaux", short: "Réseaux" },
   { id: "alternance", label: "Alternance", short: "Alt." },
-  { id: "partage", label: "Carte et calendrier", short: "Carte" },
   { id: "confidentialite", label: "Confidentialité", short: "Confid." },
   { id: "aide", label: "Aide", short: "Aide" },
 ] as const;
@@ -33,6 +42,9 @@ export default async function ProfilPage({ searchParams }: PageProps<"/profil">)
   const sp = await searchParams;
   const welcome = sp.bienvenue;
   const tab: TabId = TABS.some((t) => t.id === sp.onglet) ? (sp.onglet as TabId) : "general";
+  const isAlternant = user.studentStatus === "alternant";
+
+  const tabs = TABS.map((t) => (t.id === "alternance" ? { ...t, label: isAlternant ? "Alternance" : "Stage" } : t));
 
   return (
     <div className="space-y-5">
@@ -44,7 +56,7 @@ export default async function ProfilPage({ searchParams }: PageProps<"/profil">)
       )}
 
       <nav className="flex flex-wrap gap-x-1 border-b border-line" aria-label="Sections du profil">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <Link
             key={t.id}
             href={t.id === "general" ? "/profil" : `/profil?onglet=${t.id}`}
@@ -58,35 +70,24 @@ export default async function ProfilPage({ searchParams }: PageProps<"/profil">)
       </nav>
 
       {tab === "general" && (
-        <div className="grid items-start gap-5 xl:grid-cols-2">
-          <div className="card">
-            <ProfileForm firstName={user.firstName} lastName={user.lastName} homeAddress={user.homeAddress ?? ""} companyName={user.companyName ?? ""} companyAddress={user.companyAddress ?? ""} icalUrl={user.icalUrl ?? ""} />
+        <div className="grid items-start gap-5 lg:grid-cols-[14rem_1fr]">
+          <div className="card space-y-3">
+            <h2 className="font-semibold">Ma photo</h2>
+            <AvatarForm name={user.name} url={avatarUrl(user.avatarFile)} />
           </div>
-          <div className="space-y-5">
-          <p className="text-sm text-muted">
-            Thème, couleurs, notifications et mot de passe : <Link href="/parametres" className="text-accent underline">Paramètres</Link>.
-          </p>
           <div className="card">
-            <h2 className="mb-2 font-semibold">Comment obtenir mon lien iCalendar Ypareo ?</h2>
-            <ol className="list-inside list-decimal space-y-1 text-sm text-muted">
-              <li>Connecte-toi à Ypareo.</li>
-              <li>Ouvre <strong className="text-fg">Planning</strong>.</li>
-              <li>Clique sur <strong className="text-fg">Action</strong>.</li>
-              <li>Choisis <strong className="text-fg">Export au format iCalendar</strong>.</li>
-              <li>Copie le lien généré et colle-le dans le champ ci-dessus.</li>
-            </ol>
-            <p className="mt-3 text-xs text-muted">
-              Ce lien donne accès à ton planning : ne le partage pas. Backstage l&apos;utilisera pour ton agenda.
-            </p>
-          </div>
+            <ProfileForm firstName={user.firstName} lastName={user.lastName} homeAddress={user.homeAddress ?? ""} companyName={user.companyName ?? ""} companyAddress={user.companyAddress ?? ""} />
           </div>
         </div>
       )}
 
-      {tab === "fiche" && <FicheTab user={user} />}
+      {tab === "annuaire" && <AnnuaireTab user={user} />}
+      {tab === "carte" && <CarteTab user={user} />}
+      {tab === "apparence" && <ApparenceTab user={user} />}
+      {tab === "notifications" && <NotificationsTab user={user} />}
+      {tab === "agenda" && <AgendaTab user={user} />}
       {tab === "reseaux" && <NetworksTab userId={user.id} />}
-      {tab === "alternance" && <AlternanceTab user={user} />}
-      {tab === "partage" && <ShareTab user={user} />}
+      {tab === "alternance" && <AlternanceTab user={user} isAlternant={isAlternant} />}
       {tab === "confidentialite" && <ConfidentialiteTab email={user.email} />}
       {tab === "aide" && <AideTab />}
     </div>
@@ -128,26 +129,20 @@ function CompanyProfilePage({ user }: { user: User }) {
   );
 }
 
-async function FicheTab({ user }: { user: User }) {
+async function AnnuaireTab({ user }: { user: User }) {
   const allTracks = await db.select().from(tracks).orderBy(asc(tracks.sortOrder), asc(tracks.name));
   const allClasses = await db.select().from(classes).orderBy(asc(classes.sortOrder), asc(classes.name));
   return (
-    <div className="grid items-start gap-5 lg:grid-cols-[20rem_1fr]">
-      <div className="card space-y-3">
-        <h2 className="font-semibold">Ma photo</h2>
-        <AvatarForm name={user.name} url={avatarUrl(user.avatarFile)} />
+    <div className="card max-w-2xl space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-semibold">Mon annuaire de la promo</h2>
+        <Link href={`/annuaire/${user.id}`} className="btn-ghost text-xs">Voir ma fiche comme les autres</Link>
       </div>
-      <div className="card space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="font-semibold">Ma fiche (annuaire de la promo)</h2>
-          <Link href={`/annuaire/${user.id}`} className="btn-ghost text-xs">Voir ma fiche comme les autres</Link>
-        </div>
-        <FicheForm
-          tracks={allTracks.map((t) => ({ id: t.id, name: t.name }))} trackId={user.trackId}
-          classes={allClasses.map((c) => ({ id: c.id, name: c.name }))} classId={user.classId} headline={user.headline ?? ""} phone={user.phone ?? ""}
-          contactEmail={user.contactEmail ?? ""} showInDirectory={user.showInDirectory} showPhone={user.showPhone} cardShowPhone={user.cardShowPhone} discord={user.discord ?? ""} cardShowDiscord={user.cardShowDiscord} cardShowSchool={user.cardShowSchool} showCompany={user.showCompany} companyName={user.companyName ?? ""} loginEmail={user.email} habilitation={user.habilitation ?? ""}
-        />
-      </div>
+      <AnnuaireForm
+        tracks={allTracks.map((t) => ({ id: t.id, name: t.name }))} trackId={user.trackId}
+        classes={allClasses.map((c) => ({ id: c.id, name: c.name }))} classId={user.classId} headline={user.headline ?? ""} phone={user.phone ?? ""}
+        contactEmail={user.contactEmail ?? ""} showInDirectory={user.showInDirectory} showPhone={user.showPhone} discord={user.discord ?? ""} showCompany={user.showCompany} companyName={user.companyName ?? ""} loginEmail={user.email} habilitation={user.habilitation ?? ""}
+      />
     </div>
   );
 }
@@ -163,7 +158,8 @@ async function NetworksTab({ userId }: { userId: number }) {
   );
 }
 
-async function AlternanceTab({ user }: { user: User }) {
+async function AlternanceTab({ user, isAlternant }: { user: User; isAlternant: boolean }) {
+  const label = isAlternant ? "alternance" : "stage";
   const [colleagues, viewers] = await Promise.all([
     db.select({ id: users.id, name: users.name }).from(users).where(and(ne(users.id, user.id), eq(users.status, "active"))).orderBy(users.name),
     db.select({ id: agendaViewers.viewerUserId }).from(agendaViewers).where(eq(agendaViewers.ownerUserId, user.id)),
@@ -171,6 +167,15 @@ async function AlternanceTab({ user }: { user: User }) {
   return (
     <div className="card space-y-4">
       <div>
+        <h2 className="font-semibold">Mon statut</h2>
+        <p className="text-sm text-muted">Change le libellé « Alternance »/« Stage » dans le menu et ici.</p>
+      </div>
+      <form action={setStudentStatus} className="flex gap-2">
+        <button name="studentStatus" value="alternant" className={`rounded-full border px-3 py-1 text-sm ${isAlternant ? "border-accent bg-accent text-accent-fg" : "border-line text-muted hover:text-fg"}`}>Alternant·e</button>
+        <button name="studentStatus" value="initial" className={`rounded-full border px-3 py-1 text-sm ${!isAlternant ? "border-accent bg-accent text-accent-fg" : "border-line text-muted hover:text-fg"}`}>Initial (stage)</button>
+      </form>
+
+      <div className="border-t border-line pt-4">
         <h2 className="font-semibold">Pointeuse</h2>
         <p className="text-sm text-muted">La durée standard sert à calculer tes heures sup. Les référents voient ta pointeuse et tes statistiques en lecture seule.</p>
       </div>
@@ -187,20 +192,72 @@ async function AlternanceTab({ user }: { user: User }) {
         trMoment={user.restoTrMoment}
         autre={user.restoAutreCents === null ? null : user.restoAutreCents / 100}
       />
+      <p className="text-xs text-muted">Adresse de {label} : renseignée dans l&apos;onglet Profil, section « Entreprise (alternance) ».</p>
     </div>
   );
 }
 
-async function ShareTab({ user }: { user: User }) {
-  // Adresses publiques : APP_URL si défini, sinon celle de la requête.
+async function CarteTab({ user }: { user: User }) {
+  // Adresse publique : APP_URL si défini, sinon celle de la requête.
   const cardUrl = user.cardEnabled && user.cardSlug ? await absoluteUrl(`/carte/${user.cardSlug}`) : null;
   const qrSvg = cardUrl ? await QRCode.toString(cardUrl, { type: "svg", margin: 0, errorCorrectionLevel: "M" }) : null;
-  const feedUrl = user.feedToken ? await absoluteUrl(`/api/feed/${user.feedToken}.ics`) : null;
   return (
     <div className="grid items-start gap-5 xl:grid-cols-2">
       <div className="card space-y-3">
         <h2 className="font-semibold">Ma carte de visite en ligne</h2>
         <CardPanel enabled={user.cardEnabled} url={cardUrl} qrSvg={qrSvg} />
+      </div>
+      <div className="card space-y-3">
+        <h2 className="font-semibold">Ce qu&apos;elle affiche</h2>
+        <CardVisibilityForm cardShowPhone={user.cardShowPhone} cardShowDiscord={user.cardShowDiscord} cardShowSchool={user.cardShowSchool} />
+      </div>
+    </div>
+  );
+}
+
+function ApparenceTab({ user }: { user: User }) {
+  const skin = skinFrom({ theme: user.theme });
+  return (
+    <div className="card max-w-md space-y-3">
+      <h2 className="font-semibold">Apparence</h2>
+      <p className="text-sm text-muted">S&apos;applique tout de suite et sur tous tes appareils.</p>
+      <SkinControls initial={skin} />
+    </div>
+  );
+}
+
+function NotificationsTab({ user }: { user: User }) {
+  return (
+    <div className="card max-w-xl space-y-3">
+      <h2 className="font-semibold">Notifications sur ton téléphone ou ton ordinateur</h2>
+      <p className="text-sm text-muted">Reçois une alerte pour les nouvelles actus, les évènements du BDE et le retour de ton matériel. La cloche en haut de l&apos;écran, elle, marche toujours.</p>
+      <NotificationSettings
+        publicKey={vapidPublicKey()}
+        serverReady={pushEnabled()}
+        initial={{ news: user.notifyNews, bde: user.notifyBde, loans: user.notifyLoans, reminders: user.notifyReminders, messages: user.notifyMessages, listings: user.notifyListings, updates: user.notifyUpdates, emptyPointeuse: user.notifyEmptyPointeuse }}
+      />
+    </div>
+  );
+}
+
+async function AgendaTab({ user }: { user: User }) {
+  const feedUrl = user.feedToken ? await absoluteUrl(`/api/feed/${user.feedToken}.ics`) : null;
+  return (
+    <div className="grid items-start gap-5 xl:grid-cols-2">
+      <div className="card space-y-3">
+        <h2 className="font-semibold">Lien iCal (Ypareo / autre)</h2>
+        <IcalForm icalUrl={user.icalUrl ?? ""} />
+        <details className="text-sm text-muted">
+          <summary className="cursor-pointer">Comment obtenir mon lien iCalendar Ypareo ?</summary>
+          <ol className="mt-2 list-inside list-decimal space-y-1">
+            <li>Connecte-toi à Ypareo.</li>
+            <li>Ouvre <strong className="text-fg">Planning</strong>.</li>
+            <li>Clique sur <strong className="text-fg">Action</strong>.</li>
+            <li>Choisis <strong className="text-fg">Export au format iCalendar</strong>.</li>
+            <li>Copie le lien généré et colle-le dans le champ ci-dessus.</li>
+          </ol>
+          <p className="mt-2 text-xs">Ce lien donne accès à ton planning : ne le partage pas. Backstage l&apos;utilisera pour ton agenda.</p>
+        </details>
       </div>
       <div className="card space-y-3">
         <h2 className="font-semibold">Mon calendrier Backstage (abonnement)</h2>

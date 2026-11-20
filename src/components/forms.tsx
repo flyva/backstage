@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { changePassword, login, register, saveRequestNote, updateProfile, saveSettings, type FormState } from "@/lib/actions";
+import { changePassword, login, register, saveRequestNote, updateIcalUrl, updateProfile, saveSettings, type FormState } from "@/lib/actions";
 import { PasswordField } from "@/components/PasswordField";
 import { EmailField } from "@/components/EmailField";
 import { AddressField } from "@/components/AddressField";
@@ -69,7 +69,7 @@ export function RegisterForm({ codeRequired = false, emailDomain }: { codeRequir
   );
 }
 
-export function ProfileForm(props: { firstName: string; lastName: string; homeAddress: string; companyName: string; companyAddress: string; icalUrl: string }) {
+export function ProfileForm(props: { firstName: string; lastName: string; homeAddress: string; companyName: string; companyAddress: string }) {
   const [state, action, pending] = useActionState(updateProfile, undefined);
   return (
     <form action={action} className="space-y-4">
@@ -101,9 +101,19 @@ export function ProfileForm(props: { firstName: string; lastName: string; homeAd
         </div>
         <AddressField id="companyAddress" name="companyAddress" label="Adresse de l'entreprise" defaultValue={props.companyAddress} />
       </div>
+      <Feedback state={state} />
+      <button className="btn" disabled={pending}>{pending ? "Enregistrement…" : "Enregistrer"}</button>
+    </form>
+  );
+}
+
+export function IcalForm({ icalUrl }: { icalUrl: string }) {
+  const [state, action, pending] = useActionState(updateIcalUrl, undefined);
+  return (
+    <form action={action} className="space-y-4">
       <div>
         <label className="label" htmlFor="icalUrl">Lien iCalendar Ypareo</label>
-        <input id="icalUrl" name="icalUrl" defaultValue={props.icalUrl} placeholder="https://…" className="input" />
+        <input id="icalUrl" name="icalUrl" defaultValue={icalUrl} placeholder="https://…" className="input" />
       </div>
       <Feedback state={state} />
       <button className="btn" disabled={pending}>{pending ? "Enregistrement…" : "Enregistrer"}</button>

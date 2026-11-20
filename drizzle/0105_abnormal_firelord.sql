@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD `student_status` enum('initial','alternant') DEFAULT 'alternant' NOT NULL;

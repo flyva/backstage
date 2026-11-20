@@ -37,9 +37,9 @@ export async function saveCompanyProfile(_: FormState, fd: FormData): Promise<Fo
   return { ok: "Profil enregistré" };
 }
 
-// ---------- Fiche personnelle ----------
+// ---------- Fiche personnelle (annuaire de la promo) ----------
 
-export async function saveFiche(_: FormState, fd: FormData): Promise<FormState> {
+export async function saveAnnuaire(_: FormState, fd: FormData): Promise<FormState> {
   const user = await requireUser();
   const trackRaw = Number(fd.get("trackId"));
   let trackId: number | null = null;
@@ -67,13 +67,37 @@ export async function saveFiche(_: FormState, fd: FormData): Promise<FormState> 
   const habilitation = (HABILITATION_SYMBOLS as readonly string[]).includes(habilitationRaw) ? habilitationRaw : null;
   await db.update(users).set({
     trackId, classId, headline: headline || null, phone: phone || null, contactEmail: contactEmail || null,
-    showInDirectory: fd.get("showInDirectory") === "on", showPhone: fd.get("showPhone") === "on", cardShowPhone: fd.get("cardShowPhone") === "on",
-    discord, cardShowDiscord: fd.get("cardShowDiscord") === "on", showCompany: fd.get("showCompany") === "on", cardShowSchool: fd.get("cardShowSchool") === "on",
+    showInDirectory: fd.get("showInDirectory") === "on", showPhone: fd.get("showPhone") === "on",
+    discord, showCompany: fd.get("showCompany") === "on",
     habilitation,
   }).where(eq(users.id, user.id));
   revalidatePath("/profil");
   revalidatePath("/annuaire");
   return { ok: "Fiche enregistrée" };
+}
+
+// ---------- Carte de visite : ce qu'elle affiche (en plus d'activée/désactivée, voir setCardEnabled) ----------
+
+export async function saveCardVisibility(_: FormState, fd: FormData): Promise<FormState> {
+  const user = await requireUser();
+  await db.update(users).set({
+    cardShowPhone: fd.get("cardShowPhone") === "on",
+    cardShowDiscord: fd.get("cardShowDiscord") === "on",
+    cardShowSchool: fd.get("cardShowSchool") === "on",
+  }).where(eq(users.id, user.id));
+  revalidatePath("/profil");
+  return { ok: "Carte de visite enregistrée" };
+}
+
+// ---------- Statut étudiant (alternant / initial) : change le libellé Alternance/Stage dans le menu et le profil ----------
+
+export async function setStudentStatus(fd: FormData) {
+  const user = await requireUser();
+  const value = fd.get("studentStatus");
+  if (value !== "initial" && value !== "alternant") return;
+  await db.update(users).set({ studentStatus: value }).where(eq(users.id, user.id));
+  revalidatePath("/profil");
+  revalidatePath("/", "layout");
 }
 
 // ---------- Photo de profil ----------

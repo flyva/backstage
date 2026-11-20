@@ -24,7 +24,7 @@ const itemRendersSomething = (i: Item, isAdmin: boolean, views: Record<string, b
 // Couleur d'icône des liens du menu : reprise telle quelle de BDE (gris fixe, pas la teinte du thème).
 const ICON_GRAY = "#8891a0";
 
-export function Nav({ isAdmin, loanBadge, views, hiddenPages }: { isAdmin: boolean; loanBadge: number; views: Record<string, boolean>; hiddenPages?: string[] }) {
+export function Nav({ isAdmin, loanBadge, views, hiddenPages, isAlternant = true }: { isAdmin: boolean; loanBadge: number; views: Record<string, boolean>; hiddenPages?: string[]; isAlternant?: boolean }) {
   const hidden = new Set(hiddenPages ?? []); // déjà vide pour un·e administrateur·rice (voir permsOf)
   const pathname = usePathname();
   // Groupe ouvert : celui de la page en cours, sauf si la personne en a choisi un autre (ou tout refermé) sur cette page.
@@ -33,7 +33,8 @@ export function Nav({ isAdmin, loanBadge, views, hiddenPages }: { isAdmin: boole
   const [folderChoice, setFolderChoice] = useState<{ id: string | null; path: string } | null>(null);
   // « Au quotidien » (Accueil, Agenda, Mobilité) n'est pas un accordéon : ses liens sont toujours visibles, épinglés en haut, comme les liens épinglés de BDE.
   const pinned = GROUPS.find((g) => g.id === "quotidien");
-  const accordionGroups = GROUPS.filter((g) => g.id !== "quotidien");
+  // Titre « Alternance »/« Stage » selon le statut (voir Profil > Alternance) — même bascule que chez BDE.
+  const accordionGroups = GROUPS.filter((g) => g.id !== "quotidien").map((g) => (g.id === "alternance" && !isAlternant ? { ...g, title: "Stage" } : g));
   const activeId = accordionGroups.find((g) => g.items.some((i) => itemActive(pathname, i)))?.id ?? accordionGroups[0].id;
   const openId = choice && choice.path === pathname ? choice.id : activeId;
   const toggle = (id: string) => setChoice({ id: openId === id ? null : id, path: pathname });
