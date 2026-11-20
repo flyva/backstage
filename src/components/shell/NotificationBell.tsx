@@ -81,9 +81,9 @@ export function NotificationBell({ items: initial, unread: initialUnread }: { it
         aria-label={count > 0 ? `Notifications : ${count} nouvelle${count > 1 ? "s" : ""}` : "Notifications"}
         aria-expanded={open}
         aria-haspopup="menu"
-        className="relative grid size-9 place-items-center rounded-full border border-line text-muted hover:text-fg"
+        className="iconbtn relative"
       >
-        <Bell size={16} />
+        <Bell size={18} />
         {count > 0 && (
           <span className="absolute -right-1 -top-1 grid min-w-4 place-items-center rounded-full bg-[#dc3545] px-1 text-[10px] font-semibold leading-4 text-white">
             {count > 9 ? "9+" : count}
@@ -92,7 +92,7 @@ export function NotificationBell({ items: initial, unread: initialUnread }: { it
       </button>
 
       {open && (
-        <div role="menu" className="absolute right-0 z-40 mt-2 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-line bg-surface shadow-xl">
+        <div role="menu" className="absolute right-0 z-40 mt-2 w-[300px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border border-line bg-surface shadow-[0_4px_12px_rgba(15,23,42,0.12)]">
           <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
             <h2 className="text-sm font-semibold">Notifications</h2>
             <div className="flex items-center gap-3">

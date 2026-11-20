@@ -125,6 +125,10 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
   .label {
     @apply mb-1 block text-xs font-medium text-muted;
   }
+  /* Icône de la barre du haut (recherche, messages, cloche, thème, menu utilisateur) — repris de BDE (.iconbtn). */
+  .iconbtn {
+    @apply inline-flex cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-1.5 text-muted transition-colors hover:bg-bg;
+  }
 }
 
 /* Messagerie : arrivée d'un message, « est en train d'écrire », « vu ». Désactivées si la personne préfère moins de mouvement. */

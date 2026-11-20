@@ -27,11 +27,11 @@ export function QuickTheme({ initial }: { initial: { theme: ThemeMode } }) {
   const next: ThemeMode = theme === "dark" ? "light" : "dark";
   return (
     <button
-      className="grid size-9 place-items-center rounded-full border border-line text-muted hover:text-fg"
+      className="iconbtn"
       aria-label={next === "dark" ? "Passer en thème sombre" : "Passer en thème clair"}
       onClick={() => { apply(next); start(() => { void setSkin({ theme: next }); }); }}
     >
-      {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+      {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
     </button>
   );
 }

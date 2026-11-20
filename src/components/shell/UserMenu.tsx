@@ -39,9 +39,9 @@ export function UserMenu({
         aria-label="Menu utilisateur"
         aria-expanded={open}
         aria-haspopup="menu"
-        className="grid size-9 place-items-center rounded-full bg-accent/15 p-0.5 text-[13px] font-bold text-accent"
+        className="iconbtn p-[3px]"
       >
-        {initials(name)}
+        <span className="grid size-[30px] place-items-center rounded-full bg-accent/15 text-[13px] font-bold text-accent">{initials(name)}</span>
       </button>
 
       {open && (

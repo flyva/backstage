@@ -79,12 +79,12 @@ export function AppShell({ sidebar, messages, bell, menu, children }: { sidebar:
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-line bg-surface/95 px-4 backdrop-blur print:hidden">
-          <button className="rounded-lg p-1.5 text-muted hover:text-fg md:hidden" onClick={() => setMenuFor(pathname)} aria-label="Ouvrir le menu">
+          <button className="iconbtn md:hidden" onClick={() => setMenuFor(pathname)} aria-label="Ouvrir le menu">
             <Menu size={20} />
           </button>
           <form
             role="search"
-            className="relative max-w-md flex-1"
+            className="relative w-full max-w-[220px] flex-1 md:flex-none"
             onSubmit={(e) => { e.preventDefault(); if (open && people?.[active]) goToPerson(people[active]); else goToSearch(); }}
             onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOpen(false); }}
           >
