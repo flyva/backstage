@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { ChevronRight, Shield } from "lucide-react";
+import { Shield } from "lucide-react";
 import { GROUPS, type Badge, type Item } from "@/lib/nav-data";
 
 // Six groupes par thème, dépliés UN SEUL à la fois (accordéon) : le menu ne dépasse jamais la hauteur de l'écran, donc il ne défile pas.
@@ -20,6 +20,9 @@ const visibleChildren = (i: Item, isAdmin: boolean, views: Record<string, boolea
 // garde-fou, un groupe (ex. « Travail ») pouvait rester affiché — vide, rien à déplier — pour ce seul dossier fantôme.
 const itemRendersSomething = (i: Item, isAdmin: boolean, views: Record<string, boolean>, hidden: Set<string>) =>
   itemVisible(i, isAdmin, views, hidden) && (!i.children || visibleChildren(i, isAdmin, views, hidden).length > 0);
+
+// Couleur d'icône des liens du menu : reprise telle quelle de BDE (gris fixe, pas la teinte du thème).
+const ICON_GRAY = "#8891a0";
 
 export function Nav({ isAdmin, loanBadge, views, hiddenPages }: { isAdmin: boolean; loanBadge: number; views: Record<string, boolean>; hiddenPages?: string[] }) {
   const hidden = new Set(hiddenPages ?? []); // déjà vide pour un·e administrateur·rice (voir permsOf)
@@ -41,31 +44,38 @@ export function Nav({ isAdmin, loanBadge, views, hiddenPages }: { isAdmin: boole
   const folderOpen = (id: string, hasActiveChild: boolean) => (folderChoice && folderChoice.path === pathname ? folderChoice.id === id : hasActiveChild);
   const countOf = (badge?: Badge) => (badge === "loans" ? loanBadge : 0);
 
-  const renderLink = (i: Item, count: number) => {
+  // Lien épinglé (hors catégorie) : padding 5px 10px, icône 15px — identique aux liens épinglés de BDE (Agenda, Mobilité…).
+  const renderPinned = (i: Item, count: number) => {
     const active = i.href ? isActive(pathname, i.href) : false;
-    if (i.variant === "button") {
-      return (
-        <Link
-          href={i.href!}
-          aria-current={active ? "page" : undefined}
-          className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
-            active ? "border-accent bg-accent text-accent-fg" : "border-side-line text-side-text hover:bg-side-hover"
-          }`}
-        >
-          <i.icon size={15} />
-          {i.label}
-        </Link>
-      );
-    }
     return (
       <Link
         href={i.href!}
         aria-current={active ? "page" : undefined}
-        className={`flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13px] transition ${
+        className={`flex items-center gap-2.5 rounded-lg px-2.5 py-[5px] text-[13px] transition ${
           active ? "bg-side-hover font-semibold text-side-strong" : "text-side-text hover:bg-side-hover hover:text-side-strong"
         }`}
       >
-        <i.icon size={15} className="shrink-0 text-side-muted" />
+        <i.icon size={15} className="shrink-0" style={{ color: active ? undefined : ICON_GRAY }} />
+        <span className="flex-1">{i.label}</span>
+        {count > 0 && (
+          <span className="rounded-full bg-[#dc3545] px-1.5 text-[10px] font-semibold text-white" aria-label={`${count} à traiter`}>{count}</span>
+        )}
+      </Link>
+    );
+  };
+
+  // Lien d'une catégorie (dépliée) : padding 3px 10px 3px 24px, icône 13px — identique aux items de catégorie de BDE.
+  const renderLink = (i: Item, count: number) => {
+    const active = i.href ? isActive(pathname, i.href) : false;
+    return (
+      <Link
+        href={i.href!}
+        aria-current={active ? "page" : undefined}
+        className={`flex items-center gap-2 rounded-lg py-[3px] pl-6 pr-2.5 text-[13px] transition ${
+          active ? "bg-side-hover font-semibold text-side-strong" : "text-side-text hover:bg-side-hover hover:text-side-strong"
+        }`}
+      >
+        <i.icon size={13} className="shrink-0" style={{ color: active ? undefined : ICON_GRAY }} />
         <span className="flex-1">{i.label}</span>
         {count > 0 && (
           <span className="rounded-full bg-[#dc3545] px-1.5 text-[10px] font-semibold text-white" aria-label={`${count} à traiter`}>{count}</span>
@@ -79,7 +89,7 @@ export function Nav({ isAdmin, loanBadge, views, hiddenPages }: { isAdmin: boole
       {pinned && (
         <div className="mb-2 space-y-0.5 border-b border-side-line pb-2">
           {pinned.items.filter((i) => itemRendersSomething(i, isAdmin, views, hidden)).map((i) => (
-            <div key={i.href}>{renderLink(i, countOf(i.badge))}</div>
+            <div key={i.href}>{renderPinned(i, countOf(i.badge))}</div>
           ))}
         </div>
       )}
@@ -96,16 +106,18 @@ export function Nav({ isAdmin, loanBadge, views, hiddenPages }: { isAdmin: boole
               onClick={() => toggle(g.id)}
               aria-expanded={open}
               aria-controls={`nav-${g.id}`}
-              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-side-muted transition hover:text-side-strong"
+              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.06em] text-side-muted transition"
             >
               <span className="flex-1 text-left">{g.title}</span>
               {!open && pending > 0 && (
                 <span className="rounded-full bg-[#dc3545] px-1.5 text-[10px] font-semibold normal-case tracking-normal text-white" aria-label={`${pending} à traiter`}>{pending}</span>
               )}
-              <ChevronRight size={11} strokeWidth={2.5} className={`transition-transform ${open ? "rotate-90" : ""}`} aria-hidden />
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={`shrink-0 transition-transform ${open ? "rotate-90" : ""}`} aria-hidden>
+                <path d="M9 6l6 6-6 6" />
+              </svg>
             </button>
             {open && (
-              <ul id={`nav-${g.id}`} className="mb-1.5 space-y-0.5">
+              <ul id={`nav-${g.id}`} className="space-y-0.5">
                 {items.map((i) => {
                   const count = countOf(i.badge);
                   if (i.children) {
@@ -121,15 +133,30 @@ export function Nav({ isAdmin, loanBadge, views, hiddenPages }: { isAdmin: boole
                           onClick={() => toggleFolder(folderId, hasActiveChild)}
                           aria-expanded={fOpen}
                           aria-controls={`nav-folder-${folderId}`}
-                          className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1 text-[13px] transition ${hasActiveChild && !fOpen ? "text-side-strong" : "text-side-text"} hover:bg-side-hover hover:text-side-strong`}
+                          className="flex w-full items-center gap-2 rounded-lg py-[3px] pl-6 pr-2.5 text-[13.5px] text-side-text"
                         >
-                          <i.icon size={14} className="shrink-0 text-side-muted" />
+                          <i.icon size={13} className="shrink-0" style={{ color: ICON_GRAY }} />
                           <span className="flex-1 text-left">{i.label}</span>
                           <span className={`text-xs transition-transform ${fOpen ? "rotate-90" : ""}`} aria-hidden>›</span>
                         </button>
                         {fOpen && (
-                          <ul id={`nav-folder-${folderId}`} className="ml-4 space-y-0.5 border-l border-side-line pl-2">
-                            {kids.map((c) => <li key={c.href}>{renderLink(c, countOf(c.badge))}</li>)}
+                          <ul id={`nav-folder-${folderId}`} className="space-y-0.5">
+                            {kids.map((c) => {
+                              const cActive = isActive(pathname, c.href!);
+                              return (
+                                <li key={c.href}>
+                                  <Link
+                                    href={c.href!}
+                                    aria-current={cActive ? "page" : undefined}
+                                    className={`flex items-center gap-2 rounded-lg py-[3px] pl-[38px] pr-2.5 text-[13px] transition ${
+                                      cActive ? "bg-side-hover font-semibold text-side-strong" : "text-side-text hover:bg-side-hover hover:text-side-strong"
+                                    }`}
+                                  >
+                                    {c.label}
+                                  </Link>
+                                </li>
+                              );
+                            })}
                           </ul>
                         )}
                       </li>
@@ -154,7 +181,7 @@ export function AdminLink() {
     <Link
       href="/admin"
       aria-current={active ? "page" : undefined}
-      className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider transition ${
+      className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.06em] transition ${
         active ? "bg-side-hover text-side-strong" : "text-side-muted hover:bg-side-hover hover:text-side-strong"
       }`}
     >
