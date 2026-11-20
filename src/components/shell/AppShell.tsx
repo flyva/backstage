@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Menu, Search, User } from "lucide-react";
+import { Home, Menu, Search, User, Users } from "lucide-react";
 import { AssistantFab } from "@/components/AssistantFab";
 import { Footer } from "@/components/Footer";
 import { PageViewTracker } from "@/components/PageViewTracker";
@@ -82,6 +83,19 @@ export function AppShell({ sidebar, messages, bell, menu, children }: { sidebar:
           <button className="iconbtn md:hidden" onClick={() => setMenuFor(pathname)} aria-label="Ouvrir le menu">
             <Menu size={20} />
           </button>
+          {/* Liens rapides (desktop) : même style que la barre du haut de BDE. */}
+          <Link
+            href="/"
+            className={`hidden items-center gap-1.5 rounded-md px-2 py-1.5 text-[13px] font-semibold md:flex ${pathname === "/" ? "bg-bg text-fg" : "text-muted hover:text-fg"}`}
+          >
+            <Home size={14} /> Accueil
+          </Link>
+          <Link
+            href="/annuaire"
+            className={`hidden items-center gap-1.5 rounded-md px-2 py-1.5 text-[13px] font-semibold md:flex ${pathname.startsWith("/annuaire") ? "bg-bg text-fg" : "text-muted hover:text-fg"}`}
+          >
+            <Users size={14} /> Annuaire
+          </Link>
           <form
             role="search"
             className="relative w-full max-w-[220px] flex-1 md:flex-none"
