@@ -73,8 +73,6 @@ export default async function AdminPage() {
 
   return (
     <div className="space-y-8">
-      <p className="text-sm text-muted">Seules les tuiles pour lesquelles tu as les droits apparaissent.</p>
-
       {pending.length > 0 && (
         <section className="card space-y-3 border-accent">
           <h2 className="font-semibold">En attente de validation ({pending.length})</h2>
