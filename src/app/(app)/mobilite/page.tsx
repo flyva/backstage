@@ -13,6 +13,7 @@ import { TransitAlerts } from "@/components/TransitAlerts";
 import { AddressField } from "@/components/AddressField";
 import { bestTransitCached, type TransitPlan } from "@/lib/transit";
 import { AutoRefresh } from "@/components/AutoRefresh";
+import { TarifSolidaire } from "@/components/TarifSolidaire";
 
 export const metadata = { title: "Mobilité" };
 
@@ -26,6 +27,13 @@ const TRAFFIC = {
   ralenti: { label: "Ralentissements", cls: "bg-[#f59e0b] text-[#14110a]" },
   bouchons: { label: "Embouteillages", cls: "bg-[#dc3545] text-white" },
 } as const;
+
+// Couleurs officielles TBM (lignes de tram et « Liane »/Express) — reprises telles quelles.
+const LINE_COLORS: Record<string, string> = {
+  A: "#E2001A", B: "#0071BC", C: "#00A850", D: "#F7941D",
+  F: "#009AA6", G: "#6E3FA3", H: "#E5007D",
+};
+const lineColor = (code: string) => LINE_COLORS[code.toUpperCase()] ?? "#6B7280";
 
 type Plan = { trip: Trip; transit: TransitPlan | null };
 
@@ -86,7 +94,7 @@ async function Leg({ title, from, fromLabel, origin, plan }: { title: string; fr
             {s.departures.length === 0 && <p className="text-sm text-muted">Pas de passage prévu prochainement.</p>}
             {[...Map.groupBy(s.departures, (d) => d.line)].slice(0, 4).map(([line, list]) => (
               <div key={line} className="flex items-start gap-2.5">
-                <LineBadge code={line} name={list[0].lineName} tram={list[0].tram} boat={list[0].boat} className="min-w-10 shrink-0 px-2 py-0.5 text-sm" />
+                <LineBadge code={line} name={list[0].lineName} boat={list[0].boat} className="min-w-10 shrink-0 px-2 py-0.5 text-sm" />
                 <ul className="min-w-0 flex-1 space-y-1">
                   {list.map((d) => (
                     <li key={d.destination} className="flex items-center gap-2 text-sm">
@@ -129,13 +137,17 @@ type Trip = Awaited<ReturnType<typeof tripEstimates>>;
 
 // Durée totale de porte à porte en transport depuis l'adresse de départ, avec le meilleur trajet (lignes, marche, attente),
 // comparée à la voiture et au vélo comme dans les cartes de trajet.
-/** Pastille de ligne : tram plein, bus contour, bateau (LE BATO) contour avec icône de bateau. */
-function LineBadge({ code, name, tram, boat, className }: { code: string; name: string; tram: boolean; boat: boolean; className: string }) {
+/** Pastille de ligne : couleur officielle TBM (tram/bus), contour avec icône de bateau pour LE BATO. */
+function LineBadge({ code, name, boat, className }: { code: string; name: string; boat: boolean; className: string }) {
   if (boat) {
     const label = name.replace(/^le /i, "").toUpperCase() || code;
-    return <span title={name || label} className={`inline-flex items-center justify-center gap-1 rounded-lg border border-accent bg-accent/10 font-bold text-fg ${className}`}><Ship size={14} aria-hidden /> {label}</span>;
+    return <span title={name || label} className={`inline-flex items-center justify-center gap-1 rounded-full border border-accent bg-accent/10 font-bold text-fg ${className}`}><Ship size={14} aria-hidden /> {label}</span>;
   }
-  return <span title={name} className={`inline-flex justify-center rounded-lg font-bold ${tram ? "bg-accent text-accent-fg" : "border border-line bg-surface text-fg"} ${className}`}>{code}</span>;
+  return (
+    <span title={name} className={`inline-flex justify-center rounded-full font-bold text-white ${className}`} style={{ background: lineColor(code) }}>
+      {code}
+    </span>
+  );
 }
 
 function BestRoute({ plan }: { plan: { trip: Trip; transit: TransitPlan | null; from: string } }) {
@@ -153,7 +165,7 @@ function BestRoute({ plan }: { plan: { trip: Trip; transit: TransitPlan | null; 
           <div className="mt-1 text-3xl font-bold tabular-nums">{fmtTrip(transit.totalMin)}</div>
           <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
             {transit.lines.map((l) => (
-              <LineBadge key={l.code} code={l.code} name={l.name} tram={l.tram} boat={l.boat} className="min-w-9 px-2 py-0.5" />
+              <LineBadge key={l.code} code={l.code} name={l.name} boat={l.boat} className="min-w-9 px-2 py-0.5" />
             ))}
             <span className="text-muted">{transit.transfers > 0 ? `${transit.transfers} correspondance${transit.transfers > 1 ? "s" : ""} · ` : "direct · "}{transit.departsInMin <= 0 ? "départ imminent" : `départ dans ${transit.departsInMin} min`}</span>
           </div>
@@ -224,7 +236,7 @@ function TripCard({ title, trip, transit, isAdmin }: { title: string; trip: Trip
               <div className="mt-1 text-2xl font-bold tabular-nums">{fmtTrip(transit.totalMin)}</div>
               <div className="flex flex-wrap items-center gap-2 text-sm">
                 {transit.lines.map((l) => (
-                  <LineBadge key={l.code} code={l.code} name={l.name} tram={l.tram} boat={l.boat} className="min-w-9 px-2 py-0.5 text-sm" />
+                  <LineBadge key={l.code} code={l.code} name={l.name} boat={l.boat} className="min-w-9 px-2 py-0.5 text-sm" />
                 ))}
                 <span className="text-muted">
                   {transit.transfers > 0 ? `${transit.transfers} correspondance${transit.transfers > 1 ? "s" : ""} · ` : "direct · "}{transit.departsInMin <= 0 ? "départ imminent" : `départ dans ${transit.departsInMin} min`}
@@ -296,7 +308,7 @@ export default async function MobilitePage({ searchParams }: PageProps<"/mobilit
     }
   }
 
-  const pill = (active: boolean) => `rounded-full border px-3 py-1 text-sm ${active ? "border-accent bg-accent text-accent-fg" : "border-line text-muted hover:text-fg"}`;
+  const pill = (active: boolean) => `rounded-full border px-4 py-1.5 text-[13px] font-bold ${active ? "border-transparent bg-accent text-accent-fg" : "border-line text-fg hover:bg-bg"}`;
 
   return (
     <div className="space-y-6">
@@ -309,8 +321,8 @@ export default async function MobilitePage({ searchParams }: PageProps<"/mobilit
         </p>
         {school && company && (
           <nav className="flex flex-wrap gap-2" aria-label="Destination">
-            <Link href="/mobilite?dest=school" className={pill(primary === "school")}>École</Link>
-            <Link href="/mobilite?dest=company" className={pill(primary === "company")}>{companyLabel}</Link>
+            <Link href="/mobilite?dest=school" className={pill(primary === "school")}>🏫 École</Link>
+            <Link href="/mobilite?dest=company" className={pill(primary === "company")}>🏢 {companyLabel}</Link>
           </nav>
         )}
       </header>
@@ -357,9 +369,115 @@ export default async function MobilitePage({ searchParams }: PageProps<"/mobilit
       </details>
       {free && !("error" in free) && <TripCard title={free.title} trip={free.trip} transit={free.transit} isAdmin={user.perms.administration} />}
 
+      <InfosTbm />
+
       <p className="text-xs text-muted">
         Sources : Bordeaux Métropole (SIRI Lite, GBFS), Transitous, Base Adresse Nationale, OpenStreetMap{process.env.TOMTOM_API_KEY ? ", TomTom (trafic)" : ""}. Mise à jour automatique toutes les 30 s.
       </p>
     </div>
+  );
+}
+
+// Infos pratiques TBM (abonnements, remboursement employeur, carte Pastel, V3, tarification solidaire, liens) —
+// contenu statique repris tel quel (mêmes libellés et tarifs) de la page équivalente de BDE.
+function InfosTbm() {
+  const infoCard = "space-y-2 rounded-xl border border-line bg-bg p-3.5";
+  const QUICK_LINKS = [
+    { label: "infotbm.com", href: "https://www.infotbm.com" },
+    { label: "Application TBM", href: "https://www.infotbm.com/fr/application-tbm.html" },
+    { label: "Agences TBM", href: "https://www.infotbm.com/fr/agences-et-points-de-vente.html" },
+    { label: "Mon compte TBM", href: "https://www.infotbm.com/fr/mon-compte.html" },
+  ];
+  return (
+    <section className="card space-y-4 p-5">
+      <div className="flex flex-wrap items-center gap-2">
+        <TramFront size={18} className="text-accent" aria-hidden />
+        <h2 className="text-[15px] font-bold">Infos TBM</h2>
+        <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[11px] font-semibold text-accent">Transports en commun Bordeaux Métropole</span>
+      </div>
+
+      <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))" }}>
+        <div className={infoCard}>
+          <div className="flex items-center justify-between">
+            <div className="text-[12.5px] font-bold">🎫 Abonnements mensuels</div>
+            <a href="https://boutique.infotbm.com/categories/3" target="_blank" rel="noopener noreferrer" className="text-[11px] text-accent">Acheter →</a>
+          </div>
+          <div className="space-y-1 text-xs">
+            {[["Pass Jeune (11–27 ans)", "35,10 €/mois"], ["Le Pass (28–59 ans)", "55,00 €/mois"], ["Solidaire Pass Jeune", "à partir de 10,70 €/mois"]].map(([k, v]) => (
+              <div key={k} className="flex justify-between gap-2"><span className="text-muted">{k}</span><span className="text-right font-semibold">{v}</span></div>
+            ))}
+          </div>
+        </div>
+
+        <div className={infoCard}>
+          <div className="flex items-center justify-between">
+            <div className="text-[12.5px] font-bold">📅 Abonnements annuels</div>
+            <a href="https://boutique.infotbm.com/categories/4" target="_blank" rel="noopener noreferrer" className="text-[11px] text-accent">Acheter →</a>
+          </div>
+          <div className="space-y-1 text-xs">
+            {[["Pass Jeune (11–27 ans)", "21,40 €/mois · 256,80 €/an"], ["Le Pass (28–59 ans)", "45,80 €/mois · 549,60 €/an"], ["Solidaire Pass Jeune", "10,70 €/mois · 128,40 €/an"]].map(([k, v]) => (
+              <div key={k} className="flex justify-between gap-2"><span className="text-muted">{k}</span><span className="text-right font-semibold">{v}</span></div>
+            ))}
+          </div>
+          <div className="rounded-md border border-accent/15 bg-accent/5 px-2.5 py-1.5 text-[11.5px] text-accent">
+            🚂 Abonnement combiné <strong>TBM + TER</strong> disponible →{" "}
+            <a href="https://boutique.infotbm.com/categories/17" target="_blank" rel="noopener noreferrer" className="font-bold">voir l&apos;offre</a>
+          </div>
+        </div>
+
+        <div className={infoCard}>
+          <div className="text-[12.5px] font-bold">💼 Remboursement employeur</div>
+          <p className="text-xs leading-relaxed text-muted">
+            En alternance, ton entreprise est tenue de rembourser <strong className="text-fg">50 %</strong> de ton abonnement mensuel de transport en commun.
+            <br /><br />
+            Fournis ton <strong className="text-fg">justificatif TBM</strong> (attestation d&apos;abonnement) au service RH chaque mois.
+          </p>
+          <div className="rounded-md border border-[rgba(5,150,105,0.2)] bg-[rgba(5,150,105,0.08)] px-2.5 py-1.5 text-[11.5px] text-[#065f46]">
+            💡 Soit ~17 €/mois remboursés sur un abonnement étudiant.
+          </div>
+        </div>
+
+        <div className={infoCard}>
+          <div className="flex items-center justify-between">
+            <div className="text-[12.5px] font-bold">💳 Carte Pastel</div>
+            <a href="https://www.infotbm.com/fr/titres-et-tarifs/carte-pastel.html" target="_blank" rel="noopener noreferrer" className="text-[11px] text-accent">En savoir plus →</a>
+          </div>
+          <p className="text-xs leading-relaxed text-muted">Carte sans contact rechargeable. Nécessaire pour charger un abonnement mensuel ou annuel.</p>
+          <div className="space-y-0.5 text-xs">
+            <div>• Coût de la carte : <strong>5 €</strong></div>
+            <div>• À retirer en agence TBM</div>
+            <div>• Dossier : justificatif d&apos;études requis pour tarif -26 ans</div>
+          </div>
+        </div>
+
+        <div className={infoCard}>
+          <div className="flex items-center justify-between">
+            <div className="text-[12.5px] font-bold">🚲 V3 (vélos en libre-service)</div>
+            <a href="https://www.vcub.fr/" target="_blank" rel="noopener noreferrer" className="text-[11px] text-accent">vcub.fr →</a>
+          </div>
+          <div className="space-y-0.5 text-xs">
+            <div className="text-muted">Inclus avec l&apos;abonnement TBM :</div>
+            <div>• 30 min/trajet illimitées</div>
+            <div>• Au-delà : 1 €/30 min supplémentaires</div>
+            <div>• Vélos électriques disponibles</div>
+          </div>
+          <div className="flex flex-wrap gap-1 pt-1">
+            {(["A", "B", "C", "D"] as const).map((l) => (
+              <span key={l} className="rounded-full px-2 py-0.5 text-[11px] font-bold text-white" style={{ background: lineColor(l) }}>Tram {l}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <TarifSolidaire />
+
+      <div className="flex flex-wrap gap-2 border-t border-line pt-3">
+        {QUICK_LINKS.map(({ label, href }) => (
+          <a key={label} href={href} target="_blank" rel="noopener noreferrer" className="rounded-lg border border-accent/30 bg-accent/5 px-3 py-1.5 text-xs text-accent">
+            {label}
+          </a>
+        ))}
+      </div>
+    </section>
   );
 }
