@@ -28,7 +28,10 @@ export function Nav({ isAdmin, loanBadge, views, hiddenPages }: { isAdmin: boole
   // Changer de page revient au groupe de la nouvelle page. Même principe, un cran plus bas, pour un sous-dossier (ex. Cours).
   const [choice, setChoice] = useState<{ id: string | null; path: string } | null>(null);
   const [folderChoice, setFolderChoice] = useState<{ id: string | null; path: string } | null>(null);
-  const activeId = GROUPS.find((g) => g.items.some((i) => itemActive(pathname, i)))?.id ?? GROUPS[0].id;
+  // « Au quotidien » (Accueil, Agenda, Mobilité) n'est pas un accordéon : ses liens sont toujours visibles, épinglés en haut, comme les liens épinglés de BDE.
+  const pinned = GROUPS.find((g) => g.id === "quotidien");
+  const accordionGroups = GROUPS.filter((g) => g.id !== "quotidien");
+  const activeId = accordionGroups.find((g) => g.items.some((i) => itemActive(pathname, i)))?.id ?? accordionGroups[0].id;
   const openId = choice && choice.path === pathname ? choice.id : activeId;
   const toggle = (id: string) => setChoice({ id: openId === id ? null : id, path: pathname });
   const toggleFolder = (id: string, hasActiveChild: boolean) => {
@@ -78,7 +81,14 @@ export function Nav({ isAdmin, loanBadge, views, hiddenPages }: { isAdmin: boole
           {renderLink({ href: "/admin", label: "Administration", icon: Shield }, 0)}
         </div>
       )}
-      {GROUPS.map((g) => {
+      {pinned && (
+        <div className="mb-2 space-y-0.5 border-b border-side-line pb-2">
+          {pinned.items.filter((i) => itemRendersSomething(i, isAdmin, views, hidden)).map((i) => (
+            <div key={i.href}>{renderLink(i, countOf(i.badge))}</div>
+          ))}
+        </div>
+      )}
+      {accordionGroups.map((g) => {
         if (views[g.id] === false) return null; // section entière masquée pour ce rôle (Savoirs, Promo, Vie étudiante)
         const items = g.items.filter((i) => itemRendersSomething(i, isAdmin, views, hidden));
         if (items.length === 0) return null; // ex. « Travail » sans aucune page de Cours ni rien d'autre d'activé
