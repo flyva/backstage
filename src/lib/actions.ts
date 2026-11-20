@@ -145,10 +145,10 @@ export async function logout() {
   redirect("/login");
 }
 
-/** Enregistre le thème de la personne (cookie pour l'affichage immédiat, base pour le retrouver sur un autre appareil). */
-export async function setSkin(patch: { theme?: string }) {
+/** Enregistre le thème/l'accent de la personne (cookie pour l'affichage immédiat, base pour le retrouver sur un autre appareil). */
+export async function setSkin(patch: { theme?: string; accent?: string }) {
   const user = await requireUser();
-  const next = skinFrom({ theme: patch.theme ?? user.theme });
+  const next = skinFrom({ theme: patch.theme ?? user.theme, accent: patch.accent ?? user.accent });
   await db.update(users).set(next).where(eq(users.id, user.id));
   await writeSkinCookies(next);
 }

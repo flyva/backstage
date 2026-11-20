@@ -93,7 +93,8 @@ export const users = mysqlTable("users", {
   roleId: int("role_id").references(() => roles.id),
   theme: mysqlEnum("theme", ["system", "light", "dark"]).notNull().default("dark"),
   // Skin personnel (panneau de droite) : couleur d'accent, couleur du menu, teinte de fond.
-  accent: mysqlEnum("accent", ["ambre", "bleu", "indigo", "vert", "rose", "blanc", "noir"]).notNull().default("blanc"),
+  // Couleur d'accent personnelle (panneau Apparence du profil) — mêmes 7 couleurs que BDE.
+  accent: mysqlEnum("accent", ["blue", "violet", "green", "red", "amber", "cyan", "white"]).notNull().default("blue"),
   sidebar: mysqlEnum("sidebar", ["dark", "light"]).notNull().default("dark"),
   background: mysqlEnum("background", ["defaut", "chaud", "froid", "vert"]).notNull().default("defaut"),
   homeAddress: varchar("home_address", { length: 255 }),

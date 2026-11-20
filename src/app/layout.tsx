@@ -26,12 +26,13 @@ export const viewport: Viewport = { themeColor: "#f59e0b" };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const jar = await cookies();
-  // Thème lu dans les cookies : appliqué dès le premier affichage, sans clignotement.
-  const skin = skinFrom({ theme: jar.get("theme")?.value });
+  // Thème et accent lus dans les cookies : appliqués dès le premier affichage, sans clignotement.
+  const skin = skinFrom({ theme: jar.get("theme")?.value, accent: jar.get("accent")?.value });
   return (
     <html
       lang="fr"
       className={`${geistSans.variable} ${skin.theme === "dark" ? "dark" : ""} h-full antialiased`}
+      data-accent={skin.accent}
       // Des extensions (LanguageTool, etc.) ajoutent des attributs sur <html>/<body> avant React : sans cela, alerte d'hydratation.
       suppressHydrationWarning
     >

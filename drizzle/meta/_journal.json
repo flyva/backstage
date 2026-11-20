@@ -743,6 +743,13 @@
       "when": 1795142388372,
       "tag": "0105_abnormal_firelord",
       "breakpoints": true
+    },
+    {
+      "idx": 106,
+      "version": "5",
+      "when": 1795144823801,
+      "tag": "0106_magical_jubilee",
+      "breakpoints": true
     }
   ]
 }

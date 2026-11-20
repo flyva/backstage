@@ -37,6 +37,22 @@
   color-scheme: dark;
 }
 
+/* Couleur d'accent (panneau Apparence du profil) — mêmes 7 couleurs et même logique que BDE (src/lib/accents.ts) :
+   « blanc » s'inverse selon le thème (noir en clair, blanc en sombre), et le texte par-dessus (--accent-fg) reste
+   lisible dans les deux cas. */
+:root[data-accent="violet"] { --accent: #7c3aed; --accent-fg: #ffffff; }
+:root[data-accent="green"] { --accent: #059669; --accent-fg: #ffffff; }
+:root[data-accent="red"] { --accent: #dc2626; --accent-fg: #ffffff; }
+:root[data-accent="amber"] { --accent: #d97706; --accent-fg: #ffffff; }
+:root[data-accent="cyan"] { --accent: #0891b2; --accent-fg: #ffffff; }
+:root[data-accent="white"] { --accent: #000000; --accent-fg: #ffffff; }
+:root.dark[data-accent="violet"] { --accent: #8b5cf6; --accent-fg: #ffffff; }
+:root.dark[data-accent="green"] { --accent: #10b981; --accent-fg: #052e21; }
+:root.dark[data-accent="red"] { --accent: #ef4444; --accent-fg: #ffffff; }
+:root.dark[data-accent="amber"] { --accent: #f59e0b; --accent-fg: #1a1204; }
+:root.dark[data-accent="cyan"] { --accent: #22d3ee; --accent-fg: #042a30; }
+:root.dark[data-accent="white"] { --accent: #ffffff; --accent-fg: #1f2937; }
+
 @theme inline {
   --color-bg: var(--bg);
   --color-surface: var(--surface);
