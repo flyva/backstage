@@ -19,7 +19,7 @@ export default async function TicketPage({ params }: PageProps<"/tickets/[id]">)
   // L'auteur qui consulte son ticket le marque comme lu (plus de pastille « non lu » dans le menu/la cloche).
   await db.update(tickets).set({ ownerReadAt: new Date() }).where(eq(tickets.id, id));
 
-  const [author, files, comments] = await Promise.all([
+  const [author, allFiles, rawComments] = await Promise.all([
     db.select({ id: users.id, name: users.name }).from(users).where(eq(users.id, ticket.createdBy)).limit(1),
     db.select().from(ticketFiles).where(eq(ticketFiles.ticketId, id)).orderBy(asc(ticketFiles.createdAt)),
     db
@@ -29,6 +29,8 @@ export default async function TicketPage({ params }: PageProps<"/tickets/[id]">)
       .where(eq(ticketComments.ticketId, id))
       .orderBy(asc(ticketComments.createdAt)),
   ]);
+  const files = allFiles.filter((f) => f.commentId === null);
+  const comments = rawComments.map((c) => ({ ...c, files: allFiles.filter((f) => f.commentId === c.id) }));
 
   return (
     <TicketDetail

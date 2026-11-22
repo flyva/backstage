@@ -6,6 +6,7 @@ import type { FormState } from "@/lib/actions";
 import { addTicketComment, createTicket, setTicketStatus } from "@/lib/ticket-actions";
 import { type TicketStatus } from "@/db/schema";
 import { STATUS_LABEL } from "@/lib/ticket-shared";
+import { MarkdownField } from "@/components/MarkdownField";
 
 function Feedback({ state }: { state: FormState }) {
   if (state?.error) return <p className="text-sm text-danger" role="alert">{state.error}</p>;
@@ -21,10 +22,7 @@ export function TicketCreateForm() {
         <label className="label" htmlFor="tt">Titre</label>
         <input id="tt" name="title" required minLength={3} maxLength={150} className="input" placeholder="Micro HF ne s'allume plus…" />
       </div>
-      <div>
-        <label className="label" htmlFor="tb">Description</label>
-        <textarea id="tb" name="body" required minLength={5} maxLength={5000} rows={6} className="input" placeholder="Décris le problème, ce que tu as déjà essayé, depuis quand…" />
-      </div>
+      <MarkdownField name="body" rows={6} maxLength={5000} uploadUrl="/api/wiki/files" label="Description" placeholder="Décris le problème, ce que tu as déjà essayé, depuis quand…" />
       <div>
         <label className="label" htmlFor="tf">Captures d&apos;écran ou fichiers (facultatif, 5 maximum, 15 Mo chacun)</label>
         <input id="tf" name="files" type="file" multiple accept="image/png,image/jpeg,application/pdf,.zip,.doc,.docx,.xls,.xlsx,.ppt,.pptx" className="input" />
@@ -40,7 +38,11 @@ export function TicketCommentForm({ ticketId }: { ticketId: number }) {
   return (
     <form action={action} key={state?.ok ? "done" : "open"} className="space-y-2">
       <input type="hidden" name="ticketId" value={ticketId} />
-      <textarea name="body" required maxLength={3000} rows={3} className="input" placeholder="Ajouter un suivi, une précision, une réponse…" />
+      <MarkdownField name="body" rows={3} maxLength={5000} uploadUrl="/api/wiki/files" placeholder="Ajouter un suivi, une précision, une réponse…" />
+      <div>
+        <label className="label" htmlFor={`tcf-${ticketId}`}>Joindre d&apos;autres fichiers (facultatif, 5 maximum, 15 Mo chacun)</label>
+        <input id={`tcf-${ticketId}`} name="files" type="file" multiple accept="image/png,image/jpeg,application/pdf,.zip,.doc,.docx,.xls,.xlsx,.ppt,.pptx" className="input" />
+      </div>
       <Feedback state={state} />
       <button className="btn-ghost text-sm" disabled={pending}><Send size={14} /> {pending ? "Envoi…" : "Envoyer"}</button>
     </form>

@@ -69,8 +69,29 @@ export async function addTicketComment(_: FormState, fd: FormData): Promise<Form
   const ticket = await loadVisibleTicket(id, user.id, canManageTickets(user));
   if (!ticket) return { error: "Ticket introuvable" };
   const body = String(fd.get("body") ?? "").trim();
-  if (!body || body.length > 3000) return { error: "Message vide ou trop long" };
-  await db.insert(ticketComments).values({ ticketId: id, userId: user.id, body });
+  if (!body || body.length > 5000) return { error: "Message vide ou trop long" };
+
+  const files = fd.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
+  if (files.length > MAX_TICKET_FILES) return { error: `${MAX_TICKET_FILES} fichiers maximum` };
+  for (const f of files) {
+    if (f.size > MAX_TICKET_FILE_BYTES) return { error: `« ${f.name} » dépasse 15 Mo` };
+  }
+
+  const [res] = await db.insert(ticketComments).values({ ticketId: id, userId: user.id, body });
+
+  if (files.length > 0) {
+    await ensureTicketFilesDir();
+    for (const f of files) {
+      const bytes = new Uint8Array(await f.arrayBuffer());
+      const kind = sniff(bytes);
+      if (!kind) continue; // format non reconnu : ignoré plutôt que de bloquer tout le message
+      const name = newTicketFileName(kind.ext);
+      await writeFile(path.join(ticketFilesDir(), name), bytes);
+      const original = f.name.replace(/[\u0000-\u001f\\/]/g, "_").slice(0, 200) || `fichier.${kind.ext}`;
+      await db.insert(ticketFiles).values({ ticketId: id, commentId: res.insertId, file: name, originalName: original, mime: kind.mime, size: bytes.length, uploadedBy: user.id });
+    }
+  }
+
   // Si c'est l'auteur qui répond, son ticket reste « lu » pour lui ; si c'est quelqu'un qui gère les tickets, l'auteur aura une réponse à lire.
   await db.update(tickets).set({ updatedAt: new Date(), lastActorId: user.id, ...(user.id === ticket.createdBy ? { ownerReadAt: new Date() } : {}) }).where(eq(tickets.id, id));
   revalidatePath(`/tickets/${id}`);

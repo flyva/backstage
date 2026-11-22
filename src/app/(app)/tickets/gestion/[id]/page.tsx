@@ -15,7 +15,7 @@ export default async function TicketManagementDetailPage({ params }: PageProps<"
   const [ticket] = await db.select().from(tickets).where(eq(tickets.id, id)).limit(1);
   if (!ticket) notFound();
 
-  const [author, files, comments] = await Promise.all([
+  const [author, allFiles, rawComments] = await Promise.all([
     db.select({ id: users.id, name: users.name }).from(users).where(eq(users.id, ticket.createdBy)).limit(1),
     db.select().from(ticketFiles).where(eq(ticketFiles.ticketId, id)).orderBy(asc(ticketFiles.createdAt)),
     db
@@ -25,6 +25,8 @@ export default async function TicketManagementDetailPage({ params }: PageProps<"
       .where(eq(ticketComments.ticketId, id))
       .orderBy(asc(ticketComments.createdAt)),
   ]);
+  const files = allFiles.filter((f) => f.commentId === null);
+  const comments = rawComments.map((c) => ({ ...c, files: allFiles.filter((f) => f.commentId === c.id) }));
 
   return (
     <TicketDetail

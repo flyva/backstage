@@ -316,21 +316,6 @@ export const tickets = mysqlTable(
   (t) => [index("tickets_user_idx").on(t.createdBy, t.createdAt)],
 );
 
-export const ticketFiles = mysqlTable(
-  "ticket_files",
-  {
-    id: int("id").primaryKey().autoincrement(),
-    ticketId: int("ticket_id").notNull().references(() => tickets.id, { onDelete: "cascade" }),
-    file: varchar("file", { length: 60 }).notNull(),
-    originalName: varchar("original_name", { length: 200 }).notNull(),
-    mime: varchar("mime", { length: 60 }).notNull(),
-    size: int("size").notNull(),
-    uploadedBy: int("uploaded_by").notNull().references(() => users.id),
-    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
-  },
-  (t) => [index("tf_ticket_idx").on(t.ticketId)],
-);
-
 export const ticketComments = mysqlTable(
   "ticket_comments",
   {
@@ -341,6 +326,24 @@ export const ticketComments = mysqlTable(
     createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
   },
   (t) => [index("tc_ticket_idx").on(t.ticketId, t.createdAt)],
+);
+
+// commentId : null si le fichier a été joint à l'ouverture du ticket (carte du message d'origine), renseigné s'il a
+// été ajouté avec une réponse du fil de suivi.
+export const ticketFiles = mysqlTable(
+  "ticket_files",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    ticketId: int("ticket_id").notNull().references(() => tickets.id, { onDelete: "cascade" }),
+    commentId: int("comment_id").references(() => ticketComments.id, { onDelete: "cascade" }),
+    file: varchar("file", { length: 60 }).notNull(),
+    originalName: varchar("original_name", { length: 200 }).notNull(),
+    mime: varchar("mime", { length: 60 }).notNull(),
+    size: int("size").notNull(),
+    uploadedBy: int("uploaded_by").notNull().references(() => users.id),
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [index("tf_ticket_idx").on(t.ticketId), index("tf_comment_idx").on(t.commentId)],
 );
 
 // ---------- Nouveautés internes (changelog discret, affiché dans la cloche) ----------

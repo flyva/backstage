@@ -4,6 +4,9 @@ import type { TicketStatus } from "@/db/schema";
 import { ago } from "@/lib/relative-time";
 import { TicketCommentForm, TicketStatusForm } from "@/components/ticket-forms";
 import { STATUS_LABEL } from "@/lib/ticket-shared";
+import { Markdown } from "@/components/Markdown";
+
+type TicketFile = { id: number; originalName: string };
 
 export type TicketDetailData = {
   id: number;
@@ -13,9 +16,22 @@ export type TicketDetailData = {
   createdAt: Date;
   updatedAt: Date;
   authorName: string;
-  files: { id: number; originalName: string }[];
-  comments: { id: number; userId: number; body: string; at: Date; authorName: string }[];
+  files: TicketFile[]; // jointes à l'ouverture du ticket (pas de commentId)
+  comments: { id: number; userId: number; body: string; at: Date; authorName: string; files: TicketFile[] }[];
 };
+
+function FileChips({ ticketId, files }: { ticketId: number; files: TicketFile[] }) {
+  if (files.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-2">
+      {files.map((f) => (
+        <a key={f.id} href={`/api/tickets/${ticketId}/files/${f.id}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-xs hover:border-accent">
+          <Paperclip size={12} /> {f.originalName} <Download size={12} className="text-muted" />
+        </a>
+      ))}
+    </div>
+  );
+}
 
 // Mêmes couleurs/icônes que les badges de statut d'OASIS (_macros.html.twig : status_badge), sur les statuts qui
 // existent côté Backstage (pas de « en attente »/« résolu » séparés ici).
@@ -53,15 +69,9 @@ export function TicketDetail({ ticket, canManage, viewerId, backHref }: { ticket
               <span className="flex items-center gap-1"><UserRound size={12} aria-hidden /> {ticket.authorName}</span>
               <span className="flex items-center gap-1"><Clock size={12} aria-hidden /> ouvert {ago(ticket.createdAt)}</span>
             </p>
-            <div className="whitespace-pre-wrap rounded-lg border border-line bg-bg p-3 text-sm">{ticket.body}</div>
+            <div className="rounded-lg border border-line bg-bg p-3 text-sm"><Markdown breaks>{ticket.body}</Markdown></div>
             {ticket.files.length > 0 && (
-              <div className="flex flex-wrap gap-2 border-t border-line pt-3">
-                {ticket.files.map((f) => (
-                  <a key={f.id} href={`/api/tickets/${ticket.id}/files/${f.id}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-xs hover:border-accent">
-                    <Paperclip size={12} /> {f.originalName} <Download size={12} className="text-muted" />
-                  </a>
-                ))}
-              </div>
+              <div className="border-t border-line pt-3"><FileChips ticketId={ticket.id} files={ticket.files} /></div>
             )}
           </section>
 
@@ -75,9 +85,10 @@ export function TicketDetail({ ticket, canManage, viewerId, backHref }: { ticket
                 ticket.comments.map((c) => {
                   const isMe = c.userId === viewerId;
                   return (
-                    <div key={c.id} className={`rounded-md border-l-[3px] bg-bg p-2.5 ${isMe ? "border-l-accent" : "border-l-line"}`}>
+                    <div key={c.id} className={`space-y-1.5 rounded-md border-l-[3px] bg-bg p-2.5 ${isMe ? "border-l-accent" : "border-l-line"}`}>
                       <p className="flex items-center justify-between text-xs text-muted"><strong className="font-medium text-fg">{c.authorName}</strong> <span>{ago(c.at)}</span></p>
-                      <p className="whitespace-pre-wrap text-sm">{c.body}</p>
+                      <div className="text-sm"><Markdown breaks>{c.body}</Markdown></div>
+                      <FileChips ticketId={ticket.id} files={c.files} />
                     </div>
                   );
                 })
