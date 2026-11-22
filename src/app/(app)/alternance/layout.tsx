@@ -4,8 +4,7 @@ import { ProjectTabs } from "@/components/ProjectTabs";
 const TABS = [
   { slug: "", label: "Planning" },
   { slug: "carnet", label: "Journal de bord" },
-  { slug: "pointeuse", label: "Pointeuse" },
-  { slug: "stats", label: "Statistiques" },
+  { slug: "pointeuse", label: "Suivi d'activité" },
   { slug: "notes-de-frais", label: "Notes de frais" },
 ];
 

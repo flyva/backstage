@@ -132,27 +132,21 @@ export function AnnuaireForm(props: {
   const [state, action, pending] = useActionState(saveAnnuaire, undefined);
   return (
     <form action={action} className="space-y-4">
-      {/* trackId/classId : gérés dans l'onglet « Ma promo », reportés ici pour ne pas être effacés par cet envoi. */}
+      {/* trackId/classId : gérés dans l'onglet « Ma promo » ; phone/discord dans l'onglet Profil > Coordonnées.
+          Reportés ici en champs cachés pour ne pas être effacés par cet envoi. */}
       <input type="hidden" name="trackId" value={props.trackId ?? ""} />
       <input type="hidden" name="classId" value={props.classId ?? ""} />
+      <input type="hidden" name="phone" value={props.phone} />
+      <input type="hidden" name="discord" value={props.discord} />
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label className="label" htmlFor="headline">Présentation courte</label>
           <input id="headline" name="headline" defaultValue={props.headline} maxLength={120} placeholder="Régisseur son · alternant chez…" className="input" />
         </div>
         <div>
-          <label className="label" htmlFor="phone">Téléphone (facultatif)</label>
-          <input id="phone" name="phone" defaultValue={props.phone} maxLength={30} inputMode="tel" autoComplete="tel" placeholder="06 12 34 56 78" className="input" />
-        </div>
-        <div>
           <label className="label" htmlFor="contactEmail">E-mail de contact (carte de visite)</label>
           <input id="contactEmail" name="contactEmail" type="email" defaultValue={props.contactEmail} maxLength={190} placeholder="Facultatif : sinon ton adresse 3IS" className="input" />
         </div>
-      </div>
-      <div>
-        <label className="label" htmlFor="discord">Pseudo Discord (facultatif)</label>
-        <input id="discord" name="discord" defaultValue={props.discord} maxLength={40} autoComplete="off" placeholder="ton_pseudo" className="input sm:max-w-xs" />
-        <p className="mt-1 text-xs text-muted">Sans le @. Il apparaît dans l&apos;annuaire de la promo ; un interrupteur ci-dessous décide s&apos;il figure aussi sur ta carte de visite publique.</p>
       </div>
       <div>
         <label className="label" htmlFor="habilitation">Habilitation électrique (facultatif)</label>

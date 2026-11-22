@@ -10,8 +10,9 @@ import { FIXED_KINDS, STANDARD_DAY_MINUTES, daySummary, entrySpanMinutes } from 
 import { deleteDayStatus, deleteTimeEntry } from "@/lib/time-actions";
 import { TimeEntryForm, DayStatusForm, DayStatusEditForm } from "@/components/time-forms";
 import { ConfirmButton } from "@/components/ConfirmButton";
+import { ProjectTabs } from "@/components/ProjectTabs";
 
-export const metadata = { title: "Pointeuse" };
+export const metadata = { title: "Suivi d'activité" };
 
 export default async function PointeusePage({ searchParams }: PageProps<"/alternance/pointeuse">) {
   const user = await requireUser();
@@ -37,6 +38,7 @@ export default async function PointeusePage({ searchParams }: PageProps<"/altern
 
   return (
     <div className="space-y-6">
+      <ProjectTabs base="/alternance" tabs={[{ slug: "pointeuse", label: "Suivi d'activité" }, { slug: "stats", label: "Statistiques" }]} label="Suivi d'activité" />
       <section className="card space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-1">
@@ -47,7 +49,6 @@ export default async function PointeusePage({ searchParams }: PageProps<"/altern
           </div>
           <div className="flex gap-2">
             <Link href="/alternance/pointeuse/lignes" className="btn-ghost text-xs">Toutes les lignes (tableau) →</Link>
-            <Link href="/alternance/stats" className="btn-ghost text-xs">Voir les statistiques →</Link>
           </div>
         </div>
         <div className="rounded-xl border border-line bg-bg p-3 text-sm">

@@ -69,62 +69,68 @@ export function RegisterForm({ codeRequired = false, emailDomain }: { codeRequir
   );
 }
 
-type ProfileFormProps = { firstName: string; lastName: string; homeAddress: string; companyName: string; companyAddress: string };
+type ProfileFormProps = {
+  firstName: string; lastName: string; homeAddress: string; companyName: string; companyAddress: string;
+  phone: string; phonePro: string; discord: string;
+};
 
-// Historiquement un seul formulaire (Identité + Coordonnées) ; conservé en un seul appel à updateProfile pour ne pas
-// toucher à l'action, mais découpé en deux vues (onglets « Identité » et « Coordonnées » du profil vertical) — chaque
-// vue envoie aussi les champs de l'autre section en champs cachés pour ne rien effacer.
-export function ProfileForm(props: ProfileFormProps) {
-  return <IdentityForm {...props} />;
-}
-
-export function IdentityForm({ firstName, lastName, homeAddress, companyName, companyAddress }: ProfileFormProps) {
+// Un seul formulaire pour Identité + Coordonnées (un seul bouton Enregistrer, comme demandé), affiché en deux blocs
+// visuels distincts dans la page (voir Section dans profil/page.tsx). Téléphone/téléphone pro/Discord déménagés ici
+// depuis l'onglet Annuaire (toujours modifiables là-bas aussi : AnnuaireForm les reporte en champs cachés).
+export function ProfileForm({ firstName, lastName, homeAddress, companyName, companyAddress, phone, phonePro, discord }: ProfileFormProps) {
   const [state, action, pending] = useActionState(updateProfile, undefined);
   return (
-    <form action={action} className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <label className="label" htmlFor="firstName">Prénom</label>
-          <input id="firstName" name="firstName" autoComplete="given-name" defaultValue={firstName} maxLength={60} required className="input" />
-        </div>
-        <div>
-          <label className="label" htmlFor="lastName">Nom</label>
-          <input id="lastName" name="lastName" autoComplete="family-name" defaultValue={lastName} maxLength={60} required className="input" />
+    <form action={action} className="space-y-6">
+      <div className="space-y-4">
+        <h3 className="text-[11px] font-bold uppercase tracking-wide text-muted">Identité</h3>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="label" htmlFor="firstName">Prénom <span className="text-danger">*</span></label>
+            <input id="firstName" name="firstName" autoComplete="given-name" defaultValue={firstName} maxLength={60} required className="input" />
+          </div>
+          <div>
+            <label className="label" htmlFor="lastName">Nom <span className="text-danger">*</span></label>
+            <input id="lastName" name="lastName" autoComplete="family-name" defaultValue={lastName} maxLength={60} required className="input" />
+          </div>
         </div>
       </div>
-      <input type="hidden" name="homeAddress" value={homeAddress} />
-      <input type="hidden" name="companyName" value={companyName} />
-      <input type="hidden" name="companyAddress" value={companyAddress} />
-      <Feedback state={state} />
-      <button className="btn" disabled={pending}>{pending ? "Enregistrement…" : "Enregistrer"}</button>
-    </form>
-  );
-}
 
-export function CoordonneesForm({ firstName, lastName, homeAddress, companyName, companyAddress }: ProfileFormProps) {
-  const [state, action, pending] = useActionState(updateProfile, undefined);
-  return (
-    <form action={action} className="space-y-4">
-      <input type="hidden" name="firstName" value={firstName} />
-      <input type="hidden" name="lastName" value={lastName} />
-      <AddressField
-        id="homeAddress"
-        name="homeAddress"
-        label="Adresse du domicile"
-        defaultValue={homeAddress}
-        hint="Commence à taper (numéro, rue, ville) et choisis dans la liste. Sert aux horaires de tram/bus et aux stations Le Vélo proches de chez toi."
-      />
-      <div className="space-y-4 rounded-xl border border-line p-4">
-        <div>
-          <h3 className="text-sm font-semibold">Entreprise (alternance)</h3>
-          <p className="text-xs text-muted">Facultatif : sert à calculer ton trajet et à voir les transports autour de ton lieu de travail (page Mobilité).</p>
+      <div className="space-y-4">
+        <h3 className="text-[11px] font-bold uppercase tracking-wide text-muted">Coordonnées</h3>
+        <AddressField
+          id="homeAddress"
+          name="homeAddress"
+          label="Adresse du domicile"
+          defaultValue={homeAddress}
+          hint="Commence à taper (numéro, rue, ville) et choisis dans la liste. Sert aux horaires de tram/bus et aux stations Le Vélo proches de chez toi."
+        />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="label" htmlFor="phone">Téléphone</label>
+            <input id="phone" name="phone" defaultValue={phone} maxLength={30} inputMode="tel" autoComplete="tel" placeholder="06 12 34 56 78" className="input" />
+          </div>
+          <div>
+            <label className="label" htmlFor="phonePro">Téléphone pro (facultatif)</label>
+            <input id="phonePro" name="phonePro" defaultValue={phonePro} maxLength={30} inputMode="tel" autoComplete="off" placeholder="Entreprise d'alternance/stage" className="input" />
+          </div>
         </div>
         <div>
-          <label className="label" htmlFor="companyName">Nom de l&apos;entreprise</label>
-          <input id="companyName" name="companyName" defaultValue={companyName} maxLength={120} autoComplete="off" className="input" />
+          <label className="label" htmlFor="discord">Discord (facultatif)</label>
+          <input id="discord" name="discord" defaultValue={discord} maxLength={40} autoComplete="off" placeholder="ton_pseudo" className="input sm:max-w-xs" />
         </div>
-        <AddressField id="companyAddress" name="companyAddress" label="Adresse de l'entreprise" defaultValue={companyAddress} />
+        <div className="space-y-4 rounded-xl border border-line p-4">
+          <div>
+            <h3 className="text-sm font-semibold">Entreprise (alternance)</h3>
+            <p className="text-xs text-muted">Facultatif : sert à calculer ton trajet et à voir les transports autour de ton lieu de travail (page Mobilité).</p>
+          </div>
+          <div>
+            <label className="label" htmlFor="companyName">Nom de l&apos;entreprise</label>
+            <input id="companyName" name="companyName" defaultValue={companyName} maxLength={120} autoComplete="off" className="input" />
+          </div>
+          <AddressField id="companyAddress" name="companyAddress" label="Adresse de l'entreprise" defaultValue={companyAddress} />
+        </div>
       </div>
+
       <Feedback state={state} />
       <button className="btn" disabled={pending}>{pending ? "Enregistrement…" : "Enregistrer"}</button>
     </form>

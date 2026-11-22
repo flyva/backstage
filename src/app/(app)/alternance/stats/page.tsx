@@ -7,6 +7,7 @@ import { SOURCE_CLASS, SOURCE_LABEL, isYear, monthWeeks, monthsOfYear, netOverti
 import { fetchDaySummaries } from "@/lib/time-query";
 import { resolveTimeSubject, tutees, type TimeSubject } from "@/lib/time-access";
 import { TimeBarChart, type ChartBar } from "@/components/TimeCharts";
+import { ProjectTabs } from "@/components/ProjectTabs";
 
 export const metadata = { title: "Statistiques de pointage" };
 
@@ -36,6 +37,7 @@ export default async function StatsPage({ searchParams }: PageProps<"/alternance
 
   return (
     <div className="space-y-6">
+      <ProjectTabs base="/alternance" tabs={[{ slug: "pointeuse", label: "Suivi d'activité" }, { slug: "stats", label: "Statistiques" }]} label="Suivi d'activité" />
       {(mine.length > 0 || subject.readonly) && (
         <section className="card flex flex-wrap items-center gap-2 text-sm">
           <span className="text-muted">{subject.readonly ? `Tu regardes la pointeuse de ${subject.name} (lecture seule).` : "Tu vois aussi, en tant que référent :"}</span>

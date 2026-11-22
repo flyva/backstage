@@ -764,6 +764,13 @@
       "when": 1795372630207,
       "tag": "0108_freezing_lord_hawal",
       "breakpoints": true
+    },
+    {
+      "idx": 109,
+      "version": "5",
+      "when": 1795373885991,
+      "tag": "0109_flat_speed_demon",
+      "breakpoints": true
     }
   ]
 }

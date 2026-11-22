@@ -18,6 +18,7 @@ import { SETTING_KEYS } from "@/lib/settings";
 import { geocode } from "@/lib/mobility";
 import { allow, clientIp } from "@/lib/rate-limit";
 import { allowedDomainsFromEnv, emailInDomains } from "@/lib/email-domain";
+import { PHONE_RE, normalizeDiscord } from "@/lib/people-shared";
 import { joinName } from "@/lib/names";
 import { skinFrom } from "@/lib/skin";
 import { writeSkinCookies } from "@/lib/skin-cookies";
@@ -159,6 +160,9 @@ const profileSchema = z.object({
   homeAddress: z.string().trim().max(255),
   companyName: z.string().trim().max(120),
   companyAddress: z.string().trim().max(255),
+  phone: z.string().trim().max(30),
+  phonePro: z.string().trim().max(30),
+  discord: z.string().trim().max(40),
 });
 
 export async function updateProfile(_: FormState, fd: FormData): Promise<FormState> {
@@ -169,11 +173,19 @@ export async function updateProfile(_: FormState, fd: FormData): Promise<FormSta
     homeAddress: fd.get("homeAddress") ?? "",
     companyName: fd.get("companyName") ?? "",
     companyAddress: fd.get("companyAddress") ?? "",
+    phone: fd.get("phone") ?? "",
+    phonePro: fd.get("phonePro") ?? "",
+    discord: fd.get("discord") ?? "",
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
-  const { homeAddress, companyName, companyAddress } = parsed.data;
+  const { homeAddress, companyName, companyAddress, phone, phonePro } = parsed.data;
   const firstName = parsed.data.firstName.replace(/\s+/g, " ");
   const lastName = parsed.data.lastName.replace(/\s+/g, " ");
+  if (phone && !PHONE_RE.test(phone)) return { error: "Numéro de téléphone invalide (chiffres, espaces, + . - ( ) uniquement)" };
+  if (phonePro && !PHONE_RE.test(phonePro)) return { error: "Numéro de téléphone pro invalide (chiffres, espaces, + . - ( ) uniquement)" };
+  const discordRaw = parsed.data.discord;
+  const discord = discordRaw ? normalizeDiscord(discordRaw) : null;
+  if (discordRaw && !discord) return { error: "Pseudo Discord invalide (lettres, chiffres, « . », « _ » ou « - », sans espace)" };
   let place = null;
   if (homeAddress) {
     place = await geocode(homeAddress);
@@ -195,9 +207,13 @@ export async function updateProfile(_: FormState, fd: FormData): Promise<FormSta
     companyAddress: company?.label ?? null,
     companyLat: company?.lat ?? null,
     companyLng: company?.lng ?? null,
+    phone: phone || null,
+    phonePro: phonePro || null,
+    discord,
     onboarded: true,
   }).where(eq(users.id, user.id));
   revalidatePath("/", "layout");
+  revalidatePath("/annuaire");
   return { ok: "Profil enregistré" };
 }
 

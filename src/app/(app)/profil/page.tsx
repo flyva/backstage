@@ -5,7 +5,7 @@ import { Bell, Briefcase, Calendar, CircleHelp, CreditCard, Download, Graduation
 import QRCode from "qrcode";
 import { db } from "@/db";
 import { agendaViewers, classes, tracks, userFormations, userLinks, users } from "@/db/schema";
-import { ChangePasswordForm, CoordonneesForm, IcalForm, IdentityForm } from "@/components/forms";
+import { ChangePasswordForm, IcalForm, ProfileForm } from "@/components/forms";
 import { AnnuaireForm, Avatar, AvatarForm, CardPanel, CardVisibilityForm, CompanyProfileForm, DeleteMyAccountForm, FeedPanel, FormationPicker, LinksEditor, PromotionPicker } from "@/components/people-forms";
 import { TimeSettingsForm } from "@/components/time-forms";
 import { RestoSettingsForm } from "@/components/alternance-forms";
@@ -67,7 +67,8 @@ export default async function ProfilPage({ searchParams }: PageProps<"/profil">)
   const isAlternant = user.studentStatus === "alternant";
   const groups = groupsFor(isAlternant);
   const allIds = groups.flatMap((g) => g.items.map((i) => i.id));
-  const tab: TabId = (allIds as readonly string[]).includes(sp.onglet as string) ? (sp.onglet as TabId) : "general";
+  let tab: TabId = (allIds as readonly string[]).includes(sp.onglet as string) ? (sp.onglet as TabId) : "general";
+  if (tab === "alternance" && !user.companyName) tab = "general";
 
   return (
     <div className="space-y-5">
@@ -92,20 +93,38 @@ export default async function ProfilPage({ searchParams }: PageProps<"/profil">)
               <div key={g.title}>
                 <div className="px-2.5 pb-1 pt-2.5 text-[11px] font-bold uppercase tracking-wide text-muted">{g.title}</div>
                 <ul className="space-y-0.5">
-                  {g.items.map((it) => (
-                    <li key={it.id}>
-                      <Link
-                        href={`/profil?onglet=${it.id}`}
-                        aria-current={it.id === tab ? "page" : undefined}
-                        className={`flex items-center gap-2.5 whitespace-nowrap rounded-r-lg border-l-[3px] px-2.5 py-1.5 text-sm ${
-                          it.id === tab ? "border-accent bg-bg font-bold text-fg" : "border-transparent text-muted hover:bg-bg hover:text-fg"
-                        }`}
-                      >
-                        <it.icon size={16} className={it.id === tab ? "text-accent" : undefined} />
-                        {it.label}
-                      </Link>
-                    </li>
-                  ))}
+                  {g.items.map((it) => {
+                    // Tant que l'entreprise d'alternance/stage n'est pas renseignée (onglet Profil > Coordonnées),
+                    // rien à montrer ici : l'item est grisé plutôt que de mener à une page vide.
+                    const disabled = it.id === "alternance" && !user.companyName;
+                    if (disabled) {
+                      return (
+                        <li key={it.id}>
+                          <span
+                            className="flex cursor-not-allowed items-center gap-2.5 whitespace-nowrap rounded-r-lg border-l-[3px] border-transparent px-2.5 py-1.5 text-sm text-muted/50"
+                            title="Renseigne d'abord ton entreprise dans Profil > Coordonnées"
+                          >
+                            <it.icon size={16} />
+                            {it.label}
+                          </span>
+                        </li>
+                      );
+                    }
+                    return (
+                      <li key={it.id}>
+                        <Link
+                          href={`/profil?onglet=${it.id}`}
+                          aria-current={it.id === tab ? "page" : undefined}
+                          className={`flex items-center gap-2.5 whitespace-nowrap rounded-r-lg border-l-[3px] px-2.5 py-1.5 text-sm ${
+                            it.id === tab ? "border-accent bg-bg font-bold text-fg" : "border-transparent text-muted hover:bg-bg hover:text-fg"
+                          }`}
+                        >
+                          <it.icon size={16} className={it.id === tab ? "text-accent" : undefined} />
+                          {it.label}
+                        </Link>
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             ))}
@@ -162,12 +181,12 @@ function GeneralTab({ user }: { user: User }) {
       <Section title="Photo">
         <AvatarForm name={user.name} url={avatarUrl(user.avatarFile)} />
       </Section>
-      <Section title="Identité">
-        <IdentityForm firstName={user.firstName} lastName={user.lastName} homeAddress={user.homeAddress ?? ""} companyName={user.companyName ?? ""} companyAddress={user.companyAddress ?? ""} />
-      </Section>
-      <Section title="Coordonnées">
-        <CoordonneesForm firstName={user.firstName} lastName={user.lastName} homeAddress={user.homeAddress ?? ""} companyName={user.companyName ?? ""} companyAddress={user.companyAddress ?? ""} />
-      </Section>
+      {/* Identité + Coordonnées : un seul formulaire, un seul bouton Enregistrer (les deux titres de section sont rendus par ProfileForm lui-même). */}
+      <ProfileForm
+        firstName={user.firstName} lastName={user.lastName} homeAddress={user.homeAddress ?? ""}
+        companyName={user.companyName ?? ""} companyAddress={user.companyAddress ?? ""}
+        phone={user.phone ?? ""} phonePro={user.phonePro ?? ""} discord={user.discord ?? ""}
+      />
       <Section title="Sécurité">
         <ChangePasswordForm />
       </Section>
@@ -247,6 +266,14 @@ async function PromoTab({ user }: { user: User }) {
         <h2 className="font-semibold">Ma promo</h2>
         <PromotionPicker classes={allClasses.map((c) => ({ id: c.id, name: c.name, startYear: c.startYear, endYear: c.endYear }))} classId={user.classId} />
       </div>
+      <div className="card max-w-md space-y-3">
+        <h2 className="font-semibold">Mon statut</h2>
+        <p className="text-sm text-muted">Change le libellé « Alternance »/« Stage » dans le menu et sur « Mon alternance ».</p>
+        <form action={setStudentStatus} className="flex gap-2">
+          <button name="studentStatus" value="alternant" className={`rounded-full border px-3 py-1 text-sm ${user.studentStatus === "alternant" ? "border-accent bg-accent text-accent-fg" : "border-line text-muted hover:text-fg"}`}>Alternant·e</button>
+          <button name="studentStatus" value="initial" className={`rounded-full border px-3 py-1 text-sm ${user.studentStatus !== "alternant" ? "border-accent bg-accent text-accent-fg" : "border-line text-muted hover:text-fg"}`}>Initial (stage)</button>
+        </form>
+      </div>
     </div>
   );
 }
@@ -270,16 +297,7 @@ async function AlternanceTab({ user, isAlternant }: { user: User; isAlternant: b
   ]);
   return (
     <div className="card space-y-4">
-      <div>
-        <h2 className="font-semibold">Mon statut</h2>
-        <p className="text-sm text-muted">Change le libellé « Alternance »/« Stage » dans le menu et ici.</p>
-      </div>
-      <form action={setStudentStatus} className="flex gap-2">
-        <button name="studentStatus" value="alternant" className={`rounded-full border px-3 py-1 text-sm ${isAlternant ? "border-accent bg-accent text-accent-fg" : "border-line text-muted hover:text-fg"}`}>Alternant·e</button>
-        <button name="studentStatus" value="initial" className={`rounded-full border px-3 py-1 text-sm ${!isAlternant ? "border-accent bg-accent text-accent-fg" : "border-line text-muted hover:text-fg"}`}>Initial (stage)</button>
-      </form>
-
-      <div className="border-t border-line pt-4">
+      <div className="border-t-0 pt-0">
         <h2 className="font-semibold">Pointeuse</h2>
         <p className="text-sm text-muted">La durée standard sert à calculer tes heures sup. Les référents voient ta pointeuse et tes statistiques en lecture seule.</p>
       </div>

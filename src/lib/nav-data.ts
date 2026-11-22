@@ -1,5 +1,5 @@
 import {
-  BookOpen, BookUser, Bot, Briefcase, Building2, Calculator, Car, CalendarDays, Camera, CircleHelp, ClipboardList, Clock, Cog, Gamepad2, Globe, Home, Images, Laptop, Lightbulb, Link2, Mail, Network, Newspaper, Package, PartyPopper, Receipt, School, NotebookPen, ShieldCheck, SquareKanban, TramFront, Users, Contact, Megaphone, CalendarClock, Wrench, Zap, BarChart3,
+  BookOpen, BookUser, Bot, Briefcase, Building2, Calculator, Car, CalendarDays, Camera, CircleHelp, ClipboardList, Clock, Cog, Gamepad2, Globe, Home, Images, Laptop, Lightbulb, Link2, Mail, Network, Newspaper, Package, PartyPopper, Receipt, School, NotebookPen, ShieldCheck, SquareKanban, TramFront, Users, Contact, Megaphone, CalendarClock, Wrench, Zap,
   type LucideIcon,
 } from "lucide-react";
 
@@ -23,8 +23,7 @@ export const GROUPS: Group[] = [
     items: [
       { href: "/alternance", label: "Planning", icon: CalendarDays },
       { href: "/alternance/carnet", label: "Journal de bord", icon: NotebookPen },
-      { href: "/alternance/pointeuse", label: "Pointeuse", icon: Clock },
-      { href: "/alternance/stats", label: "Statistiques", icon: BarChart3 },
+      { href: "/alternance/pointeuse", label: "Suivi d'activité", icon: Clock },
       { href: "/alternance/notes-de-frais", label: "Notes de frais", icon: Receipt },
     ],
   },

@@ -181,6 +181,7 @@ export const users = mysqlTable("users", {
   avatarFile: varchar("avatar_file", { length: 40 }),
   headline: varchar("headline", { length: 120 }), // « Régisseur son · alternant chez… »
   phone: varchar("phone", { length: 30 }),
+  phonePro: varchar("phone_pro", { length: 30 }), // téléphone professionnel (entreprise d'alternance/stage), facultatif
   contactEmail: varchar("contact_email", { length: 190 }), // adresse affichée sur la carte de visite (sinon l'adresse 3IS)
   showInDirectory: boolean("show_in_directory").notNull().default(true),
   showPhone: boolean("show_phone").notNull().default(false), // téléphone visible dans l'annuaire
