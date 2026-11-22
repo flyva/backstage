@@ -10,7 +10,7 @@ import { db } from "@/db";
 import { LINK_KINDS, classes, domaines, networkContacts, roles, trackReferents, tracks, userFormations, userLinks, users, type LinkKind } from "@/db/schema";
 import { destroySession, requireAdmin, requireUser } from "@/lib/auth";
 import { AVATAR_NAME, MAX_AVATAR_BYTES, avatarDir, ensureAvatarDir, newAvatarName, sniffAvatar } from "@/lib/avatar-files";
-import { HABILITATION_SYMBOLS, PHONE_RE, normalizeDiscord, normalizeUrl } from "@/lib/people-shared";
+import { PHONE_RE, normalizeDiscord, normalizeUrl } from "@/lib/people-shared";
 import { allow } from "@/lib/rate-limit";
 import { otherActiveAdmins } from "@/lib/user-admin-actions";
 import type { FormState } from "@/lib/actions";
@@ -63,13 +63,11 @@ export async function saveAnnuaire(_: FormState, fd: FormData): Promise<FormStat
   if (discordRaw && !discord) return { error: "Pseudo Discord invalide (lettres, chiffres, « . », « _ » ou « - », sans espace)" };
   const contactEmail = text(fd, "contactEmail", 190).toLowerCase();
   if (contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) return { error: "Adresse e-mail de contact invalide" };
-  const habilitationRaw = text(fd, "habilitation", 12);
-  const habilitation = (HABILITATION_SYMBOLS as readonly string[]).includes(habilitationRaw) ? habilitationRaw : null;
   await db.update(users).set({
     trackId, classId, headline: headline || null, phone: phone || null, contactEmail: contactEmail || null,
     showInDirectory: fd.get("showInDirectory") === "on", showPhone: fd.get("showPhone") === "on",
-    discord, showCompany: fd.get("showCompany") === "on",
-    habilitation,
+    discord, showDiscord: fd.get("showDiscord") === "on", showClass: fd.get("showClass") === "on", showStatus: fd.get("showStatus") === "on",
+    showCompany: fd.get("showCompany") === "on",
   }).where(eq(users.id, user.id));
   revalidatePath("/profil");
   revalidatePath("/annuaire");

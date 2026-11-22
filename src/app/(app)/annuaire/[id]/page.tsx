@@ -39,7 +39,7 @@ export default async function MemberPage({ params }: PageProps<"/annuaire/[id]">
   }
 
   const [trackRow, links, ratings, received, listed] = await Promise.all([
-    u.trackId ? db.select({ name: tracks.name }).from(tracks).where(eq(tracks.id, u.trackId)).limit(1) : Promise.resolve([]),
+    u.showClass && u.trackId ? db.select({ name: tracks.name }).from(tracks).where(eq(tracks.id, u.trackId)).limit(1) : Promise.resolve([]),
     db.select().from(userLinks).where(eq(userLinks.userId, id)).orderBy(asc(userLinks.sortOrder)),
     ratingSummary([id]),
     db.select({ r: reviews, author: users.name }).from(reviews).innerJoin(users, eq(users.id, reviews.authorId)).where(eq(reviews.subjectId, id)).orderBy(desc(reviews.createdAt)).limit(10),
@@ -67,6 +67,7 @@ export default async function MemberPage({ params }: PageProps<"/annuaire/[id]">
             {u.showCompany && u.companyName && <p className="flex items-center justify-center gap-1.5 text-sm text-muted"><Building2 size={14} aria-hidden /> Alternance chez {u.companyName}</p>}
             <span className="flex flex-wrap items-center justify-center gap-1.5">
               {trackRow[0] && <span className="inline-block rounded-full border border-line px-2.5 py-0.5 text-xs font-semibold text-muted">{trackRow[0].name}</span>}
+              {u.showStatus && <span className="inline-block rounded-full border border-line px-2.5 py-0.5 text-xs font-semibold text-muted">{u.studentStatus === "alternant" ? "Alternant·e" : "Initial"}</span>}
               <HabilitationBadge value={u.habilitation} />
             </span>
             {rating && <div><RatingBadge avg={rating.avg} n={rating.n} /></div>}
@@ -75,7 +76,7 @@ export default async function MemberPage({ params }: PageProps<"/annuaire/[id]">
             {!isSelf && !viewer.perms.companyOnly && <MessageButton otherUserId={u.id} />}
             {email3is && <a href={`mailto:${email3is}`} className="btn w-full"><Mail size={16} aria-hidden /> {email3is}</a>}
             {u.phone && u.showPhone && <a href={`tel:${u.phone.replace(/[^\d+]/g, "")}`} className="btn-ghost w-full"><Phone size={16} aria-hidden /> {u.phone}</a>}
-            {u.discord && <div className="flex justify-center"><CopyChip value={u.discord} prefix="Discord : " className="px-3 py-1.5 text-sm" /></div>}
+            {u.discord && u.showDiscord && <div className="flex justify-center"><CopyChip value={u.discord} prefix="Discord : " className="px-3 py-1.5 text-sm" /></div>}
           </div>
           {links.length > 0 && (
             <ul className="space-y-2">

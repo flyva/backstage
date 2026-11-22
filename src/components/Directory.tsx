@@ -17,6 +17,7 @@ export type Person = {
   track: string | null;
   classId: number | null;
   className: string | null;
+  status: string | null;
   headline: string | null;
   email3is: string | null;
   phone: string | null;
@@ -73,6 +74,7 @@ export function Directory({ people, tracks, classes }: { people: Person[]; track
               <span className="flex flex-wrap items-center gap-1.5">
                 {p.track && <span className="inline-block rounded-full border border-line px-2 py-0.5 text-[11px] font-semibold text-muted">{p.track}</span>}
                 {p.className && <span className="inline-block rounded-full border border-line px-2 py-0.5 text-[11px] font-semibold text-muted">{p.className}</span>}
+                {p.status && <span className="inline-block rounded-full border border-line px-2 py-0.5 text-[11px] font-semibold text-muted">{p.status}</span>}
                 <HabilitationBadge value={p.habilitation} />
               </span>
               {p.headline && <div className="text-sm text-muted">{p.headline}</div>}

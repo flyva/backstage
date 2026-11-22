@@ -242,7 +242,9 @@ async function AnnuaireTab({ user }: { user: User }) {
       <AnnuaireForm
         tracks={allTracks.map((t) => ({ id: t.id, name: t.name }))} trackId={user.trackId}
         classes={allClasses.map((c) => ({ id: c.id, name: c.name }))} classId={user.classId} headline={user.headline ?? ""} phone={user.phone ?? ""}
-        contactEmail={user.contactEmail ?? ""} showInDirectory={user.showInDirectory} showPhone={user.showPhone} discord={user.discord ?? ""} showCompany={user.showCompany} companyName={user.companyName ?? ""} loginEmail={user.email} habilitation={user.habilitation ?? ""}
+        contactEmail={user.contactEmail ?? ""} showInDirectory={user.showInDirectory} showPhone={user.showPhone} discord={user.discord ?? ""}
+        showDiscord={user.showDiscord} showClass={user.showClass} showStatus={user.showStatus}
+        showCompany={user.showCompany} companyName={user.companyName ?? ""} loginEmail={user.email}
       />
     </div>
   );

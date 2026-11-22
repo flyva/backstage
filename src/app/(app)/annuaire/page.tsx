@@ -30,14 +30,15 @@ export default async function AnnuairePage() {
     avatar: avatarUrl(u.avatarFile),
     online: online.has(u.id),
     trackId: u.trackId,
-    track: u.trackId ? trackName.get(u.trackId) ?? null : null,
+    track: u.showClass && u.trackId ? trackName.get(u.trackId) ?? null : null,
     classId: u.classId,
-    className: u.classId ? className.get(u.classId) ?? null : null,
+    className: u.showClass && u.classId ? className.get(u.classId) ?? null : null,
+    status: u.showStatus ? (u.studentStatus === "alternant" ? "Alternant·e" : "Initial") : null,
     headline: u.headline,
     email3is: school3isEmail(u.email), // adresse 3IS seulement si le compte en a une
     phone: u.showPhone ? u.phone : null,
-    discord: u.discord, // visible dans l'annuaire dès qu'il est renseigné
-    habilitation: u.habilitation, // idem
+    discord: u.showDiscord ? u.discord : null,
+    habilitation: u.habilitation,
     company: u.showCompany ? u.companyName : null, // nom de l'entreprise seulement (jamais l'adresse), si la personne l'a choisi
     links: links.filter((l) => l.userId === u.id).map((l) => ({ kind: l.kind, url: l.url, label: l.label })),
     cardUrl: u.cardEnabled && u.cardSlug ? `/carte/${u.cardSlug}` : null,

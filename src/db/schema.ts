@@ -190,9 +190,12 @@ export const users = mysqlTable("users", {
   contactEmail: varchar("contact_email", { length: 190 }), // adresse affichée sur la carte de visite (sinon l'adresse 3IS)
   showInDirectory: boolean("show_in_directory").notNull().default(true),
   showPhone: boolean("show_phone").notNull().default(false), // téléphone visible dans l'annuaire
+  showDiscord: boolean("show_discord").notNull().default(false), // pseudo Discord visible dans l'annuaire (même principe que BDE : annuaireShowDiscord)
+  showClass: boolean("show_class").notNull().default(true), // filière/promo visibles dans l'annuaire (BDE : annuaireShowClass)
+  showStatus: boolean("show_status").notNull().default(true), // statut alternant/initial visible dans l'annuaire (BDE : annuaireShowStatus)
   cardShowPhone: boolean("card_show_phone").notNull().default(false), // téléphone visible sur la carte de visite (choix indépendant)
   showCompany: boolean("show_company").notNull().default(false), // nom de l'entreprise d'alternance visible dans l'annuaire et sur la fiche (jamais son adresse)
-  discord: varchar("discord", { length: 40 }), // pseudo Discord : visible dans l'annuaire dès qu'il est renseigné
+  discord: varchar("discord", { length: 40 }), // pseudo Discord : visible dans l'annuaire seulement si show_discord
   cardShowDiscord: boolean("card_show_discord").notNull().default(false), // pseudo Discord visible sur la carte de visite (publique)
   habilitation: varchar("habilitation", { length: 12 }), // symbole d'habilitation électrique (B0, BS, B1V…) : visible dans l'annuaire dès qu'il est renseigné
   // Statut étudiant : « alternant » (contrat en entreprise) ou « initial » (formation classique, éventuellement avec un stage).

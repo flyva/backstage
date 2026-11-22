@@ -1,12 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useActionState, useRef, useState } from "react";
 import { Check, Copy, ExternalLink, Trash2 } from "lucide-react";
 import type { FormState } from "@/lib/actions";
 import { Toggle } from "@/components/Toggle";
 import { LINK_KINDS, type LinkKind } from "@/db/schema";
-import { HABILITATION_SYMBOLS, LINK_LABEL, initialsOf } from "@/lib/people-shared";
+import { LINK_LABEL, initialsOf } from "@/lib/people-shared";
 import {
   addTrackReferentsBulk, addLink, addUserFormation, deleteLink, deleteMyAccount, regenerateCardSlug, removeAvatar, removeUserFormation, saveAnnuaire, saveCardVisibility, saveCompanyProfile, saveDomaine, saveNetworkContact, saveTrack, setCardEnabled, setPromotionByEntryYear, uploadAvatar,
   deleteDomaine, deleteNetworkContact, deleteTrack, setFeedEnabled, regenerateFeedToken,
@@ -122,12 +121,15 @@ export function CompanyProfileForm({ firstName, lastName, companyName, headline 
 
 // ---------- Fiche ----------
 
+// Repris du fonctionnement et de l'ordre de BDE (ProfilClient.tsx > TabAnnuaire) : une note d'intro, une liste de
+// réglages d'affichage (le premier en gras avec sa précision, les suivants simples), puis Enregistrer. Les réglages
+// sans équivalent BDE (entreprise d'alternance) sont ajoutés à la suite, pas mélangés. Habilitation électrique retirée.
 export function AnnuaireForm(props: {
   tracks: { id: number; name: string }[]; trackId: number | null;
   classes: { id: number; name: string }[]; classId: number | null;
   headline: string; phone: string; contactEmail: string;
-  showInDirectory: boolean; showPhone: boolean; discord: string; showCompany: boolean; companyName: string; loginEmail: string;
-  habilitation: string;
+  showInDirectory: boolean; showPhone: boolean; discord: string; showDiscord: boolean; showClass: boolean; showStatus: boolean;
+  showCompany: boolean; companyName: string; loginEmail: string;
 }) {
   const [state, action, pending] = useActionState(saveAnnuaire, undefined);
   return (
@@ -138,6 +140,7 @@ export function AnnuaireForm(props: {
       <input type="hidden" name="classId" value={props.classId ?? ""} />
       <input type="hidden" name="phone" value={props.phone} />
       <input type="hidden" name="discord" value={props.discord} />
+      <p className="text-sm text-muted">Choisis ce que les autres personnes de la promo voient de toi dans l&apos;annuaire.</p>
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label className="label" htmlFor="headline">Présentation courte</label>
@@ -148,24 +151,15 @@ export function AnnuaireForm(props: {
           <input id="contactEmail" name="contactEmail" type="email" defaultValue={props.contactEmail} maxLength={190} placeholder="Facultatif : sinon ton adresse 3IS" className="input" />
         </div>
       </div>
-      <div>
-        <label className="label" htmlFor="habilitation">Habilitation électrique (facultatif)</label>
-        <select id="habilitation" name="habilitation" defaultValue={props.habilitation} className="input sm:max-w-xs">
-          <option value="">Non renseignée</option>
-          {HABILITATION_SYMBOLS.map((h) => <option key={h} value={h}>{h}</option>)}
-        </select>
-        <p className="mt-1 text-xs text-muted">
-          Visible dans l&apos;annuaire, pour savoir qui peut toucher à l&apos;électrique sur un projet. Détail des symboles sur la fiche{" "}
-          <Link href="/habilitation" className="text-accent underline">Habilitation électrique</Link>.
-        </p>
-      </div>
-      <fieldset className="space-y-2">
-        <legend className="mb-1 text-sm font-semibold">Dans l&apos;annuaire de la promo</legend>
-        <Toggle name="showInDirectory" defaultChecked={props.showInDirectory} title="Apparaître dans l'annuaire" hint="Réservé aux personnes connectées à Backstage. Sans ça, tu n'as pas de fiche visible." />
-        <Toggle name="showPhone" defaultChecked={props.showPhone} title="Afficher mon téléphone" />
-        <Toggle
-          name="showCompany" defaultChecked={props.showCompany} title="Afficher mon entreprise d'alternance"
-          hint={props.companyName ? <>Seul le nom est montré : « {props.companyName} ». L&apos;adresse reste privée.</> : "Renseigne d'abord « Entreprise d'alternance » dans les informations de ton profil, plus haut."}
+      <fieldset className="divide-y divide-line border-y border-line">
+        <AnnuaireToggleRow name="showInDirectory" defaultChecked={props.showInDirectory} label="Apparaître dans l'annuaire" desc="Si désactivé, les autres champs ci-dessous n'ont plus d'effet." bold />
+        <AnnuaireToggleRow name="showPhone" defaultChecked={props.showPhone} label="Afficher mon téléphone" />
+        <AnnuaireToggleRow name="showDiscord" defaultChecked={props.showDiscord} label="Afficher mon Discord" />
+        <AnnuaireToggleRow name="showClass" defaultChecked={props.showClass} label="Afficher ma filière et ma promo" />
+        <AnnuaireToggleRow name="showStatus" defaultChecked={props.showStatus} label="Afficher mon statut (alternant/initial)" />
+        <AnnuaireToggleRow
+          name="showCompany" defaultChecked={props.showCompany} label="Afficher mon entreprise d'alternance"
+          desc={props.companyName ? `Seul le nom est montré : « ${props.companyName} ». L'adresse reste privée.` : "Renseigne d'abord « Entreprise d'alternance » dans Coordonnées."}
         />
       </fieldset>
       <p className="text-xs text-muted">
@@ -174,6 +168,23 @@ export function AnnuaireForm(props: {
       <Feedback state={state} />
       <button className="btn" disabled={pending}>{pending ? "Enregistrement…" : "Enregistrer ma fiche"}</button>
     </form>
+  );
+}
+
+// Ligne de réglage avec séparateur, reprise de BDE : titre (en gras pour le premier) + précision à gauche, interrupteur à droite.
+function AnnuaireToggleRow({ name, defaultChecked, label, desc, bold }: { name: string; defaultChecked: boolean; label: string; desc?: string; bold?: boolean }) {
+  return (
+    <label className="flex cursor-pointer items-center justify-between gap-3 py-2.5">
+      <span className="min-w-0">
+        <span className={`block text-sm ${bold ? "font-bold" : ""}`}>{label}</span>
+        {desc && <span className="mt-0.5 block text-xs text-muted">{desc}</span>}
+      </span>
+      <span className="relative inline-flex h-6 w-11 shrink-0">
+        <input type="checkbox" name={name} defaultChecked={defaultChecked} className="peer sr-only" />
+        <span className="absolute inset-0 rounded-full bg-line ring-1 ring-inset ring-line transition peer-checked:bg-accent peer-focus-visible:ring-2 peer-focus-visible:ring-accent/60" />
+        <span className="absolute left-0.5 top-0.5 size-5 rounded-full bg-surface shadow ring-1 ring-line transition peer-checked:translate-x-5" />
+      </span>
+    </label>
   );
 }
 
