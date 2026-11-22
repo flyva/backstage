@@ -7,7 +7,7 @@ import { anonymizeUser, createUser, deleteRole, deleteUser, resetUserPassword, s
 import { saveUserBdeRole } from "@/lib/association-actions";
 import { BDE_STATUS_LABEL } from "@/lib/association";
 import type { BdeStatus } from "@/db/schema";
-import { ADMIN_PERM, ADMIN_SECTIONS, LEVEL_FIELDS, LEVEL_LABEL, levelOf, SECTION_FIELDS, TICKETS_PERM, type Level } from "@/lib/perms";
+import { ADMIN_SECTIONS, LEVEL_LABEL, catalogGrouped, catalogLevelOf, type Level } from "@/lib/perms";
 import { TOGGLEABLE_GROUPS } from "@/lib/nav-data";
 import { PasswordField } from "@/components/PasswordField";
 import { CopyButton } from "@/components/people-forms";
@@ -64,7 +64,7 @@ export function RoleForm({ role = {} }: { role?: RoleValues }) {
       </div>
 
       <fieldset className="space-y-2">
-        <legend className="label">Droits globaux</legend>
+        <legend className="label">Accès complet</legend>
         <label className="flex items-start gap-3 rounded-xl border border-line p-3 text-sm has-[:checked]:border-accent has-[:checked]:bg-accent/5">
           <input type="checkbox" name="isAdmin" defaultChecked={role.isAdmin} disabled={role.system && role.isAdmin} onChange={(e) => setIsAdminChecked(e.target.checked)} className="mt-0.5 size-4 accent-[var(--accent)]" />
           <span><strong>Administrateur</strong><span className="block text-xs text-muted">Tous les droits ci-dessous, y compris ceux qu&apos;on ajoutera plus tard. À réserver à peu de personnes.</span></span>
@@ -74,15 +74,51 @@ export function RoleForm({ role = {} }: { role?: RoleValues }) {
           <input type="checkbox" name="isCompany" defaultChecked={!!role.isCompany} disabled={!!role.isAdmin} className="mt-0.5 size-4 accent-[var(--accent)]" />
           <span><strong>Entreprise (lecture seule)</strong><span className="block text-xs text-muted">Aucune modification possible nulle part : accès uniquement à l&apos;Agenda, au Planning des personnes qui l&apos;ont désigné comme référent, et aux Contacts de l&apos;école. Ignore tous les réglages ci-dessous.</span></span>
         </label>
-        <label className="flex items-start gap-3 rounded-xl border border-line p-3 text-sm has-[:checked]:border-accent has-[:checked]:bg-accent/5">
-          <input type="checkbox" name={ADMIN_PERM.field} defaultChecked={!!role[ADMIN_PERM.field]} onChange={(e) => setPermAdminChecked(e.target.checked)} className="mt-0.5 size-4 accent-[var(--accent)]" />
-          <span><strong>{ADMIN_PERM.label}</strong><span className="block text-xs text-muted">{ADMIN_PERM.hint}</span></span>
-        </label>
-        <label className="flex items-start gap-3 rounded-xl border border-line p-3 text-sm has-[:checked]:border-accent has-[:checked]:bg-accent/5">
-          <input type="checkbox" name={TICKETS_PERM.field} defaultChecked={!!role[TICKETS_PERM.field]} className="mt-0.5 size-4 accent-[var(--accent)]" />
-          <span><strong>{TICKETS_PERM.label}</strong><span className="block text-xs text-muted">{TICKETS_PERM.hint}</span></span>
-        </label>
       </fieldset>
+
+      {/* Un seul contrôle (Aucun/Voir/Gérer) pour tous les domaines, groupés par rubrique — même principe que le
+          formulaire de rôle d'OASIS (_form.html.twig) : plus de présentation différente selon la catégorie de droit. */}
+      {catalogGrouped().map(({ section, areas }) => (
+        <fieldset key={section} className="space-y-2">
+          <legend className="label">{section}</legend>
+          {section === "Secteurs" && (
+            <p className="text-xs text-muted">
+              <strong>Aucun</strong> (invisible), <strong>Voir</strong> (juste observer, aucune modification possible) ou{" "}
+              <strong>Gérer</strong> (administration complète de ce secteur).
+            </p>
+          )}
+          {section === "Sections du menu" && (
+            <p className="text-xs text-muted">« Aucun » retire toute la section du menu pour ce rôle (utile pour un accès externe réduit à l&apos;essentiel). L&apos;assistant en bas à droite reste toujours disponible.</p>
+          )}
+          <div className="space-y-2">
+            {areas.map((area) => {
+              const cur = catalogLevelOf(role, area);
+              const levels: Level[] = ["none", ...(area.hasView ? (["view"] as const) : []), ...(area.hasManage ? (["manage"] as const) : [])];
+              return (
+                <div key={area.key} className="rounded-xl border border-line p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <strong className="text-sm">{area.label}</strong>
+                    <div role="radiogroup" aria-label={area.label} className="flex overflow-hidden rounded-lg border border-line text-sm">
+                      {levels.map((lv) => (
+                        <label key={lv} className="cursor-pointer border-l border-line px-3 py-1 first:border-l-0 has-[:checked]:bg-accent has-[:checked]:text-accent-fg">
+                          <input
+                            type="radio" name={area.fieldName} value={lv}
+                            defaultChecked={role.id ? cur === lv : lv === (area.hasManage && !area.hasView ? "none" : "view")}
+                            onChange={area.key === "administration" ? (e) => setPermAdminChecked(e.target.value === "manage") : undefined}
+                            className="sr-only"
+                          />
+                          {LEVEL_LABEL[lv]}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <p className="mt-1 text-xs text-muted">{area.hint}</p>
+                </div>
+              );
+            })}
+          </div>
+        </fieldset>
+      ))}
 
       {(isAdminChecked || permAdminChecked) && (
         <fieldset className="space-y-2 rounded-xl border border-accent/40 bg-accent/5 p-3">
@@ -98,67 +134,6 @@ export function RoleForm({ role = {} }: { role?: RoleValues }) {
           </div>
         </fieldset>
       )}
-
-      <details open className="group rounded-xl border border-line p-3">
-        <summary className="cursor-pointer list-none font-semibold marker:hidden">
-          <span className="inline-block transition-transform group-open:rotate-90">▸</span> Secteurs
-        </summary>
-        <div className="mt-3 space-y-3">
-          <p className="text-xs text-muted">
-            Pour chaque secteur de Backstage, choisis le niveau d&apos;accès de ce rôle : <strong>Aucun</strong> (invisible),{" "}
-            <strong>Voir</strong> (juste observer, aucune modification possible) ou <strong>Gérer</strong> (administration complète de ce secteur).
-          </p>
-          <div className="space-y-2">
-            {LEVEL_FIELDS.map((f) => {
-              const cur = levelOf(role, f);
-              return (
-                <div key={f.module} className="rounded-xl border border-line p-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <strong className="text-sm">{f.label}</strong>
-                    <div role="radiogroup" aria-label={f.label} className="flex overflow-hidden rounded-lg border border-line text-sm">
-                      {(["none", "view", "manage"] as Level[]).map((lv) => (
-                        <label key={lv} className="cursor-pointer border-l border-line px-3 py-1 first:border-l-0 has-[:checked]:bg-accent has-[:checked]:text-accent-fg">
-                          <input type="radio" name={`level_${f.module}`} value={lv} defaultChecked={role.id ? cur === lv : lv === "view"} className="sr-only" />
-                          {LEVEL_LABEL[lv]}
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                  <p className="mt-1 text-xs text-muted">{f.hint}</p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </details>
-
-      <details open className="group rounded-xl border border-line p-3">
-        <summary className="cursor-pointer list-none font-semibold marker:hidden">
-          <span className="inline-block transition-transform group-open:rotate-90">▸</span> Sections du menu
-        </summary>
-        <div className="mt-3 space-y-2">
-          <p className="text-xs text-muted">« Aucun » retire toute la section du menu pour ce rôle (utile pour un accès externe réduit à l&apos;essentiel). L&apos;assistant en bas à droite reste toujours disponible.</p>
-          {SECTION_FIELDS.map((sf) => {
-            const cur = role.id ? (role[sf.field] ? "view" : "none") : "view";
-            return (
-              <div key={sf.key} className="rounded-xl border border-line p-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <strong className="text-sm">{sf.label}</strong>
-                  <div role="radiogroup" aria-label={sf.label} className="flex overflow-hidden rounded-lg border border-line text-sm">
-                    {(["none", "view"] as const).map((lv) => (
-                      <label key={lv} className="cursor-pointer border-l border-line px-3 py-1 first:border-l-0 has-[:checked]:bg-accent has-[:checked]:text-accent-fg">
-                        <input type="radio" name={`section_${sf.key}`} value={lv} defaultChecked={cur === lv} className="sr-only" />
-                        {lv === "none" ? "Aucun" : "Voir"}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-                <p className="mt-1 text-xs text-muted">{sf.hint}</p>
-              </div>
-            );
-          })}
-        </div>
-      </details>
 
       <details className="group rounded-xl border border-line p-3">
         <summary className="cursor-pointer list-none font-semibold marker:hidden">

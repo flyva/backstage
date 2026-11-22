@@ -177,3 +177,40 @@ export const TICKETS_PERM = { field: "permTickets", label: "Gestion des tickets"
 
 /** Gère les tickets de tout le monde : les rôles avec le droit « Gestion des tickets » (les admins ont tout). */
 export const canManageTickets = (u: { perms: { tickets: boolean } }) => u.perms.tickets;
+
+/**
+ * Catalogue unique des domaines de permission d'un rôle, groupés par rubrique — même principe que le catalogue de
+ * permissions d'OASIS (src/Security/PermissionCatalog.php) : chaque domaine propose jusqu'à trois niveaux (Aucun /
+ * Voir / Gérer), et le formulaire de rôle les affiche tous de la même façon, groupés par rubrique, au lieu d'avoir
+ * une présentation différente pour chaque catégorie de droit.
+ */
+export type CatalogArea = { key: string; label: string; section: string; hint: string; hasView: boolean; hasManage: boolean; fieldName: string };
+
+export const PERMISSION_CATALOG: CatalogArea[] = [
+  { key: "administration", label: ADMIN_PERM.label, section: "Comptes & accès", hint: ADMIN_PERM.hint, hasView: false, hasManage: true, fieldName: "level_administration" },
+  { key: "ticketsManage", label: TICKETS_PERM.label, section: "Comptes & accès", hint: TICKETS_PERM.hint, hasView: false, hasManage: true, fieldName: "level_ticketsManage" },
+  ...LEVEL_FIELDS.map((f) => ({ key: f.module, label: f.label, section: "Secteurs", hint: f.hint, hasView: true, hasManage: true, fieldName: `level_${f.module}` })),
+  ...SECTION_FIELDS.map((sf) => ({ key: sf.key, label: sf.label, section: "Sections du menu", hint: sf.hint, hasView: true, hasManage: false, fieldName: `section_${sf.key}` })),
+];
+
+/** Rubriques du catalogue, dans l'ordre, chacune avec ses domaines (pour un seul affichage groupé, comme OASIS). */
+export function catalogGrouped(): { section: string; areas: CatalogArea[] }[] {
+  const order: string[] = [];
+  const bySection = new Map<string, CatalogArea[]>();
+  for (const a of PERMISSION_CATALOG) {
+    if (!bySection.has(a.section)) { bySection.set(a.section, []); order.push(a.section); }
+    bySection.get(a.section)!.push(a);
+  }
+  return order.map((section) => ({ section, areas: bySection.get(section)! }));
+}
+
+/** Niveau actuel d'un domaine du catalogue pour un rôle donné (pour pré-cocher le bon bouton à l'édition). */
+export function catalogLevelOf(role: Record<string, unknown>, area: CatalogArea): Level {
+  if (area.key === "administration") return role[ADMIN_PERM.field] ? "manage" : "none";
+  if (area.key === "ticketsManage") return role[TICKETS_PERM.field] ? "manage" : "none";
+  const lf = LEVEL_FIELDS.find((f) => f.module === area.key);
+  if (lf) return levelOf(role, lf);
+  const sf = SECTION_FIELDS.find((s) => s.key === area.key);
+  if (sf) return role[sf.field] ? "view" : "none";
+  return "none";
+}
