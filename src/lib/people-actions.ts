@@ -2,16 +2,19 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes, randomInt } from "node:crypto";
 import { unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { and, asc, count, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { LINK_KINDS, classes, domaines, networkContacts, roles, trackReferents, tracks, userFormations, userLinks, users, type LinkKind } from "@/db/schema";
+import { LINK_KINDS, classes, domaines, networkContacts, pendingEmailVerifications, roles, trackReferents, tracks, userFormations, userLinks, users, type LinkKind } from "@/db/schema";
 import { destroySession, requireAdmin, requireUser } from "@/lib/auth";
 import { AVATAR_NAME, MAX_AVATAR_BYTES, avatarDir, ensureAvatarDir, newAvatarName, sniffAvatar } from "@/lib/avatar-files";
 import { HABILITATION_SYMBOLS, PHONE_RE, normalizeDiscord, normalizeUrl } from "@/lib/people-shared";
+import { allowedDomainsFromEnv, emailInDomains } from "@/lib/email-domain";
 import { allow } from "@/lib/rate-limit";
+import { sendMail } from "@/lib/mail";
+import { renderMail } from "@/lib/mail-template";
 import { otherActiveAdmins } from "@/lib/user-admin-actions";
 import type { FormState } from "@/lib/actions";
 
@@ -129,6 +132,52 @@ export async function removeUserFormation(fd: FormData) {
   const id = Number(fd.get("id"));
   await db.delete(userFormations).where(and(eq(userFormations.id, id), eq(userFormations.userId, user.id)));
   revalidatePath("/profil");
+}
+
+// ---------- Ajout d'une adresse 3IS vérifiée (pour qui s'est connecté avec un Gmail personnel) ----------
+
+const sha256 = (s: string) => createHash("sha256").update(s).digest("hex");
+const CODE_TTL_MS = 15 * 60 * 1000;
+
+export async function requestInstitutionalEmail(_: FormState, fd: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const email = text(fd, "email", 190).toLowerCase();
+  const domains = allowedDomainsFromEnv();
+  if (!email || !emailInDomains(email, domains)) return { error: domains.length ? `L'adresse doit se terminer par @${domains[0]}` : "Adresse invalide" };
+  if (!allow(`inst-email:${user.id}`, 5, 60 * 60e3)) return { error: "Trop de demandes : réessaie plus tard." };
+  const [taken] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
+  const [taken2] = await db.select({ id: users.id }).from(users).where(eq(users.institutionalEmail, email)).limit(1);
+  if (taken || taken2) return { error: "Cette adresse est déjà utilisée par un autre compte." };
+
+  const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
+  await db.delete(pendingEmailVerifications).where(eq(pendingEmailVerifications.userId, user.id));
+  await db.insert(pendingEmailVerifications).values({ userId: user.id, email, codeHash: sha256(code), expiresAt: new Date(Date.now() + CODE_TTL_MS) });
+
+  const text_ = `Bonjour,\n\nVoici ton code pour vérifier ton adresse 3IS sur Backstage : ${code}\n\nIl est valable 15 minutes. Si tu n'es pas à l'origine de cette demande, ignore ce message.\n`;
+  const html = renderMail({ preview: "Ton code de vérification pour ajouter ton adresse 3IS.", title: "Vérifie ton adresse 3IS", paragraphs: ["Voici ton code pour vérifier ton adresse 3IS sur Backstage :"], quote: code, note: "Ce code est valable 15 minutes. Si tu n'es pas à l'origine de cette demande, ignore ce message." });
+  const sent = await sendMail(email, "Backstage : code de vérification", text_, html);
+  if (!sent) {
+    await db.delete(pendingEmailVerifications).where(eq(pendingEmailVerifications.userId, user.id));
+    return { error: "Impossible d'envoyer le code pour le moment. Réessaie plus tard." };
+  }
+  return { ok: "Un code vient d'être envoyé à cette adresse : saisis-le ci-dessous (valable 15 minutes)." };
+}
+
+export async function confirmInstitutionalEmail(_: FormState, fd: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const code = text(fd, "code", 6);
+  if (!/^\d{6}$/.test(code)) return { error: "Code invalide" };
+  const [pending] = await db.select().from(pendingEmailVerifications).where(eq(pendingEmailVerifications.userId, user.id));
+  if (!pending || pending.expiresAt < new Date()) return { error: "Code expiré : redemande un code." };
+  if (pending.attempts >= 5) return { error: "Trop d'essais : redemande un code." };
+  if (sha256(code) !== pending.codeHash) {
+    await db.update(pendingEmailVerifications).set({ attempts: pending.attempts + 1 }).where(eq(pendingEmailVerifications.userId, user.id));
+    return { error: "Code incorrect" };
+  }
+  await db.update(users).set({ institutionalEmail: pending.email }).where(eq(users.id, user.id));
+  await db.delete(pendingEmailVerifications).where(eq(pendingEmailVerifications.userId, user.id));
+  revalidatePath("/profil");
+  return { ok: "Adresse 3IS vérifiée et enregistrée." };
 }
 
 export async function setStudentStatus(fd: FormData) {

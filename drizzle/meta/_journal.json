@@ -771,6 +771,13 @@
       "when": 1795373885991,
       "tag": "0109_flat_speed_demon",
       "breakpoints": true
+    },
+    {
+      "idx": 110,
+      "version": "5",
+      "when": 1795374715367,
+      "tag": "0110_flashy_wolfpack",
+      "breakpoints": true
     }
   ]
 }

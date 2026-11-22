@@ -8,7 +8,7 @@ import { Toggle } from "@/components/Toggle";
 import { LINK_KINDS, type LinkKind } from "@/db/schema";
 import { HABILITATION_SYMBOLS, LINK_LABEL, initialsOf } from "@/lib/people-shared";
 import {
-  addTrackReferentsBulk, addLink, addUserFormation, deleteLink, deleteMyAccount, regenerateCardSlug, removeAvatar, removeUserFormation, saveAnnuaire, saveCardVisibility, saveClass, saveCompanyProfile, saveDomaine, saveNetworkContact, saveTrack, setCardEnabled, setPromotion, uploadAvatar,
+  addTrackReferentsBulk, addLink, addUserFormation, confirmInstitutionalEmail, deleteLink, deleteMyAccount, regenerateCardSlug, removeAvatar, removeUserFormation, requestInstitutionalEmail, saveAnnuaire, saveCardVisibility, saveClass, saveCompanyProfile, saveDomaine, saveNetworkContact, saveTrack, setCardEnabled, setPromotion, uploadAvatar,
   deleteClass, deleteDomaine, deleteNetworkContact, deleteTrack, setFeedEnabled, regenerateFeedToken,
 } from "@/lib/people-actions";
 
@@ -593,5 +593,62 @@ export function ReferentAssignForm({ users, tracks }: { users: { id: number; nam
       <Feedback state={state} />
       <button className="btn" disabled={pending}>{pending ? "Enregistrement…" : "Ajouter comme référent"}</button>
     </form>
+  );
+}
+
+// ---------- E-mail 3IS / mail personnel ----------
+
+export function IdentityEmailBlock({ loginEmail, isInstitutional, institutionalEmail }: { loginEmail: string; isInstitutional: boolean; institutionalEmail: string | null }) {
+  if (isInstitutional) {
+    return (
+      <div>
+        <label className="label">E-mail 3IS</label>
+        <input value={loginEmail} disabled className="input bg-bg text-muted" />
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-3">
+      <div>
+        <label className="label">Mail personnel</label>
+        <input value={loginEmail} disabled className="input bg-bg text-muted" />
+        <p className="mt-1 text-xs text-muted">Rempli automatiquement depuis ta connexion Google.</p>
+      </div>
+      {institutionalEmail ? (
+        <div>
+          <label className="label">E-mail 3IS</label>
+          <input value={institutionalEmail} disabled className="input bg-bg text-muted" />
+          <p className="mt-1 text-xs text-muted">Vérifiée, définitive : contacte un administrateur pour la changer.</p>
+        </div>
+      ) : (
+        <InstitutionalEmailVerify />
+      )}
+    </div>
+  );
+}
+
+function InstitutionalEmailVerify() {
+  const [reqState, reqAction, reqPending] = useActionState(requestInstitutionalEmail, undefined);
+  const [confirmState, confirmAction, confirmPending] = useActionState(confirmInstitutionalEmail, undefined);
+  const [sent, setSent] = useState(false);
+  if (reqState?.ok && !sent) setSent(true);
+  return (
+    <div className="rounded-xl border border-line p-3">
+      <label className="label">E-mail 3IS (facultatif)</label>
+      {!sent ? (
+        <form action={reqAction} className="flex flex-wrap gap-2">
+          <input name="email" type="email" required placeholder="prenom.nom@3is.fr" className="input min-w-56 flex-1" />
+          <button className="btn-ghost" disabled={reqPending}>{reqPending ? "Envoi…" : "Recevoir un code"}</button>
+          <div className="w-full"><Feedback state={reqState} /></div>
+        </form>
+      ) : (
+        <form action={confirmAction} className="flex flex-wrap items-center gap-2">
+          <input name="code" inputMode="numeric" pattern="\d{6}" maxLength={6} required placeholder="Code à 6 chiffres" className="input w-40" />
+          <button className="btn" disabled={confirmPending}>{confirmPending ? "Vérification…" : "Valider le code"}</button>
+          <button type="button" className="btn-ghost text-xs" onClick={() => setSent(false)}>Renvoyer à une autre adresse</button>
+          <div className="w-full"><Feedback state={confirmState} /></div>
+        </form>
+      )}
+    </div>
   );
 }
