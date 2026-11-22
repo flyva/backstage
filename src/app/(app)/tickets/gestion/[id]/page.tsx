@@ -8,7 +8,7 @@ import { TicketDetail } from "@/components/TicketDetail";
 export const metadata = { title: "Ticket" };
 
 export default async function TicketManagementDetailPage({ params }: PageProps<"/tickets/gestion/[id]">) {
-  await requireTicketManager();
+  const manager = await requireTicketManager();
   const id = Number((await params).id);
   if (!Number.isInteger(id)) notFound();
 
@@ -19,7 +19,7 @@ export default async function TicketManagementDetailPage({ params }: PageProps<"
     db.select({ id: users.id, name: users.name }).from(users).where(eq(users.id, ticket.createdBy)).limit(1),
     db.select().from(ticketFiles).where(eq(ticketFiles.ticketId, id)).orderBy(asc(ticketFiles.createdAt)),
     db
-      .select({ id: ticketComments.id, body: ticketComments.body, at: ticketComments.createdAt, authorName: users.name })
+      .select({ id: ticketComments.id, userId: ticketComments.userId, body: ticketComments.body, at: ticketComments.createdAt, authorName: users.name })
       .from(ticketComments)
       .innerJoin(users, eq(users.id, ticketComments.userId))
       .where(eq(ticketComments.ticketId, id))
@@ -29,6 +29,7 @@ export default async function TicketManagementDetailPage({ params }: PageProps<"
   return (
     <TicketDetail
       canManage
+      viewerId={manager.id}
       backHref="/tickets/gestion"
       ticket={{ ...ticket, authorName: author[0]?.name ?? "Personne supprimée", files, comments }}
     />
