@@ -275,7 +275,7 @@ export function CardPanel({ enabled, url, qrSvg }: { enabled: boolean; url: stri
       </form>
       {enabled && url && (
         <div className="flex flex-wrap items-start gap-5">
-          {qrSvg && <div className="size-36 shrink-0 rounded-xl bg-white p-2" dangerouslySetInnerHTML={{ __html: qrSvg }} aria-label="QR code de ma carte" role="img" />}
+          {qrSvg && <div className="size-24 shrink-0 rounded-xl bg-white p-1.5" dangerouslySetInnerHTML={{ __html: qrSvg }} aria-label="QR code de ma carte" role="img" />}
           <div className="min-w-0 flex-1 space-y-3">
             <p className="break-all rounded-lg border border-line bg-bg px-3 py-2 text-sm">{url}</p>
             <div className="flex flex-wrap gap-2">

@@ -4,7 +4,10 @@ import { and, asc, desc, eq, ne } from "drizzle-orm";
 import { Bell, Briefcase, Calendar, CircleHelp, CreditCard, Download, GraduationCap, Headset, Link2, Palette, Shield, Users, UserRound } from "lucide-react";
 import QRCode from "qrcode";
 import { db } from "@/db";
-import { agendaViewers, classes, tracks, userFormations, userLinks, users } from "@/db/schema";
+import { agendaViewers, classes, tickets, tracks, userFormations, userLinks, users } from "@/db/schema";
+import { STATUS_COLOR, STATUS_LABEL } from "@/lib/ticket-shared";
+import { TicketCreateForm } from "@/components/ticket-forms";
+import { ago } from "@/lib/relative-time";
 import { ChangePasswordForm, IcalForm, ProfileForm } from "@/components/forms";
 import { AnnuaireForm, Avatar, AvatarForm, CardPanel, CardVisibilityForm, CompanyProfileForm, DeleteMyAccountForm, FeedPanel, FormationPicker, LinksEditor, PromotionPicker } from "@/components/people-forms";
 import { TimeSettingsForm } from "@/components/time-forms";
@@ -147,7 +150,7 @@ export default async function ProfilPage({ searchParams }: PageProps<"/profil">)
           {tab === "reseaux" && <NetworksTab userId={user.id} />}
           {tab === "alternance" && <AlternanceTab user={user} isAlternant={isAlternant} />}
           {tab === "confidentialite" && <ConfidentialiteTab email={user.email} />}
-          {tab === "aide-support" && <AideSupportTab />}
+          {tab === "aide-support" && <AideSupportTab user={user} />}
           {tab === "aide-faq" && <AideFaqTab />}
         </div>
       </div>
@@ -332,7 +335,7 @@ async function CarteTab({ user }: { user: User }) {
   const cardUrl = user.cardEnabled && user.cardSlug ? await absoluteUrl(`/carte/${user.cardSlug}`) : null;
   const qrSvg = cardUrl ? await QRCode.toString(cardUrl, { type: "svg", margin: 0, errorCorrectionLevel: "M" }) : null;
   return (
-    <div className="grid items-start gap-5 xl:grid-cols-2">
+    <div className="max-w-md space-y-5">
       <div className="card space-y-3">
         <h2 className="font-semibold">Ma carte de visite en ligne</h2>
         <CardPanel enabled={user.cardEnabled} url={cardUrl} qrSvg={qrSvg} />
@@ -417,12 +420,35 @@ function ConfidentialiteTab({ email }: { email: string }) {
   );
 }
 
-function AideSupportTab() {
+async function AideSupportTab({ user }: { user: User }) {
+  const mine = await db.select().from(tickets).where(eq(tickets.createdBy, user.id)).orderBy(desc(tickets.createdAt));
   return (
-    <div className="card max-w-xl space-y-2">
-      <h2 className="flex items-center gap-2 font-semibold"><Headset size={16} className="text-accent" aria-hidden /> Support / Tickets</h2>
-      <p className="text-sm text-muted">Crée un ticket ou consulte l&apos;avancement de tes demandes auprès de l&apos;équipe.</p>
-      <Link href="/tickets" className="btn-ghost w-fit">Voir mes tickets</Link>
+    <div className="max-w-xl space-y-5">
+      <div className="card space-y-2">
+        <h2 className="flex items-center gap-2 font-semibold"><Headset size={16} className="text-accent" aria-hidden /> Nouveau ticket</h2>
+        <p className="text-sm text-muted">Signale un problème (matériel, site, école…) et suis son traitement directement ici.</p>
+        <TicketCreateForm />
+      </div>
+      <div className="card space-y-2">
+        <h2 className="font-semibold">Mes tickets</h2>
+        {mine.length === 0 ? (
+          <p className="text-sm text-muted">Tu n&apos;as encore créé aucun ticket.</p>
+        ) : (
+          <ul className="space-y-2">
+            {mine.map((t) => (
+              <li key={t.id}>
+                <Link href={`/tickets/${t.id}`} className="flex items-center gap-3 rounded-xl border border-line p-3 hover:border-accent">
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-medium">{t.title}</span>
+                    <span className="text-xs text-muted">Ouvert {ago(t.createdAt)} · mis à jour {ago(t.updatedAt)}</span>
+                  </span>
+                  <span className="shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold text-white" style={{ background: STATUS_COLOR[t.status] }}>{STATUS_LABEL[t.status]}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }

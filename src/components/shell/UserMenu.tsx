@@ -28,13 +28,15 @@ export function UserMenu({
 
   const profileItems: MenuItem[] = [
     { href: "/profil", label: "Mon profil" },
-    { href: "/parametres", label: "Paramètres" },
+    { href: "/profil?onglet=carte", label: "Carte de visite" },
+    { href: "/profil?onglet=apparence", label: "Apparence" },
+    { href: "/profil?onglet=notifications", label: "Notifications" },
     { href: "/profil?onglet=confidentialite", label: "Confidentialité & mes données" },
     ...(showAlternance ? [{ href: "/profil?onglet=alternance", label: isAlternant ? "Alternance" : "Stage" }] : []),
   ];
 
   const aideItems: MenuItem[] = [
-    { href: "/tickets", label: "Mes tickets", badge: ticketsBadge },
+    { href: "/profil?onglet=aide-support", label: "Support / Tickets", badge: ticketsBadge },
     ...(canManageTickets ? [{ href: "/tickets/gestion", label: "Gestion des tickets" }] : []),
     { href: "/faq", label: "FAQ" },
   ];

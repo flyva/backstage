@@ -99,24 +99,38 @@ export function NotificationSettings({ publicKey, serverReady, initial }: { publ
       )}
       {message && <p className="text-sm text-muted" role="status">{message}</p>}
 
-      <fieldset className="space-y-2" disabled={pending}>
-        <legend className="label">Me prévenir pour…</legend>
-        {([
-          ["news", "Nouvelles actualités"],
-          ["bde", "Nouveaux évènements du BDE"],
-          ["loans", "Mes prêts de matériel (rappels de retour)"],
-          ["reminders", "Rappels : échéances de mes tâches, jour en entreprise ou à l'école demain"],
-          ["messages", "Messages (direct, groupe ou annonce) et avis"],
-          ["listings", "Nouvelles annonces publiées par la promo"],
-          ["updates", "Nouveautés de Backstage marquées importantes"],
-          ["emptyPointeuse", "Rien pointé un jour travaillé (facultatif, décoché par défaut)"],
-        ] as const).map(([key, label]) => (
-          <label key={key} className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={prefs[key]} onChange={(e) => setPref(key, e.target.checked)} className="size-4 accent-[var(--accent)]" />
-            {label}
-          </label>
-        ))}
-      </fieldset>
+      <div className="overflow-hidden rounded-xl border border-line">
+        <div className="grid grid-cols-[1fr_5rem] items-center bg-bg px-4 py-2.5">
+          <div />
+          <div className="text-center text-[11px] font-bold uppercase tracking-wide text-muted">Push</div>
+        </div>
+        <fieldset disabled={pending}>
+          {([
+            ["news", "Nouvelles actualités", undefined],
+            ["bde", "Nouveaux évènements du BDE", undefined],
+            ["loans", "Mes prêts de matériel", "Rappels de retour"],
+            ["reminders", "Rappels", "Échéances de mes tâches, jour en entreprise ou à l'école demain"],
+            ["messages", "Messages", "Direct, groupe ou annonce, et avis"],
+            ["listings", "Nouvelles annonces", "Publiées par la promo"],
+            ["updates", "Nouveautés de Backstage", "Celles marquées importantes"],
+            ["emptyPointeuse", "Pointeuse vide", "Rien pointé un jour travaillé (décoché par défaut)"],
+          ] as const).map(([key, label, hint]) => (
+            <div key={key} className="grid grid-cols-[1fr_5rem] items-center border-t border-line px-4 py-2.5">
+              <div>
+                <div className="text-sm font-medium">{label}</div>
+                {hint && <div className="text-xs text-muted">{hint}</div>}
+              </div>
+              <div className="flex justify-center">
+                <label className="relative inline-flex h-6 w-11 shrink-0 cursor-pointer">
+                  <input type="checkbox" checked={prefs[key]} onChange={(e) => setPref(key, e.target.checked)} className="peer sr-only" />
+                  <span className="absolute inset-0 rounded-full bg-line ring-1 ring-inset ring-line transition peer-checked:bg-accent" />
+                  <span className="absolute left-0.5 top-0.5 size-5 rounded-full bg-surface shadow ring-1 ring-line transition peer-checked:translate-x-5" />
+                </label>
+              </div>
+            </div>
+          ))}
+        </fieldset>
+      </div>
     </div>
   );
 }
