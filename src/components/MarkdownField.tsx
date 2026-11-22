@@ -55,6 +55,7 @@ export function MarkdownField({
   label,
   uploadUrl,
   onEdit,
+  toolbar = "floating",
 }: {
   name?: string;
   defaultValue?: string;
@@ -66,6 +67,8 @@ export function MarkdownField({
   uploadUrl?: string;
   /** Appelé après chaque modification du texte. */
   onEdit?: () => void;
+  /** « floating » (défaut) : barre qui apparaît au-dessus du texte sélectionné. « fixed » : barre toujours visible au-dessus de l'éditeur. */
+  toolbar?: "floating" | "fixed";
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
@@ -86,6 +89,7 @@ export function MarkdownField({
   // Barre flottante : positionnée au-dessus de la sélection, seulement quand elle contient du texte et qu'elle est
   // bien dans cet éditeur (et pas dans un autre champ de la page, ou dans le champ "Lien" de la barre elle-même).
   const updateBubble = () => {
+    if (toolbar === "fixed") return; // barre toujours visible : pas de positionnement à calculer
     const sel = window.getSelection();
     const wrap = wrapRef.current;
     const editor = editorRef.current;
@@ -188,7 +192,7 @@ export function MarkdownField({
     <div ref={wrapRef} className="relative">
       <input ref={hiddenRef} type="hidden" name={name} defaultValue={defaultValue} />
 
-      {bubble && (
+      {toolbar === "floating" && bubble && (
         <div
           role="toolbar"
           aria-label="Mise en forme"
@@ -211,7 +215,48 @@ export function MarkdownField({
         </div>
       )}
 
-      {uploadUrl && (
+      {toolbar === "fixed" && (
+        <div role="toolbar" aria-label="Mise en forme" className="mb-1.5 flex flex-wrap items-center gap-0.5 rounded-lg border border-line bg-bg p-1">
+          {TOOLS.map((t) => (
+            <button
+              key={t.label}
+              type="button"
+              title={t.label}
+              aria-label={t.label}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => exec(t.run)}
+              className="grid size-8 place-items-center rounded-lg text-muted hover:bg-surface hover:text-fg"
+            >
+              <t.icon size={16} />
+            </button>
+          ))}
+          {uploadUrl && (
+            <>
+              <span className="mx-1 h-5 w-px bg-line" aria-hidden />
+              <button
+                type="button"
+                title="Image ou fichier"
+                aria-label="Insérer une image ou un fichier"
+                disabled={uploadState.busy}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => picker.current?.click()}
+                className="grid size-8 place-items-center rounded-lg text-muted hover:bg-surface hover:text-fg disabled:opacity-50"
+              >
+                <ImagePlus size={16} />
+              </button>
+              <input
+                ref={picker}
+                type="file"
+                hidden
+                accept="image/jpeg,image/png,image/gif,image/webp,application/pdf,.docx,.xlsx,.pptx,.odt,.ods,.odp,.zip"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) void upload(f); }}
+              />
+            </>
+          )}
+        </div>
+      )}
+
+      {toolbar === "floating" && uploadUrl && (
         <div className="absolute right-2 top-2 z-10">
           <button
             type="button"
@@ -251,7 +296,7 @@ export function MarkdownField({
         style={{ minHeight: `${rows * 1.5}rem` }}
       />
       {maxLength < 100000 && <p className={`mt-1 text-right text-xs ${count > maxLength ? "text-danger" : "text-muted"}`}>{count} / {maxLength}</p>}
-      {!bubble && <p className="mt-1 text-xs text-muted">Sélectionne du texte pour le mettre en forme (gras, titre, lien…).</p>}
+      {toolbar === "floating" && !bubble && <p className="mt-1 text-xs text-muted">Sélectionne du texte pour le mettre en forme (gras, titre, lien…).</p>}
     </div>
   );
 }
