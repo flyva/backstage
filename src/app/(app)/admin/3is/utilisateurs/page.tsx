@@ -4,6 +4,7 @@ import { Download, Printer } from "lucide-react";
 import { db } from "@/db";
 import { classes, roles, tracks, users } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
+import { ProjectTabs } from "@/components/ProjectTabs";
 
 export const metadata = { title: "Utilisateurs (3IS)" };
 
@@ -26,6 +27,7 @@ export default async function Admin3isUsersPage() {
 
   return (
     <div className="space-y-5">
+      <ProjectTabs base="/admin/3is" tabs={[{ slug: "utilisateurs", label: "Utilisateurs" }, { slug: "referents", label: "Référents" }]} label="Utilisateurs et référents" />
       <section className="card space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>

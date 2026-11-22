@@ -4,6 +4,7 @@ import { tracks, trackReferents, users } from "@/db/schema";
 import { ReferentAssignForm } from "@/components/people-forms";
 import { removeTrackReferent } from "@/lib/people-actions";
 import { Trash2 } from "lucide-react";
+import { ProjectTabs } from "@/components/ProjectTabs";
 
 export const metadata = { title: "Référents" };
 
@@ -20,6 +21,7 @@ export default async function AdminReferentsPage() {
 
   return (
     <div className="space-y-5">
+      <ProjectTabs base="/admin/3is" tabs={[{ slug: "utilisateurs", label: "Utilisateurs" }, { slug: "referents", label: "Référents" }]} label="Utilisateurs et référents" />
       <section className="card space-y-3">
         <h2 className="font-semibold">Référents de filière</h2>
         <p className="text-sm text-muted">

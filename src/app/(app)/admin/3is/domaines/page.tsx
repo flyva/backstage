@@ -2,6 +2,7 @@ import { asc, count } from "drizzle-orm";
 import { db } from "@/db";
 import { domaines, tracks } from "@/db/schema";
 import { DomaineForm } from "@/components/people-forms";
+import { ProjectTabs } from "@/components/ProjectTabs";
 
 export const metadata = { title: "Domaines" };
 
@@ -13,6 +14,7 @@ export default async function AdminDomainesPage() {
   const n = new Map(counts.map((c) => [c.domaineId, c.n]));
   return (
     <div className="space-y-5">
+      <ProjectTabs base="/admin/3is" tabs={[{ slug: "formations", label: "Formations" }, { slug: "domaines", label: "Domaines" }]} label="Formations et domaines" />
       <section className="card space-y-3">
         <h2 className="font-semibold">Domaines</h2>
         <p className="text-sm text-muted">Regroupent les formations (ex. « Technique », « Jeu d&apos;acteur »). Géré dans Formations.</p>
