@@ -6,8 +6,7 @@ import QRCode from "qrcode";
 import { db } from "@/db";
 import { agendaViewers, classes, tracks, userFormations, userLinks, users } from "@/db/schema";
 import { ChangePasswordForm, IcalForm, ProfileForm } from "@/components/forms";
-import { AnnuaireForm, Avatar, AvatarForm, CardPanel, CardVisibilityForm, CompanyProfileForm, DeleteMyAccountForm, FeedPanel, FormationPicker, IdentityEmailBlock, LinksEditor, PromotionPicker } from "@/components/people-forms";
-import { allowedDomainsFromEnv, emailInDomains } from "@/lib/email-domain";
+import { AnnuaireForm, Avatar, AvatarForm, CardPanel, CardVisibilityForm, CompanyProfileForm, DeleteMyAccountForm, FeedPanel, FormationPicker, LinksEditor, PromotionPicker } from "@/components/people-forms";
 import { TimeSettingsForm } from "@/components/time-forms";
 import { RestoSettingsForm } from "@/components/alternance-forms";
 import { SkinControls } from "@/components/shell/SkinControls";
@@ -177,20 +176,17 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 function GeneralTab({ user }: { user: User }) {
-  const isInstitutional = emailInDomains(user.email, allowedDomainsFromEnv());
+  const birthDate = user.birthDate ? new Date(user.birthDate).toISOString().slice(0, 10) : "";
   return (
     <div className="card max-w-xl space-y-6">
       <Section title="Photo">
         <AvatarForm name={user.name} url={avatarUrl(user.avatarFile)} />
       </Section>
-      <Section title="E-mail">
-        <IdentityEmailBlock loginEmail={user.email} isInstitutional={isInstitutional} institutionalEmail={user.institutionalEmail} />
-      </Section>
-      {/* Identité + Coordonnées : un seul formulaire, un seul bouton Enregistrer (les deux titres de section sont rendus par ProfileForm lui-même). */}
+      {/* Identité + Coordonnées : un seul formulaire, un seul bouton Enregistrer (les deux titres de section sont rendues par ProfileForm lui-même). */}
       <ProfileForm
-        firstName={user.firstName} lastName={user.lastName} homeAddress={user.homeAddress ?? ""}
-        companyName={user.companyName ?? ""} companyAddress={user.companyAddress ?? ""}
-        phone={user.phone ?? ""} phonePro={user.phonePro ?? ""} discord={user.discord ?? ""}
+        firstName={user.firstName} lastName={user.lastName} email={user.email} personalEmail={user.personalEmail ?? ""}
+        homeAddress={user.homeAddress ?? ""} companyName={user.companyName ?? ""} companyAddress={user.companyAddress ?? ""}
+        phone={user.phone ?? ""} phonePro={user.phonePro ?? ""} birthDate={birthDate} discord={user.discord ?? ""}
       />
       <Section title="Sécurité">
         <ChangePasswordForm />

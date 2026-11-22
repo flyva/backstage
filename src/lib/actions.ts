@@ -155,32 +155,34 @@ export async function setSkin(patch: { theme?: string; accent?: string }) {
 }
 
 const profileSchema = z.object({
-  firstName: personName("Prénom"),
-  lastName: personName("Nom"),
+  personalEmail: z.string().trim().max(190),
   homeAddress: z.string().trim().max(255),
   companyName: z.string().trim().max(120),
   companyAddress: z.string().trim().max(255),
   phone: z.string().trim().max(30),
   phonePro: z.string().trim().max(30),
+  birthDate: z.string().trim().max(10),
   discord: z.string().trim().max(40),
 });
 
+// Nom/Prénom/Mail 3IS : gérés par l'administration (Administration > Utilisateurs), jamais depuis cette action —
+// pas de champ du même nom dans le formulaire (voir ProfileForm, inputs désactivés sans attribut name).
 export async function updateProfile(_: FormState, fd: FormData): Promise<FormState> {
   const user = await requireUser();
   const parsed = profileSchema.safeParse({
-    firstName: fd.get("firstName"),
-    lastName: fd.get("lastName"),
+    personalEmail: fd.get("personalEmail") ?? "",
     homeAddress: fd.get("homeAddress") ?? "",
     companyName: fd.get("companyName") ?? "",
     companyAddress: fd.get("companyAddress") ?? "",
     phone: fd.get("phone") ?? "",
     phonePro: fd.get("phonePro") ?? "",
+    birthDate: fd.get("birthDate") ?? "",
     discord: fd.get("discord") ?? "",
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
-  const { homeAddress, companyName, companyAddress, phone, phonePro } = parsed.data;
-  const firstName = parsed.data.firstName.replace(/\s+/g, " ");
-  const lastName = parsed.data.lastName.replace(/\s+/g, " ");
+  const { homeAddress, companyName, companyAddress, phone, phonePro, birthDate } = parsed.data;
+  const personalEmail = parsed.data.personalEmail.toLowerCase();
+  if (personalEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(personalEmail)) return { error: "Adresse e-mail personnelle invalide" };
   if (phone && !PHONE_RE.test(phone)) return { error: "Numéro de téléphone invalide (chiffres, espaces, + . - ( ) uniquement)" };
   if (phonePro && !PHONE_RE.test(phonePro)) return { error: "Numéro de téléphone pro invalide (chiffres, espaces, + . - ( ) uniquement)" };
   const discordRaw = parsed.data.discord;
@@ -197,9 +199,7 @@ export async function updateProfile(_: FormState, fd: FormData): Promise<FormSta
     if (!company) return { error: "Adresse de l'entreprise introuvable : essaie avec numéro, rue et ville" };
   }
   await db.update(users).set({
-    firstName,
-    lastName,
-    name: joinName(firstName, lastName),
+    personalEmail: personalEmail || null,
     homeAddress: place?.label ?? null,
     homeLat: place?.lat ?? null,
     homeLng: place?.lng ?? null,
@@ -209,6 +209,7 @@ export async function updateProfile(_: FormState, fd: FormData): Promise<FormSta
     companyLng: company?.lng ?? null,
     phone: phone || null,
     phonePro: phonePro || null,
+    birthDate: birthDate ? new Date(birthDate) : null,
     discord,
     onboarded: true,
   }).where(eq(users.id, user.id));

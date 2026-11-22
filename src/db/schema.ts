@@ -175,10 +175,11 @@ export const users = mysqlTable("users", {
   requestNote: varchar("request_note", { length: 500 }), // message laissé par une personne en attente de validation (qui elle est, pourquoi elle demande l'accès)
   googleSub: varchar("google_sub", { length: 40 }).unique(), // identifiant Google (« sub »)
   msOid: varchar("ms_oid", { length: 80 }).unique(), // « tid.oid » : organisation + identifiant dans l'organisation
-  // Adresse 3IS ajoutée après coup par une personne dont l'identifiant de connexion (email) est un Gmail personnel :
-  // vérifiée par code à l'ajout, puis définitivement grisée (personne ne peut la remodifier depuis le profil, y
-  // compris le BDE — un admin peut toujours la changer depuis Administration > Utilisateurs).
-  institutionalEmail: varchar("institutional_email", { length: 190 }).unique(),
+  // Adresse Gmail personnelle (facultative), même principe que BDE : ajoutée depuis le profil pour pouvoir se
+  // connecter avec le bouton Google même si le compte a été créé avec l'adresse 3IS. Simple champ texte, pas de
+  // vérification : « email » reste la seule adresse de connexion/identité, gérée par l'administration.
+  personalEmail: varchar("personal_email", { length: 190 }),
+  birthDate: datetime("birth_date"),
   // Fiche personnelle : annuaire de la promo et carte de visite en ligne.
   trackId: int("track_id").references(() => tracks.id, { onDelete: "set null" }), // filière
   classId: int("class_id").references(() => classes.id, { onDelete: "set null" }), // classe de promo
@@ -1251,17 +1252,6 @@ export const pendingRegistrations = mysqlTable("pending_registrations", {
   lastName: varchar("last_name", { length: 60 }).notNull(),
   passwordHash: varchar("password_hash", { length: 255 }).notNull(),
   tokenHash: varchar("token_hash", { length: 64 }).notNull().unique(), // sha256 du jeton envoyé par mail
-  expiresAt: datetime("expires_at").notNull(),
-  createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
-});
-
-// Vérification par code (6 chiffres) de l'adresse 3IS ajoutée depuis le profil : une seule demande en attente par
-// personne. Mêmes principes que pending_registrations (code haché, expiration), mais code à saisir plutôt que lien.
-export const pendingEmailVerifications = mysqlTable("pending_email_verifications", {
-  userId: int("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
-  email: varchar("email", { length: 190 }).notNull(),
-  codeHash: varchar("code_hash", { length: 64 }).notNull(), // sha256 du code à 6 chiffres
-  attempts: int("attempts").notNull().default(0),
   expiresAt: datetime("expires_at").notNull(),
   createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
 });

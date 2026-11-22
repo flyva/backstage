@@ -70,14 +70,17 @@ export function RegisterForm({ codeRequired = false, emailDomain }: { codeRequir
 }
 
 type ProfileFormProps = {
-  firstName: string; lastName: string; homeAddress: string; companyName: string; companyAddress: string;
-  phone: string; phonePro: string; discord: string;
+  firstName: string; lastName: string; email: string; personalEmail: string;
+  homeAddress: string; companyName: string; companyAddress: string;
+  phone: string; phonePro: string; birthDate: string; discord: string;
 };
 
-// Un seul formulaire pour Identité + Coordonnées (un seul bouton Enregistrer, comme demandé), affiché en deux blocs
-// visuels distincts dans la page (voir Section dans profil/page.tsx). Téléphone/téléphone pro/Discord déménagés ici
-// depuis l'onglet Annuaire (toujours modifiables là-bas aussi : AnnuaireForm les reporte en champs cachés).
-export function ProfileForm({ firstName, lastName, homeAddress, companyName, companyAddress, phone, phonePro, discord }: ProfileFormProps) {
+// Un seul formulaire pour Identité + Coordonnées (un seul bouton Enregistrer), repris à l'identique de la page Profil
+// de BDE (ProfilClient.tsx > TabProfil) : Nom/Prénom/Mail 3IS gérés par l'administration (champs désactivés, jamais
+// envoyés — l'action garde la valeur existante), seul « Mail personnel » est modifiable (pour le bouton Google de la
+// page de connexion). Téléphone/téléphone pro/date de naissance/Discord dans Coordonnées (déménagés depuis l'onglet
+// Annuaire, toujours modifiables là-bas aussi : AnnuaireForm les reporte en champs cachés).
+export function ProfileForm({ firstName, lastName, email, personalEmail, homeAddress, companyName, companyAddress, phone, phonePro, birthDate, discord }: ProfileFormProps) {
   const [state, action, pending] = useActionState(updateProfile, undefined);
   return (
     <form action={action} className="space-y-6">
@@ -85,14 +88,24 @@ export function ProfileForm({ firstName, lastName, homeAddress, companyName, com
         <h3 className="text-[11px] font-bold uppercase tracking-wide text-muted">Identité</h3>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="label" htmlFor="firstName">Prénom <span className="text-danger">*</span></label>
-            <input id="firstName" name="firstName" autoComplete="given-name" defaultValue={firstName} maxLength={60} required className="input" />
+            <label className="label" htmlFor="lastName">Nom</label>
+            <input id="lastName" defaultValue={lastName} disabled className="input bg-bg text-muted" />
           </div>
           <div>
-            <label className="label" htmlFor="lastName">Nom <span className="text-danger">*</span></label>
-            <input id="lastName" name="lastName" autoComplete="family-name" defaultValue={lastName} maxLength={60} required className="input" />
+            <label className="label" htmlFor="firstName">Prénom</label>
+            <input id="firstName" defaultValue={firstName} disabled className="input bg-bg text-muted" />
+          </div>
+          <div>
+            <label className="label" htmlFor="_email">Mail 3IS</label>
+            <input id="_email" type="email" defaultValue={email} disabled className="input bg-bg text-muted" />
+          </div>
+          <div>
+            <label className="label" htmlFor="personalEmail">Mail personnel</label>
+            <input id="personalEmail" name="personalEmail" type="email" defaultValue={personalEmail} placeholder="perso@gmail.com" className="input" />
           </div>
         </div>
+        <p className="text-xs text-muted">Nom, prénom et mail 3IS sont gérés par l&apos;administration.</p>
+        <p className="text-xs text-muted">Ajoute ton adresse Gmail personnelle pour pouvoir te connecter via le bouton Google sur la page de connexion.</p>
       </div>
 
       <div className="space-y-4">
@@ -111,13 +124,18 @@ export function ProfileForm({ firstName, lastName, homeAddress, companyName, com
           </div>
           <div>
             <label className="label" htmlFor="phonePro">Téléphone pro (facultatif)</label>
-            <input id="phonePro" name="phonePro" defaultValue={phonePro} maxLength={30} inputMode="tel" autoComplete="off" placeholder="Entreprise d'alternance/stage" className="input" />
+            <input id="phonePro" name="phonePro" defaultValue={phonePro} maxLength={30} inputMode="tel" autoComplete="off" placeholder="06 00 00 00 00" className="input" />
+          </div>
+          <div>
+            <label className="label" htmlFor="birthDate">Date de naissance</label>
+            <input id="birthDate" name="birthDate" type="date" defaultValue={birthDate} className="input" />
+          </div>
+          <div>
+            <label className="label" htmlFor="discord">Discord (facultatif)</label>
+            <input id="discord" name="discord" defaultValue={discord} maxLength={40} autoComplete="off" placeholder="pseudo#0000" className="input" />
           </div>
         </div>
-        <div>
-          <label className="label" htmlFor="discord">Discord (facultatif)</label>
-          <input id="discord" name="discord" defaultValue={discord} maxLength={40} autoComplete="off" placeholder="ton_pseudo" className="input sm:max-w-xs" />
-        </div>
+        <p className="text-xs text-muted">Le Discord et le téléphone ne sont visibles de personne par défaut — gère leur affichage dans Annuaire et Carte de visite.</p>
         <div className="space-y-4 rounded-xl border border-line p-4">
           <div>
             <h3 className="text-sm font-semibold">Entreprise (alternance)</h3>
