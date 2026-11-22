@@ -249,13 +249,14 @@ async function AnnuaireTab({ user }: { user: User }) {
 }
 
 async function PromoTab({ user }: { user: User }) {
-  const [allTracks, allClasses, mine] = await Promise.all([
+  const [allTracks, mine] = await Promise.all([
     db.select().from(tracks).orderBy(asc(tracks.sortOrder), asc(tracks.name)),
-    db.select().from(classes).orderBy(asc(classes.sortOrder), asc(classes.name)),
-    db.select({ id: userFormations.id, trackId: userFormations.trackId, year: userFormations.year, createdAt: userFormations.createdAt, trackName: tracks.name, shortName: tracks.shortName })
+    db.select({ id: userFormations.id, trackId: userFormations.trackId, year: userFormations.year, createdAt: userFormations.createdAt, trackName: tracks.name, shortName: tracks.shortName, yearsCount: tracks.yearsCount })
       .from(userFormations).innerJoin(tracks, eq(userFormations.trackId, tracks.id))
       .where(eq(userFormations.userId, user.id)).orderBy(desc(userFormations.createdAt)),
   ]);
+  const current = mine[0] ?? null;
+  const currentClass = user.classId ? (await db.select().from(classes).where(eq(classes.id, user.classId)))[0] : null;
   return (
     <div className="space-y-5">
       <div className="card max-w-2xl space-y-3">
@@ -265,7 +266,11 @@ async function PromoTab({ user }: { user: User }) {
       </div>
       <div className="card max-w-md space-y-3">
         <h2 className="font-semibold">Ma promo</h2>
-        <PromotionPicker classes={allClasses.map((c) => ({ id: c.id, name: c.name, startYear: c.startYear, endYear: c.endYear }))} classId={user.classId} />
+        <PromotionPicker
+          currentName={current ? (current.shortName || current.trackName) : null}
+          currentYearsCount={current?.yearsCount ?? null}
+          entryYear={currentClass?.startYear ?? null}
+        />
       </div>
       <div className="card max-w-md space-y-3">
         <h2 className="font-semibold">Mon statut</h2>

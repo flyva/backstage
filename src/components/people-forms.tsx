@@ -8,7 +8,7 @@ import { Toggle } from "@/components/Toggle";
 import { LINK_KINDS, type LinkKind } from "@/db/schema";
 import { HABILITATION_SYMBOLS, LINK_LABEL, initialsOf } from "@/lib/people-shared";
 import {
-  addTrackReferentsBulk, addLink, addUserFormation, deleteLink, deleteMyAccount, regenerateCardSlug, removeAvatar, removeUserFormation, saveAnnuaire, saveCardVisibility, saveClass, saveCompanyProfile, saveDomaine, saveNetworkContact, saveTrack, setCardEnabled, setPromotion, uploadAvatar,
+  addTrackReferentsBulk, addLink, addUserFormation, deleteLink, deleteMyAccount, regenerateCardSlug, removeAvatar, removeUserFormation, saveAnnuaire, saveCardVisibility, saveClass, saveCompanyProfile, saveDomaine, saveNetworkContact, saveTrack, setCardEnabled, setPromotionByEntryYear, uploadAvatar,
   deleteClass, deleteDomaine, deleteNetworkContact, deleteTrack, setFeedEnabled, regenerateFeedToken,
 } from "@/lib/people-actions";
 
@@ -386,26 +386,103 @@ export function NetworkBook({ contacts }: { contacts: NetContact[] }) {
 
 // ---------- Filières (administration) ----------
 
-export function TrackForm({ track, domaines }: { track?: { id: number; name: string; shortName: string | null; domaineId: number | null; yearsCount: number; sortOrder: number }; domaines: { id: number; name: string }[] }) {
+type TrackRow = { id: number; name: string; shortName: string | null; domaineId: number | null; yearsCount: number; sortOrder: number };
+
+const TRACK_ROW_COLS = "minmax(10rem,1.4fr) 6rem 9rem 5.5rem 7.5rem";
+
+// Tableau de données accessible (divs + rôles ARIA, pas de <table>/<tr> : un <form> ne peut pas être enfant direct
+// d'une ligne de tableau) — une ligne = un vrai <form> avec son propre bouton Enregistrer, plus lisible que des
+// champs numériques juxtaposés sans étiquette.
+function TrackRowForm({ track, domaines }: { track: TrackRow; domaines: { id: number; name: string }[] }) {
   const [state, action, pending] = useActionState(saveTrack, undefined);
   return (
-    <form action={action} className="flex flex-wrap items-center gap-2">
-      {track && <input type="hidden" name="id" value={track.id} />}
-      <input name="name" required maxLength={80} defaultValue={track?.name} placeholder="Nom de formation entière" className="input min-w-48 flex-1" aria-label="Nom de formation entière" />
-      <input name="shortName" maxLength={20} defaultValue={track?.shortName ?? ""} placeholder="Diminutif (ex. RT)" className="input w-36" aria-label="Diminutif" />
-      <select name="domaineId" defaultValue={track?.domaineId ?? ""} className="input w-44" aria-label="Domaine">
-        <option value="">Sans domaine</option>
-        {domaines.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-      </select>
-      <input name="yearsCount" type="number" min={1} max={10} defaultValue={track?.yearsCount ?? 1} className="input w-20" aria-label="Nombre d'années" title="Nombre d'années" />
-      {track && <input name="sortOrder" type="number" min={0} max={999} defaultValue={track.sortOrder} className="input w-20" aria-label="Ordre d'affichage" title="Ordre d'affichage" />}
-      <button className="btn" disabled={pending}>{track ? "Enregistrer" : "Ajouter"}</button>
-      {track && (
-        <button formAction={deleteTrack} className="btn-ghost" onClick={(e) => { if (!confirm(`Supprimer la formation « ${track.name} » ? Les personnes concernées n'auront plus cette formation.`)) e.preventDefault(); }}>
-          <Trash2 size={15} /> Supprimer
+    <form
+      action={action} role="row"
+      className="grid items-center gap-2 border-b border-line py-2"
+      style={{ gridTemplateColumns: TRACK_ROW_COLS }}
+    >
+      <input type="hidden" name="id" value={track.id} />
+      <input type="hidden" name="sortOrder" value={track.sortOrder} />
+      <div role="cell"><input name="name" required maxLength={80} defaultValue={track.name} placeholder="Nom de formation entière" className="input" aria-label="Nom de formation entière" /></div>
+      <div role="cell"><input name="shortName" maxLength={20} defaultValue={track.shortName ?? ""} placeholder="Ex. RT" className="input" aria-label="Diminutif" /></div>
+      <div role="cell">
+        <select name="domaineId" defaultValue={track.domaineId ?? ""} className="input" aria-label="Domaine">
+          <option value="">Sans domaine</option>
+          {domaines.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+        </select>
+      </div>
+      <div role="cell"><input name="yearsCount" type="number" min={1} max={10} defaultValue={track.yearsCount} className="input" aria-label="Nombre d'années" /></div>
+      <div role="cell" className="flex items-center gap-2">
+        <button className="btn-ghost text-xs" disabled={pending}>{pending ? "…" : "Enregistrer"}</button>
+        <button
+          formAction={deleteTrack} className="text-muted hover:text-danger"
+          aria-label={`Supprimer ${track.name}`}
+          onClick={(e) => { if (!confirm(`Supprimer la formation « ${track.name} » ? Les personnes concernées n'auront plus cette formation.`)) e.preventDefault(); }}
+        >
+          <Trash2 size={15} />
         </button>
+      </div>
+      {state?.error && <p role="alert" className="col-span-full text-xs text-danger">{state.error}</p>}
+      {state?.ok && <p role="status" className="col-span-full text-xs text-green-600 dark:text-green-400">{state.ok}</p>}
+    </form>
+  );
+}
+
+export function TracksTable({ tracks, domaines }: { tracks: TrackRow[]; domaines: { id: number; name: string }[] }) {
+  return (
+    <div role="table" aria-label="Formations" className="overflow-x-auto text-sm">
+      <div role="row" className="grid gap-2 border-b border-line pb-2 text-left text-xs font-medium uppercase text-muted" style={{ gridTemplateColumns: TRACK_ROW_COLS }}>
+        <div role="columnheader">Nom entier</div>
+        <div role="columnheader">Diminutif</div>
+        <div role="columnheader">Domaine</div>
+        <div role="columnheader">Années</div>
+        <div role="columnheader">Actions</div>
+      </div>
+      {tracks.map((t) => <TrackRowForm key={t.id} track={t} domaines={domaines} />)}
+      {tracks.length === 0 && <p className="py-3 text-sm text-muted">Aucune formation pour le moment.</p>}
+    </div>
+  );
+}
+
+export function TrackForm({ track, domaines }: { track?: TrackRow; domaines: { id: number; name: string }[] }) {
+  const [state, action, pending] = useActionState(saveTrack, undefined);
+  return (
+    <form action={action} className="grid gap-3 sm:grid-cols-2">
+      {track && <input type="hidden" name="id" value={track.id} />}
+      <div className="sm:col-span-2">
+        <label className="label" htmlFor="track-name">Nom de formation entière</label>
+        <input id="track-name" name="name" required maxLength={80} defaultValue={track?.name} className="input" />
+      </div>
+      <div>
+        <label className="label" htmlFor="track-short">Diminutif (ex. RT)</label>
+        <input id="track-short" name="shortName" maxLength={20} defaultValue={track?.shortName ?? ""} className="input" />
+      </div>
+      <div>
+        <label className="label" htmlFor="track-domaine">Domaine</label>
+        <select id="track-domaine" name="domaineId" defaultValue={track?.domaineId ?? ""} className="input">
+          <option value="">Sans domaine</option>
+          {domaines.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+        </select>
+      </div>
+      <div>
+        <label className="label" htmlFor="track-years">Nombre d&apos;années</label>
+        <input id="track-years" name="yearsCount" type="number" min={1} max={10} defaultValue={track?.yearsCount ?? 1} className="input w-24" />
+      </div>
+      {track && (
+        <div>
+          <label className="label" htmlFor="track-order">Ordre d&apos;affichage</label>
+          <input id="track-order" name="sortOrder" type="number" min={0} max={999} defaultValue={track.sortOrder} className="input w-24" />
+        </div>
       )}
-      <div className="w-full"><Feedback state={state} /></div>
+      <div className="flex items-center gap-2 sm:col-span-2">
+        <button className="btn" disabled={pending}>{track ? "Enregistrer" : "Ajouter"}</button>
+        {track && (
+          <button formAction={deleteTrack} className="btn-ghost" onClick={(e) => { if (!confirm(`Supprimer la formation « ${track.name} » ? Les personnes concernées n'auront plus cette formation.`)) e.preventDefault(); }}>
+            <Trash2 size={15} /> Supprimer
+          </button>
+        )}
+      </div>
+      <div className="sm:col-span-2"><Feedback state={state} /></div>
     </form>
   );
 }
@@ -550,19 +627,25 @@ export function FormationPicker({ tracks, myFormations }: { tracks: FormationOpt
   );
 }
 
-export function PromotionPicker({ classes, classId }: { classes: { id: number; name: string; startYear: number | null; endYear: number | null }[]; classId: number | null }) {
-  const label = (c: { name: string; startYear: number | null; endYear: number | null }) =>
-    c.startYear && c.endYear ? `${String(c.startYear).slice(-2)}-${String(c.endYear).slice(-2)}` : c.name;
+export function PromotionPicker({ currentName, currentYearsCount, entryYear }: { currentName: string | null; currentYearsCount: number | null; entryYear: number | null }) {
+  const [state, action, pending] = useActionState(setPromotionByEntryYear, undefined);
   return (
-    <form action={setPromotion} className="flex flex-wrap items-end gap-2">
-      <div className="min-w-56">
-        <label className="label" htmlFor="classId">Ma promo</label>
-        <select id="classId" name="classId" defaultValue={classId ?? ""} className="input">
-          <option value="">Non renseignée</option>
-          {classes.map((c) => <option key={c.id} value={c.id}>{label(c)}</option>)}
-        </select>
+    <form action={action} className="space-y-2">
+      <div className="flex flex-wrap items-end gap-2">
+        <div>
+          <label className="label" htmlFor="entryYear">Année d&apos;entrée dans cette formation</label>
+          <input id="entryYear" name="entryYear" type="number" min={2000} max={2100} required defaultValue={entryYear ?? ""} placeholder="2026" className="input w-32" disabled={!currentYearsCount} />
+        </div>
+        <button className="btn" disabled={pending || !currentYearsCount}>{pending ? "…" : "Enregistrer"}</button>
       </div>
-      <button className="btn">Enregistrer</button>
+      {currentYearsCount ? (
+        <p className="text-xs text-muted">
+          {currentName} dure {currentYearsCount} année{currentYearsCount > 1 ? "s" : ""} : la fin se calcule automatiquement (ex. entrée en 2026 → promo 2026-{2026 + currentYearsCount - 1}).
+        </p>
+      ) : (
+        <p className="text-xs text-muted">Ajoute d&apos;abord une formation ci-dessus : la durée de la promo en dépend.</p>
+      )}
+      <Feedback state={state} />
     </form>
   );
 }

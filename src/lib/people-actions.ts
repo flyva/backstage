@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { randomBytes } from "node:crypto";
 import { unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { and, asc, count, eq } from "drizzle-orm";
+import { and, asc, count, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { LINK_KINDS, classes, domaines, networkContacts, roles, trackReferents, tracks, userFormations, userLinks, users, type LinkKind } from "@/db/schema";
 import { destroySession, requireAdmin, requireUser } from "@/lib/auth";
@@ -110,18 +110,31 @@ export async function addUserFormation(_: FormState, fd: FormData): Promise<Form
   return { ok: "Formation ajoutée" };
 }
 
-export async function setPromotion(fd: FormData) {
+// L'année de fin se déduit de l'année d'entrée et du nombre d'années de la formation la plus récente (ex. entrée en
+// 2026 dans une formation de 3 ans → promo 2026-2028) : pas de choix de promo dans une liste, juste l'année d'entrée.
+export async function setPromotionByEntryYear(_: FormState, fd: FormData): Promise<FormState> {
   const user = await requireUser();
-  const classRaw = Number(fd.get("classId"));
-  let classId: number | null = null;
-  if (Number.isInteger(classRaw) && classRaw > 0) {
-    const [c] = await db.select({ id: classes.id }).from(classes).where(eq(classes.id, classRaw)).limit(1);
-    if (!c) return;
-    classId = c.id;
+  const startYear = Number(fd.get("entryYear"));
+  if (!Number.isInteger(startYear) || startYear < 2000 || startYear > 2100) return { error: "Année d'entrée invalide" };
+
+  const [current] = await db
+    .select({ yearsCount: tracks.yearsCount })
+    .from(userFormations).innerJoin(tracks, eq(userFormations.trackId, tracks.id))
+    .where(eq(userFormations.userId, user.id)).orderBy(desc(userFormations.createdAt)).limit(1);
+  if (!current) return { error: "Renseigne d'abord une formation ci-dessus : la durée de la promo en dépend." };
+
+  const endYear = startYear + current.yearsCount - 1;
+  const name = `${startYear}-${endYear}`;
+  let [cls] = await db.select({ id: classes.id }).from(classes).where(eq(classes.name, name)).limit(1);
+  if (!cls) {
+    const [res] = await db.insert(classes).values({ name, startYear, endYear });
+    cls = { id: res.insertId };
   }
-  await db.update(users).set({ classId }).where(eq(users.id, user.id));
+  await db.update(users).set({ classId: cls.id }).where(eq(users.id, user.id));
   revalidatePath("/profil");
   revalidatePath("/annuaire");
+  revalidatePath("/admin/3is/promotions");
+  return { ok: `Promo enregistrée : ${startYear}-${endYear}` };
 }
 
 export async function removeUserFormation(fd: FormData) {
