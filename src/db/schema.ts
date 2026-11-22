@@ -49,6 +49,9 @@ export const roles = mysqlTable("roles", {
   // Pages individuelles masquées du menu pour ce rôle (ex. "/alternance/pointeuse,/instagram") : liste de hrefs
   // séparés par des virgules. Vide ou absent = rien de masqué. Même principe d'opt-out que courseTags.
   hiddenPages: text("hidden_pages"),
+  // Catégories du tableau de bord Administration masquées pour ce rôle (ex. "contenu,systeme") : même principe
+  // d'opt-out que hiddenPages. Vide ou absent = tout visible.
+  adminSections: text("admin_sections"),
   // Rôle externe en lecture seule (entreprise d'accueil, tuteur sans accès au reste de l'appli) : quel que soit le
   // reste des réglages ci-dessus, l'accès se limite à l'agenda, au planning/pointeuse des personnes qui l'ont
   // désigné comme référent (agendaViewers) et aux contacts de l'école ; aucune page de gestion n'est accessible.

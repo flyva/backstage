@@ -8,7 +8,7 @@ import { db } from "@/db";
 import { agendaViewers, passwordResets, roles, sessions, users } from "@/db/schema";
 import { hashPassword, requireAdmin } from "@/lib/auth";
 import { joinName } from "@/lib/names";
-import { COURSE_PAGES } from "@/lib/perms";
+import { ADMIN_SECTIONS, COURSE_PAGES } from "@/lib/perms";
 import { TOGGLEABLE_GROUPS } from "@/lib/nav-data";
 import { logAdminAction } from "@/lib/audit";
 import { randomBytes, createHash } from "node:crypto";
@@ -80,6 +80,11 @@ export async function saveRole(_: FormState, fd: FormData): Promise<FormState> {
     hiddenPages: (() => {
       const all = TOGGLEABLE_GROUPS.flatMap((g) => g.pages);
       const hidden = all.filter((pg) => fd.get(`page_${pg.href}`) !== "on").map((pg) => pg.href);
+      return hidden.length === 0 ? null : hidden.join(",");
+    })(),
+    // null = rien de masqué, y compris les catégories ajoutées plus tard ; même principe d'opt-out que hiddenPages.
+    adminSections: (() => {
+      const hidden = ADMIN_SECTIONS.filter((s) => fd.get(`admin_section_${s.key}`) !== "on").map((s) => s.key);
       return hidden.length === 0 ? null : hidden.join(",");
     })(),
     ...levels(fd),

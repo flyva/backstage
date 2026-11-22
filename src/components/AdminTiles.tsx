@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Search } from "lucide-react";
 
 export type AdminCard = { href: string; label: string; hint: string; icon: ReactNode };
-export type AdminGroup = { title: string; cards: AdminCard[] };
+export type AdminGroup = { key?: string; title: string; cards: AdminCard[] };
 
 // Couleurs pastel des tuiles — reprises telles quelles de la grille d'administration de BDE (AdminClient.tsx),
 // qui les fait tourner d'une tuile à l'autre plutôt que de les lier à une catégorie précise.

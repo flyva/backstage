@@ -14,6 +14,7 @@ export const metadata = { title: "Administration" };
 
 const GROUPS: AdminGroup[] = [
   {
+    key: "comptes",
     title: "Comptes",
     cards: [
       { href: "/admin/utilisateurs", label: "Utilisateurs", hint: "Comptes, rôles, validations", icon: <Users size={17} /> },
@@ -23,6 +24,7 @@ const GROUPS: AdminGroup[] = [
     ],
   },
   {
+    key: "contenu",
     title: "Contenu",
     cards: [
       { href: "/admin/faq", label: "FAQ", hint: "Questions fréquentes", icon: <CircleHelp size={17} /> },
@@ -34,12 +36,14 @@ const GROUPS: AdminGroup[] = [
     ],
   },
   {
+    key: "entreprises",
     title: "Entreprises",
     cards: [
       { href: "/admin/statuts-entreprises", label: "Statuts entreprises", hint: "Suivi des candidatures", icon: <Building2 size={17} /> },
     ],
   },
   {
+    key: "bde",
     title: "BDE",
     cards: [
       { href: "/admin/finances", label: "Comptabilité", hint: "Recettes, dépenses, rapport annuel", icon: <Wallet size={17} /> },
@@ -49,6 +53,7 @@ const GROUPS: AdminGroup[] = [
     ],
   },
   {
+    key: "inventaire",
     title: "Inventaire",
     cards: [
       { href: "/inventaire", label: "Stock", hint: "Produits, quantités, DLC", icon: <Package size={17} /> },
@@ -56,6 +61,7 @@ const GROUPS: AdminGroup[] = [
     ],
   },
   {
+    key: "systeme",
     title: "Système",
     cards: [
       { href: "/admin/general", label: "Général", hint: "Guide de rentrée, icône, paramètres école", icon: <Settings2 size={17} /> },
@@ -68,7 +74,9 @@ const GROUPS: AdminGroup[] = [
 ];
 
 export default async function AdminPage() {
-  await requireAdmin();
+  const admin = await requireAdmin();
+  const hidden = new Set(admin.perms.hiddenAdminSections);
+  const visibleGroups = GROUPS.filter((g) => !g.key || !hidden.has(g.key));
   const pending = await db.select().from(users).where(eq(users.status, "pending")).orderBy(asc(users.createdAt));
 
   return (
@@ -99,7 +107,7 @@ export default async function AdminPage() {
         </section>
       )}
 
-      <AdminTiles groups={GROUPS} />
+      <AdminTiles groups={visibleGroups} />
     </div>
   );
 }

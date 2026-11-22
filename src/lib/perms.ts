@@ -26,7 +26,22 @@ export type RoleFlags = {
   // Pages individuelles masquées pour ce rôle (hors pages à niveau Voir/Gérer et pages de Cours, déjà couvertes
   // ailleurs) : liste de hrefs séparés par des virgules. Vide ou absent = rien de masqué (comportement par défaut).
   hiddenPages: string | null;
+  // Catégories du tableau de bord Administration masquées pour ce rôle (ex. "contenu,systeme") : liste de clés
+  // séparées par des virgules. Vide ou absent = aucune masquée (tout visible par défaut).
+  adminSections: string | null;
 };
+
+/** Catégories du tableau de bord Administration (/admin) : mêmes groupes que ceux affichés sur la page, pour
+ * permettre à un rôle avec le droit « Administration » de n'en voir qu'une partie (ex. juste Comptes et Contenu). */
+export const ADMIN_SECTIONS = [
+  { key: "comptes", label: "Comptes" },
+  { key: "contenu", label: "Contenu" },
+  { key: "entreprises", label: "Entreprises" },
+  { key: "bde", label: "BDE" },
+  { key: "inventaire", label: "Inventaire" },
+  { key: "systeme", label: "Système" },
+] as const;
+export type AdminSectionKey = (typeof ADMIN_SECTIONS)[number]["key"];
 
 export type Module = "materiel" | "bde" | "actus" | "galerie" | "inventaire";
 export type Section = "savoirs" | "promo" | "vie" | "detente" | "rechercheEntreprises";
@@ -72,6 +87,8 @@ export type Perms = {
   courses: Record<CoursePageKey, boolean>;
   /** Pages individuelles du menu masquées pour ce rôle (vide pour un administrateur). */
   hiddenPages: string[];
+  /** Catégories du tableau de bord Administration masquées pour ce rôle (vide pour un administrateur). */
+  hiddenAdminSections: string[];
 };
 
 /** Un administrateur a tous les droits, quel que soit le détail coché. Un rôle « Entreprise » n'en a aucun : lecture seule, Agenda/Planning/Contacts uniquement. */
@@ -89,6 +106,7 @@ export function permsOf(r: RoleFlags | null | undefined): Perms {
       sections: { savoirs: false, promo: false, vie: false, detente: false, rechercheEntreprises: false },
       courses: Object.fromEntries(COURSE_PAGES.map((p) => [p.key, false])) as Record<CoursePageKey, boolean>,
       hiddenPages: allHrefs.filter((href) => !COMPANY_ALLOWED_PATHS.includes(href as (typeof COMPANY_ALLOWED_PATHS)[number])),
+      hiddenAdminSections: ADMIN_SECTIONS.map((s) => s.key),
     };
   }
   return {
@@ -117,6 +135,7 @@ export function permsOf(r: RoleFlags | null | undefined): Perms {
     },
     courses: courseAccess(a, r?.courseTags ?? null),
     hiddenPages: a ? [] : (r?.hiddenPages ? r.hiddenPages.split(",").map((h) => h.trim()).filter(Boolean) : []),
+    hiddenAdminSections: a ? [] : (r?.adminSections ? r.adminSections.split(",").map((h) => h.trim()).filter(Boolean) : []),
   };
 }
 

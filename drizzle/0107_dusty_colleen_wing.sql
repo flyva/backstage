@@ -1,0 +1,1 @@
+ALTER TABLE `roles` ADD `admin_sections` text;

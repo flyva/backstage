@@ -1,13 +1,13 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState, type ReactNode } from "react";
 import { Check, EyeOff, RefreshCw, Trash2 } from "lucide-react";
 import type { FormState } from "@/lib/actions";
 import { anonymizeUser, createUser, deleteRole, deleteUser, resetUserPassword, saveRole, updateUser } from "@/lib/user-admin-actions";
 import { saveUserBdeRole } from "@/lib/association-actions";
 import { BDE_STATUS_LABEL } from "@/lib/association";
 import type { BdeStatus } from "@/db/schema";
-import { ADMIN_PERM, COURSE_PAGES, LEVEL_FIELDS, LEVEL_LABEL, levelOf, SECTION_FIELDS, TICKETS_PERM, type Level } from "@/lib/perms";
+import { ADMIN_PERM, ADMIN_SECTIONS, LEVEL_FIELDS, LEVEL_LABEL, levelOf, SECTION_FIELDS, TICKETS_PERM, type Level } from "@/lib/perms";
 import { TOGGLEABLE_GROUPS } from "@/lib/nav-data";
 import { PasswordField } from "@/components/PasswordField";
 import { CopyButton } from "@/components/people-forms";
@@ -27,11 +27,36 @@ function Feedback({ state }: { state: FormState }) {
 
 type RoleValues = { id?: number; name?: string; description?: string; isAdmin?: boolean; permAdministration?: boolean; system?: boolean } & Record<string, unknown>;
 
+/** Groupe de cases à cocher avec un bouton « Tout cocher »/« Tout décocher » : évite de cliquer une par une sur
+ *  les pages d'un thème quand on veut juste tout activer ou tout couper. Purement visuel (DOM direct, pas d'état
+ *  React) : les cases restent de simples champs non contrôlés, comme le reste du formulaire. */
+function CheckAllGroup({ title, children }: { title: string; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const setAll = (checked: boolean) => {
+    ref.current?.querySelectorAll<HTMLInputElement>('input[type="checkbox"]').forEach((cb) => { cb.checked = checked; });
+  };
+  return (
+    <div ref={ref} className="rounded-xl border border-line p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <strong className="text-sm">{title}</strong>
+        <div className="flex gap-2 text-xs">
+          <button type="button" onClick={() => setAll(true)} className="text-accent hover:underline">Tout cocher</button>
+          <button type="button" onClick={() => setAll(false)} className="text-muted hover:underline">Tout décocher</button>
+        </div>
+      </div>
+      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1.5">{children}</div>
+    </div>
+  );
+}
+
 export function RoleForm({ role = {} }: { role?: RoleValues }) {
   const [state, action, pending] = useActionState(saveRole, undefined);
+  const [isAdminChecked, setIsAdminChecked] = useState(!!role.isAdmin);
+  const [permAdminChecked, setPermAdminChecked] = useState(!!role.permAdministration);
   const k = role.id ?? "new";
+  const hiddenAdminSet = typeof role.adminSections === "string" ? new Set(role.adminSections.split(",")) : new Set<string>();
   return (
-    <form action={action} className="space-y-4" key={role.id ? `e${role.id}` : state?.ok ? "done" : "new"}>
+    <form action={action} className="space-y-5" key={role.id ? `e${role.id}` : state?.ok ? "done" : "new"}>
       {role.id && <input type="hidden" name="id" value={role.id} />}
       <div className="grid gap-3 sm:grid-cols-2">
         <div><label className="label" htmlFor={`rn${k}`}>Nom du rôle</label><input id={`rn${k}`} name="name" defaultValue={role.name} required minLength={2} maxLength={60} placeholder="Régisseur, Tuteur, Intervenant…" className="input" /></div>
@@ -41,7 +66,7 @@ export function RoleForm({ role = {} }: { role?: RoleValues }) {
       <fieldset className="space-y-2">
         <legend className="label">Droits globaux</legend>
         <label className="flex items-start gap-3 rounded-xl border border-line p-3 text-sm has-[:checked]:border-accent has-[:checked]:bg-accent/5">
-          <input type="checkbox" name="isAdmin" defaultChecked={role.isAdmin} disabled={role.system && role.isAdmin} className="mt-0.5 size-4 accent-[var(--accent)]" />
+          <input type="checkbox" name="isAdmin" defaultChecked={role.isAdmin} disabled={role.system && role.isAdmin} onChange={(e) => setIsAdminChecked(e.target.checked)} className="mt-0.5 size-4 accent-[var(--accent)]" />
           <span><strong>Administrateur</strong><span className="block text-xs text-muted">Tous les droits ci-dessous, y compris ceux qu&apos;on ajoutera plus tard. À réserver à peu de personnes.</span></span>
         </label>
         {role.system && role.isAdmin && <input type="hidden" name="isAdmin" value="on" />}
@@ -50,7 +75,7 @@ export function RoleForm({ role = {} }: { role?: RoleValues }) {
           <span><strong>Entreprise (lecture seule)</strong><span className="block text-xs text-muted">Aucune modification possible nulle part : accès uniquement à l&apos;Agenda, au Planning des personnes qui l&apos;ont désigné comme référent, et aux Contacts de l&apos;école. Ignore tous les réglages ci-dessous.</span></span>
         </label>
         <label className="flex items-start gap-3 rounded-xl border border-line p-3 text-sm has-[:checked]:border-accent has-[:checked]:bg-accent/5">
-          <input type="checkbox" name={ADMIN_PERM.field} defaultChecked={!!role[ADMIN_PERM.field]} className="mt-0.5 size-4 accent-[var(--accent)]" />
+          <input type="checkbox" name={ADMIN_PERM.field} defaultChecked={!!role[ADMIN_PERM.field]} onChange={(e) => setPermAdminChecked(e.target.checked)} className="mt-0.5 size-4 accent-[var(--accent)]" />
           <span><strong>{ADMIN_PERM.label}</strong><span className="block text-xs text-muted">{ADMIN_PERM.hint}</span></span>
         </label>
         <label className="flex items-start gap-3 rounded-xl border border-line p-3 text-sm has-[:checked]:border-accent has-[:checked]:bg-accent/5">
@@ -59,35 +84,60 @@ export function RoleForm({ role = {} }: { role?: RoleValues }) {
         </label>
       </fieldset>
 
-      <fieldset className="space-y-2">
-        <legend className="label">Secteurs</legend>
-        <p className="text-xs text-muted">
-          Pour chaque secteur de Backstage, choisis le niveau d&apos;accès de ce rôle : <strong>Aucun</strong> (invisible),{" "}
-          <strong>Voir</strong> (juste observer, aucune modification possible) ou <strong>Gérer</strong> (administration complète de ce secteur).
-        </p>
-        <div className="space-y-2">
-          {LEVEL_FIELDS.map((f) => {
-            const cur = levelOf(role, f);
-            return (
-              <div key={f.module} className="rounded-xl border border-line p-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <strong className="text-sm">{f.label}</strong>
-                  <div role="radiogroup" aria-label={f.label} className="flex overflow-hidden rounded-lg border border-line text-sm">
-                    {(["none", "view", "manage"] as Level[]).map((lv) => (
-                      <label key={lv} className="cursor-pointer border-l border-line px-3 py-1 first:border-l-0 has-[:checked]:bg-accent has-[:checked]:text-accent-fg">
-                        <input type="radio" name={`level_${f.module}`} value={lv} defaultChecked={role.id ? cur === lv : lv === "view"} className="sr-only" />
-                        {LEVEL_LABEL[lv]}
-                      </label>
-                    ))}
+      {(isAdminChecked || permAdminChecked) && (
+        <fieldset className="space-y-2 rounded-xl border border-accent/40 bg-accent/5 p-3">
+          <legend className="label px-1">Catégories d&apos;administration</legend>
+          <p className="text-xs text-muted">Si ce rôle n&apos;est pas administrateur complet, choisis les catégories du tableau de bord Administration qu&apos;il voit (ex. juste « Comptes »). Tout coché par défaut.</p>
+          <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+            {ADMIN_SECTIONS.map((s) => (
+              <label key={s.key} className="flex items-center gap-1.5 text-sm">
+                <input type="checkbox" name={`admin_section_${s.key}`} defaultChecked={!role.id || !hiddenAdminSet.has(s.key)} disabled={isAdminChecked} className="size-4 accent-[var(--accent)]" />
+                {s.label}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
+
+      <details open className="group rounded-xl border border-line p-3">
+        <summary className="cursor-pointer list-none font-semibold marker:hidden">
+          <span className="inline-block transition-transform group-open:rotate-90">▸</span> Secteurs
+        </summary>
+        <div className="mt-3 space-y-3">
+          <p className="text-xs text-muted">
+            Pour chaque secteur de Backstage, choisis le niveau d&apos;accès de ce rôle : <strong>Aucun</strong> (invisible),{" "}
+            <strong>Voir</strong> (juste observer, aucune modification possible) ou <strong>Gérer</strong> (administration complète de ce secteur).
+          </p>
+          <div className="space-y-2">
+            {LEVEL_FIELDS.map((f) => {
+              const cur = levelOf(role, f);
+              return (
+                <div key={f.module} className="rounded-xl border border-line p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <strong className="text-sm">{f.label}</strong>
+                    <div role="radiogroup" aria-label={f.label} className="flex overflow-hidden rounded-lg border border-line text-sm">
+                      {(["none", "view", "manage"] as Level[]).map((lv) => (
+                        <label key={lv} className="cursor-pointer border-l border-line px-3 py-1 first:border-l-0 has-[:checked]:bg-accent has-[:checked]:text-accent-fg">
+                          <input type="radio" name={`level_${f.module}`} value={lv} defaultChecked={role.id ? cur === lv : lv === "view"} className="sr-only" />
+                          {LEVEL_LABEL[lv]}
+                        </label>
+                      ))}
+                    </div>
                   </div>
+                  <p className="mt-1 text-xs text-muted">{f.hint}</p>
                 </div>
-                <p className="mt-1 text-xs text-muted">{f.hint}</p>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
-        <p className="text-xs text-muted">« Aucun » retire toute la section du menu pour ce rôle (utile pour un accès externe réduit à l&apos;essentiel). L&apos;assistant en bas à droite reste toujours disponible.</p>
-        <div className="space-y-2">
+      </details>
+
+      <details open className="group rounded-xl border border-line p-3">
+        <summary className="cursor-pointer list-none font-semibold marker:hidden">
+          <span className="inline-block transition-transform group-open:rotate-90">▸</span> Sections du menu
+        </summary>
+        <div className="mt-3 space-y-2">
+          <p className="text-xs text-muted">« Aucun » retire toute la section du menu pour ce rôle (utile pour un accès externe réduit à l&apos;essentiel). L&apos;assistant en bas à droite reste toujours disponible.</p>
           {SECTION_FIELDS.map((sf) => {
             const cur = role.id ? (role[sf.field] ? "view" : "none") : "view";
             return (
@@ -108,59 +158,29 @@ export function RoleForm({ role = {} }: { role?: RoleValues }) {
             );
           })}
         </div>
-      </fieldset>
+      </details>
 
-      <fieldset className="space-y-3">
-        <legend className="label">Pages du menu</legend>
-        <p className="text-xs text-muted">Décoche une page précise pour la retirer du menu de ce rôle, sans toucher aux autres (ex. accès à Alternance mais pas à la Pointeuse). Les domaines avec un niveau Voir/Gérer ci-dessus, et les pages de Cours, se règlent séparément.</p>
-        <div className="space-y-3">
+      <details className="group rounded-xl border border-line p-3">
+        <summary className="cursor-pointer list-none font-semibold marker:hidden">
+          <span className="inline-block transition-transform group-open:rotate-90">▸</span> Pages du menu (réglage fin, facultatif)
+        </summary>
+        <div className="mt-3 space-y-3">
+          <p className="text-xs text-muted">Décoche une page précise pour la retirer du menu de ce rôle, sans toucher aux autres (ex. accès à Alternance mais pas à la Pointeuse). Les domaines avec un niveau Voir/Gérer ci-dessus se règlent plus haut, pas ici.</p>
           {TOGGLEABLE_GROUPS.map((g) => {
             const hiddenSet = typeof role.hiddenPages === "string" ? new Set(role.hiddenPages.split(",")) : new Set<string>();
             return (
-              <div key={g.id} className="rounded-xl border border-line p-3">
-                <strong className="text-sm">{g.title}</strong>
-                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1.5">
-                  {g.pages.map((pg) => (
-                    <label key={pg.href} className="flex items-center gap-1.5 text-sm">
-                      <input type="checkbox" name={`page_${pg.href}`} defaultChecked={!role.id || !hiddenSet.has(pg.href)} className="size-4 accent-[var(--accent)]" />
-                      {pg.label}
-                    </label>
-                  ))}
-                </div>
-              </div>
+              <CheckAllGroup key={g.id} title={g.title}>
+                {g.pages.map((pg) => (
+                  <label key={pg.href} className="flex items-center gap-1.5 text-sm">
+                    <input type="checkbox" name={`page_${pg.href}`} defaultChecked={!role.id || !hiddenSet.has(pg.href)} className="size-4 accent-[var(--accent)]" />
+                    {pg.label}
+                  </label>
+                ))}
+              </CheckAllGroup>
             );
           })}
         </div>
-      </fieldset>
-
-      <fieldset className="space-y-2">
-        <legend className="label">Pages de Cours (sous-menu de Travail)</legend>
-        <p className="text-xs text-muted">« Aucun » retire cette page précise du sous-menu Cours, sans toucher aux autres. D&apos;autres pages s&apos;ajouteront ici avec le temps.</p>
-        <div className="space-y-2">
-          {COURSE_PAGES.map((cp) => {
-            const tags = typeof role.courseTags === "string" ? role.courseTags : null;
-            // `null` = jamais configuré (tout visible) ; une chaîne vide = tout décoché volontairement. Les deux ne
-            // doivent pas se confondre, sinon enregistrer « tout en Aucun » réaffiche « Voir » juste après (le champ
-            // vide retombe sur le même cas que « pas de rôle » faute de distinction).
-            const cur = !role.id || tags == null ? "view" : tags.split(",").includes(cp.key) ? "view" : "none";
-            return (
-              <div key={cp.key} className="rounded-xl border border-line p-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <strong className="text-sm">{cp.label}</strong>
-                  <div role="radiogroup" aria-label={cp.label} className="flex overflow-hidden rounded-lg border border-line text-sm">
-                    {(["none", "view"] as const).map((lv) => (
-                      <label key={lv} className="cursor-pointer border-l border-line px-3 py-1 first:border-l-0 has-[:checked]:bg-accent has-[:checked]:text-accent-fg">
-                        <input type="radio" name={`course_${cp.key}`} value={lv} defaultChecked={cur === lv} className="sr-only" />
-                        {lv === "none" ? "Aucun" : "Voir"}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </fieldset>
+      </details>
 
       <Feedback state={state} />
       <button className="btn" disabled={pending}>{pending ? "Enregistrement…" : role.id ? "Enregistrer le rôle" : "Créer le rôle"}</button>
