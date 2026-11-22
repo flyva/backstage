@@ -757,6 +757,13 @@
       "when": 1795358197967,
       "tag": "0107_dusty_colleen_wing",
       "breakpoints": true
+    },
+    {
+      "idx": 108,
+      "version": "5",
+      "when": 1795372630207,
+      "tag": "0108_freezing_lord_hawal",
+      "breakpoints": true
     }
   ]
 }

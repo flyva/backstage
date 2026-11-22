@@ -69,25 +69,49 @@ export function RegisterForm({ codeRequired = false, emailDomain }: { codeRequir
   );
 }
 
-export function ProfileForm(props: { firstName: string; lastName: string; homeAddress: string; companyName: string; companyAddress: string }) {
+type ProfileFormProps = { firstName: string; lastName: string; homeAddress: string; companyName: string; companyAddress: string };
+
+// Historiquement un seul formulaire (Identité + Coordonnées) ; conservé en un seul appel à updateProfile pour ne pas
+// toucher à l'action, mais découpé en deux vues (onglets « Identité » et « Coordonnées » du profil vertical) — chaque
+// vue envoie aussi les champs de l'autre section en champs cachés pour ne rien effacer.
+export function ProfileForm(props: ProfileFormProps) {
+  return <IdentityForm {...props} />;
+}
+
+export function IdentityForm({ firstName, lastName, homeAddress, companyName, companyAddress }: ProfileFormProps) {
   const [state, action, pending] = useActionState(updateProfile, undefined);
   return (
     <form action={action} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label className="label" htmlFor="firstName">Prénom</label>
-          <input id="firstName" name="firstName" autoComplete="given-name" defaultValue={props.firstName} maxLength={60} required className="input" />
+          <input id="firstName" name="firstName" autoComplete="given-name" defaultValue={firstName} maxLength={60} required className="input" />
         </div>
         <div>
           <label className="label" htmlFor="lastName">Nom</label>
-          <input id="lastName" name="lastName" autoComplete="family-name" defaultValue={props.lastName} maxLength={60} required className="input" />
+          <input id="lastName" name="lastName" autoComplete="family-name" defaultValue={lastName} maxLength={60} required className="input" />
         </div>
       </div>
+      <input type="hidden" name="homeAddress" value={homeAddress} />
+      <input type="hidden" name="companyName" value={companyName} />
+      <input type="hidden" name="companyAddress" value={companyAddress} />
+      <Feedback state={state} />
+      <button className="btn" disabled={pending}>{pending ? "Enregistrement…" : "Enregistrer"}</button>
+    </form>
+  );
+}
+
+export function CoordonneesForm({ firstName, lastName, homeAddress, companyName, companyAddress }: ProfileFormProps) {
+  const [state, action, pending] = useActionState(updateProfile, undefined);
+  return (
+    <form action={action} className="space-y-4">
+      <input type="hidden" name="firstName" value={firstName} />
+      <input type="hidden" name="lastName" value={lastName} />
       <AddressField
         id="homeAddress"
         name="homeAddress"
         label="Adresse du domicile"
-        defaultValue={props.homeAddress}
+        defaultValue={homeAddress}
         hint="Commence à taper (numéro, rue, ville) et choisis dans la liste. Sert aux horaires de tram/bus et aux stations Le Vélo proches de chez toi."
       />
       <div className="space-y-4 rounded-xl border border-line p-4">
@@ -97,9 +121,9 @@ export function ProfileForm(props: { firstName: string; lastName: string; homeAd
         </div>
         <div>
           <label className="label" htmlFor="companyName">Nom de l&apos;entreprise</label>
-          <input id="companyName" name="companyName" defaultValue={props.companyName} maxLength={120} autoComplete="off" className="input" />
+          <input id="companyName" name="companyName" defaultValue={companyName} maxLength={120} autoComplete="off" className="input" />
         </div>
-        <AddressField id="companyAddress" name="companyAddress" label="Adresse de l'entreprise" defaultValue={props.companyAddress} />
+        <AddressField id="companyAddress" name="companyAddress" label="Adresse de l'entreprise" defaultValue={companyAddress} />
       </div>
       <Feedback state={state} />
       <button className="btn" disabled={pending}>{pending ? "Enregistrement…" : "Enregistrer"}</button>

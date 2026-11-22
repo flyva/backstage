@@ -56,22 +56,68 @@ export const roles = mysqlTable("roles", {
   // reste des réglages ci-dessus, l'accès se limite à l'agenda, au planning/pointeuse des personnes qui l'ont
   // désigné comme référent (agendaViewers) et aux contacts de l'école ; aucune page de gestion n'est accessible.
   isCompany: boolean("is_company").notNull().default(false),
+  // Rôle de test (compte de démo/bac à sable) : jamais affiché dans l'annuaire ni dans les projets, quels que soient
+  // les choix de visibilité de la personne.
+  isTest: boolean("is_test").notNull().default(false),
   createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
 });
 
-// Filières de l'école (Spectacle et évènementiel, Acting, Cinéma…) : gérées dans l'administration, choisies par chaque personne.
-export const tracks = mysqlTable("tracks", {
+// Domaines 3IS (ex. "Technique", "Jeu d'acteur") : regroupent les formations. Gérés dans Administration > 3IS > Domaines.
+export const domaines = mysqlTable("domaines", {
   id: int("id").primaryKey().autoincrement(),
   name: varchar("name", { length: 80 }).notNull().unique(),
   sortOrder: int("sort_order").notNull().default(0),
 });
 
-// Classes de promo (ex. "Promo 2026 A") : même principe que les filières, mais regroupement par classe plutôt que par spécialité.
+// Formations/filières de l'école (Spectacle et évènementiel, Acting, Cinéma…) : gérées dans l'administration, choisies
+// par chaque personne. « tracks » est le nom de table historique (filière) ; conservé pour ne pas casser les données
+// déjà en place, mais la rubrique s'appelle désormais Formations (Administration > 3IS).
+export const tracks = mysqlTable("tracks", {
+  id: int("id").primaryKey().autoincrement(),
+  name: varchar("name", { length: 80 }).notNull().unique(), // nom de formation entière
+  shortName: varchar("short_name", { length: 20 }), // diminutif (ex. "RT", "ACTING") : utilisé pour composer les tags "RT1", "ACTING2"…
+  domaineId: int("domaine_id").references(() => domaines.id, { onDelete: "set null" }),
+  yearsCount: int("years_count").notNull().default(1), // nombre d'années de la formation (grise les années au-delà dans les formulaires)
+  sortOrder: int("sort_order").notNull().default(0),
+});
+
+// Classes de promo (ex. "Promo 2026 A") : même principe que les filières, mais regroupement par classe plutôt que par
+// spécialité. « classes » est le nom de table historique ; la rubrique s'appelle désormais Promotions (Administration >
+// 3IS). startYear/endYear seuls (pas de nom libre composé) : l'affichage se construit à partir d'eux.
 export const classes = mysqlTable("classes", {
   id: int("id").primaryKey().autoincrement(),
   name: varchar("name", { length: 80 }).notNull().unique(),
+  startYear: int("start_year"),
+  endYear: int("end_year"),
   sortOrder: int("sort_order").notNull().default(0),
 });
+
+// Historique des formations suivies par une personne (une personne peut en avoir plusieurs : 1 an en Technicien puis
+// 1ère année en Régisseur, par ex.) : chaque entrée garde la formation et l'année suivie, comme un tag qui s'accumule.
+// La plus récente (createdAt desc) sert pour l'annuaire et les informations importantes de l'appli.
+export const userFormations = mysqlTable(
+  "user_formations",
+  {
+    id: int("id").primaryKey().autoincrement(),
+    userId: int("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    trackId: int("track_id").notNull().references(() => tracks.id, { onDelete: "cascade" }),
+    year: int("year").notNull().default(1), // 1, 2 ou 3 : l'année suivie dans cette formation
+    createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [index("user_formations_user_idx").on(t.userId)],
+);
+
+// Référents de filière (Administration > 3IS > Référents) : personnel permanent 3IS chargé du suivi des étudiant·e·s
+// d'une ou plusieurs formations — jamais d'année associée (toujours référent de "sa" filière). Permet au référent de
+// filtrer/basculer entre les plannings de ses étudiant·e·s.
+export const trackReferents = mysqlTable(
+  "track_referents",
+  {
+    userId: int("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    trackId: int("track_id").notNull().references(() => tracks.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.trackId] })],
+);
 
 // Statistiques de fréquentation (admin) : un compteur par page × type d'appareil, pas une ligne par visite (reste léger sur le Pi).
 export const pageStats = mysqlTable("page_stats", {

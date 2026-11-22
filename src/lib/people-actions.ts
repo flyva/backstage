@@ -7,7 +7,7 @@ import { unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { and, asc, count, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { LINK_KINDS, classes, networkContacts, roles, tracks, userLinks, users, type LinkKind } from "@/db/schema";
+import { LINK_KINDS, classes, networkContacts, roles, tracks, userFormations, userLinks, users, type LinkKind } from "@/db/schema";
 import { destroySession, requireAdmin, requireUser } from "@/lib/auth";
 import { AVATAR_NAME, MAX_AVATAR_BYTES, avatarDir, ensureAvatarDir, newAvatarName, sniffAvatar } from "@/lib/avatar-files";
 import { HABILITATION_SYMBOLS, PHONE_RE, normalizeDiscord, normalizeUrl } from "@/lib/people-shared";
@@ -90,6 +90,46 @@ export async function saveCardVisibility(_: FormState, fd: FormData): Promise<Fo
 }
 
 // ---------- Statut étudiant (alternant / initial) : change le libellé Alternance/Stage dans le menu et le profil ----------
+
+// ---------- Mes formations (tags « RT1 », « ACTING2 »… qui s'accumulent au fil du cursus) ----------
+
+export async function addUserFormation(_: FormState, fd: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const trackId = Number(fd.get("trackId"));
+  const year = Number(fd.get("year"));
+  if (!trackId || !year || year < 1 || year > 10) return { error: "Choisis une formation et une année" };
+  const [track] = await db.select().from(tracks).where(eq(tracks.id, trackId));
+  if (!track) return { error: "Formation introuvable" };
+  if (year > track.yearsCount) return { error: `${track.name} ne compte que ${track.yearsCount} année(s)` };
+  const existing = await db.select({ id: userFormations.id }).from(userFormations)
+    .where(and(eq(userFormations.userId, user.id), eq(userFormations.trackId, trackId), eq(userFormations.year, year)));
+  if (existing.length === 0) {
+    await db.insert(userFormations).values({ userId: user.id, trackId, year });
+  }
+  revalidatePath("/profil");
+  return { ok: "Formation ajoutée" };
+}
+
+export async function setPromotion(fd: FormData) {
+  const user = await requireUser();
+  const classRaw = Number(fd.get("classId"));
+  let classId: number | null = null;
+  if (Number.isInteger(classRaw) && classRaw > 0) {
+    const [c] = await db.select({ id: classes.id }).from(classes).where(eq(classes.id, classRaw)).limit(1);
+    if (!c) return;
+    classId = c.id;
+  }
+  await db.update(users).set({ classId }).where(eq(users.id, user.id));
+  revalidatePath("/profil");
+  revalidatePath("/annuaire");
+}
+
+export async function removeUserFormation(fd: FormData) {
+  const user = await requireUser();
+  const id = Number(fd.get("id"));
+  await db.delete(userFormations).where(and(eq(userFormations.id, id), eq(userFormations.userId, user.id)));
+  revalidatePath("/profil");
+}
 
 export async function setStudentStatus(fd: FormData) {
   const user = await requireUser();

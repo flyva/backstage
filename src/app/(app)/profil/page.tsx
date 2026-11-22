@@ -1,12 +1,12 @@
 import { requireUser } from "@/lib/auth";
 import Link from "next/link";
-import { and, asc, eq, ne } from "drizzle-orm";
-import { CircleHelp, Download, LifeBuoy, Shield } from "lucide-react";
+import { and, asc, desc, eq, ne } from "drizzle-orm";
+import { CircleHelp, Contact, Download, GraduationCap, IdCard, KeyRound, LifeBuoy, Shield, UserRound } from "lucide-react";
 import QRCode from "qrcode";
 import { db } from "@/db";
-import { agendaViewers, classes, tracks, userLinks, users } from "@/db/schema";
-import { IcalForm, ProfileForm } from "@/components/forms";
-import { AnnuaireForm, AvatarForm, CardPanel, CardVisibilityForm, CompanyProfileForm, DeleteMyAccountForm, FeedPanel, LinksEditor } from "@/components/people-forms";
+import { agendaViewers, classes, tracks, userFormations, userLinks, users } from "@/db/schema";
+import { ChangePasswordForm, CoordonneesForm, IcalForm, IdentityForm } from "@/components/forms";
+import { AnnuaireForm, AvatarForm, CardPanel, CardVisibilityForm, CompanyProfileForm, DeleteMyAccountForm, FeedPanel, FormationPicker, LinksEditor, PromotionPicker } from "@/components/people-forms";
 import { TimeSettingsForm } from "@/components/time-forms";
 import { RestoSettingsForm } from "@/components/alternance-forms";
 import { SkinControls } from "@/components/shell/SkinControls";
@@ -20,19 +20,23 @@ import { absoluteUrl } from "@/lib/base-url";
 export const metadata = { title: "Profil" };
 
 // Mêmes rubriques que le menu profil de BDE (Profil, Annuaire, Carte de visite, Apparence, Notifications, Agenda),
-// plus Réseaux, Alternance/Stage, Confidentialité et Aide, propres à Backstage. L'onglet se choisit par l'adresse
-// (?onglet=…), sans JavaScript. « short » : libellé court pour les téléphones.
+// plus Réseaux, Alternance/Stage, Confidentialité et Aide, propres à Backstage. Menu vertical repris tel quel de la
+// maquette /maquette (MenuMockup.tsx). L'onglet se choisit par l'adresse (?onglet=…), sans JavaScript.
 const TABS = [
-  { id: "general", label: "Profil", short: "Profil" },
-  { id: "annuaire", label: "Annuaire", short: "Annuaire" },
-  { id: "carte", label: "Carte de visite", short: "Carte" },
-  { id: "apparence", label: "Apparence", short: "Appar." },
-  { id: "notifications", label: "Notifications", short: "Notifs" },
-  { id: "agenda", label: "Agenda", short: "Agenda" },
-  { id: "reseaux", label: "Réseaux", short: "Réseaux" },
-  { id: "alternance", label: "Alternance", short: "Alt." },
-  { id: "confidentialite", label: "Confidentialité", short: "Confid." },
-  { id: "aide", label: "Aide", short: "Aide" },
+  { id: "photo", label: "Ma photo", icon: UserRound },
+  { id: "identite", label: "Identité", icon: IdCard },
+  { id: "coordonnees", label: "Coordonnées", icon: Contact },
+  { id: "mdp", label: "Mot de passe", icon: KeyRound },
+  { id: "promo", label: "Ma promo", icon: GraduationCap },
+  { id: "annuaire", label: "Annuaire" },
+  { id: "carte", label: "Carte de visite" },
+  { id: "apparence", label: "Apparence" },
+  { id: "notifications", label: "Notifications" },
+  { id: "agenda", label: "Agenda" },
+  { id: "reseaux", label: "Réseaux" },
+  { id: "alternance", label: "Alternance" },
+  { id: "confidentialite", label: "Confidentialité" },
+  { id: "aide", label: "Aide" },
 ] as const;
 type TabId = (typeof TABS)[number]["id"];
 
@@ -41,7 +45,7 @@ export default async function ProfilPage({ searchParams }: PageProps<"/profil">)
   if (user.perms.companyOnly) return <CompanyProfilePage user={user} />;
   const sp = await searchParams;
   const welcome = sp.bienvenue;
-  const tab: TabId = TABS.some((t) => t.id === sp.onglet) ? (sp.onglet as TabId) : "general";
+  const tab: TabId = TABS.some((t) => t.id === sp.onglet) ? (sp.onglet as TabId) : "photo";
   const isAlternant = user.studentStatus === "alternant";
 
   const tabs = TABS.map((t) => (t.id === "alternance" ? { ...t, label: isAlternant ? "Alternance" : "Stage" } : t));
@@ -55,41 +59,61 @@ export default async function ProfilPage({ searchParams }: PageProps<"/profil">)
         </div>
       )}
 
-      <nav className="flex flex-wrap gap-x-1 border-b border-line" aria-label="Sections du profil">
-        {tabs.map((t) => (
-          <Link
-            key={t.id}
-            href={t.id === "general" ? "/profil" : `/profil?onglet=${t.id}`}
-            aria-current={t.id === tab ? "page" : undefined}
-            className={`-mb-px border-b-2 px-3 py-2 text-sm ${t.id === tab ? "border-accent font-medium text-fg" : "border-transparent text-muted hover:text-fg"}`}
-          >
-            <span className="sm:hidden">{t.short}</span>
-            <span className="hidden sm:inline">{t.label}</span>
-          </Link>
-        ))}
-      </nav>
+      <div className="flex flex-col gap-5 md:flex-row">
+        <nav className="shrink-0 md:w-56" aria-label="Sections du profil">
+          <ul className="flex gap-1 overflow-x-auto md:flex-col md:overflow-visible">
+            {tabs.map((t) => (
+              <li key={t.id}>
+                <Link
+                  href={`/profil?onglet=${t.id}`}
+                  aria-current={t.id === tab ? "page" : undefined}
+                  className={`flex w-full items-center gap-3 whitespace-nowrap rounded-xl px-3 py-2 text-left text-sm ${t.id === tab ? "bg-accent text-accent-fg" : "text-muted hover:bg-bg hover:text-fg"}`}
+                >
+                  {"icon" in t && t.icon && <t.icon size={16} />}
+                  {t.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
 
-      {tab === "general" && (
-        <div className="grid items-start gap-5 lg:grid-cols-[14rem_1fr]">
-          <div className="card space-y-3">
-            <h2 className="font-semibold">Ma photo</h2>
-            <AvatarForm name={user.name} url={avatarUrl(user.avatarFile)} />
-          </div>
-          <div className="card">
-            <ProfileForm firstName={user.firstName} lastName={user.lastName} homeAddress={user.homeAddress ?? ""} companyName={user.companyName ?? ""} companyAddress={user.companyAddress ?? ""} />
-          </div>
+        <div className="min-w-0 flex-1 space-y-5">
+          {tab === "photo" && (
+            <div className="card max-w-sm space-y-3">
+              <h2 className="font-semibold">Ma photo</h2>
+              <AvatarForm name={user.name} url={avatarUrl(user.avatarFile)} />
+            </div>
+          )}
+          {tab === "identite" && (
+            <div className="card max-w-xl space-y-3">
+              <h2 className="font-semibold">Identité</h2>
+              <IdentityForm firstName={user.firstName} lastName={user.lastName} homeAddress={user.homeAddress ?? ""} companyName={user.companyName ?? ""} companyAddress={user.companyAddress ?? ""} />
+            </div>
+          )}
+          {tab === "coordonnees" && (
+            <div className="card max-w-xl space-y-3">
+              <h2 className="font-semibold">Coordonnées</h2>
+              <CoordonneesForm firstName={user.firstName} lastName={user.lastName} homeAddress={user.homeAddress ?? ""} companyName={user.companyName ?? ""} companyAddress={user.companyAddress ?? ""} />
+            </div>
+          )}
+          {tab === "mdp" && (
+            <div className="card max-w-md space-y-3">
+              <h2 className="font-semibold">Mot de passe</h2>
+              <ChangePasswordForm />
+            </div>
+          )}
+          {tab === "promo" && <PromoTab user={user} />}
+          {tab === "annuaire" && <AnnuaireTab user={user} />}
+          {tab === "carte" && <CarteTab user={user} />}
+          {tab === "apparence" && <ApparenceTab user={user} />}
+          {tab === "notifications" && <NotificationsTab user={user} />}
+          {tab === "agenda" && <AgendaTab user={user} />}
+          {tab === "reseaux" && <NetworksTab userId={user.id} />}
+          {tab === "alternance" && <AlternanceTab user={user} isAlternant={isAlternant} />}
+          {tab === "confidentialite" && <ConfidentialiteTab email={user.email} />}
+          {tab === "aide" && <AideTab />}
         </div>
-      )}
-
-      {tab === "annuaire" && <AnnuaireTab user={user} />}
-      {tab === "carte" && <CarteTab user={user} />}
-      {tab === "apparence" && <ApparenceTab user={user} />}
-      {tab === "notifications" && <NotificationsTab user={user} />}
-      {tab === "agenda" && <AgendaTab user={user} />}
-      {tab === "reseaux" && <NetworksTab userId={user.id} />}
-      {tab === "alternance" && <AlternanceTab user={user} isAlternant={isAlternant} />}
-      {tab === "confidentialite" && <ConfidentialiteTab email={user.email} />}
-      {tab === "aide" && <AideTab />}
+      </div>
     </div>
   );
 }
@@ -143,6 +167,29 @@ async function AnnuaireTab({ user }: { user: User }) {
         classes={allClasses.map((c) => ({ id: c.id, name: c.name }))} classId={user.classId} headline={user.headline ?? ""} phone={user.phone ?? ""}
         contactEmail={user.contactEmail ?? ""} showInDirectory={user.showInDirectory} showPhone={user.showPhone} discord={user.discord ?? ""} showCompany={user.showCompany} companyName={user.companyName ?? ""} loginEmail={user.email} habilitation={user.habilitation ?? ""}
       />
+    </div>
+  );
+}
+
+async function PromoTab({ user }: { user: User }) {
+  const [allTracks, allClasses, mine] = await Promise.all([
+    db.select().from(tracks).orderBy(asc(tracks.sortOrder), asc(tracks.name)),
+    db.select().from(classes).orderBy(asc(classes.sortOrder), asc(classes.name)),
+    db.select({ id: userFormations.id, trackId: userFormations.trackId, year: userFormations.year, createdAt: userFormations.createdAt, trackName: tracks.name, shortName: tracks.shortName })
+      .from(userFormations).innerJoin(tracks, eq(userFormations.trackId, tracks.id))
+      .where(eq(userFormations.userId, user.id)).orderBy(desc(userFormations.createdAt)),
+  ]);
+  return (
+    <div className="space-y-5">
+      <div className="card max-w-2xl space-y-3">
+        <h2 className="font-semibold">Mes formations</h2>
+        <p className="text-sm text-muted">Tu peux avoir suivi plusieurs formations (ex. 1 an en Technicien puis 1ère année en Régisseur) : elles s&apos;ajoutent en tags, sans rien effacer.</p>
+        <FormationPicker tracks={allTracks.map((t) => ({ id: t.id, name: t.name, shortName: t.shortName, yearsCount: t.yearsCount }))} myFormations={mine} />
+      </div>
+      <div className="card max-w-md space-y-3">
+        <h2 className="font-semibold">Ma promo</h2>
+        <PromotionPicker classes={allClasses.map((c) => ({ id: c.id, name: c.name, startYear: c.startYear, endYear: c.endYear }))} classId={user.classId} />
+      </div>
     </div>
   );
 }

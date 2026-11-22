@@ -8,7 +8,7 @@ import { Toggle } from "@/components/Toggle";
 import { LINK_KINDS, type LinkKind } from "@/db/schema";
 import { HABILITATION_SYMBOLS, LINK_LABEL, initialsOf } from "@/lib/people-shared";
 import {
-  addLink, deleteLink, deleteMyAccount, regenerateCardSlug, removeAvatar, saveAnnuaire, saveCardVisibility, saveClass, saveCompanyProfile, saveNetworkContact, saveTrack, setCardEnabled, uploadAvatar,
+  addLink, addUserFormation, deleteLink, deleteMyAccount, regenerateCardSlug, removeAvatar, removeUserFormation, saveAnnuaire, saveCardVisibility, saveClass, saveCompanyProfile, saveNetworkContact, saveTrack, setCardEnabled, setPromotion, uploadAvatar,
   deleteClass, deleteNetworkContact, deleteTrack, setFeedEnabled, regenerateFeedToken,
 } from "@/lib/people-actions";
 
@@ -132,21 +132,10 @@ export function AnnuaireForm(props: {
   const [state, action, pending] = useActionState(saveAnnuaire, undefined);
   return (
     <form action={action} className="space-y-4">
+      {/* trackId/classId : gérés dans l'onglet « Ma promo », reportés ici pour ne pas être effacés par cet envoi. */}
+      <input type="hidden" name="trackId" value={props.trackId ?? ""} />
+      <input type="hidden" name="classId" value={props.classId ?? ""} />
       <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <label className="label" htmlFor="trackId">Filière</label>
-          <select id="trackId" name="trackId" defaultValue={props.trackId ?? ""} className="input">
-            <option value="">Non renseignée</option>
-            {props.tracks.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="label" htmlFor="classId">Classe</label>
-          <select id="classId" name="classId" defaultValue={props.classId ?? ""} className="input">
-            <option value="">Non renseignée</option>
-            {props.classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-        </div>
         <div>
           <label className="label" htmlFor="headline">Présentation courte</label>
           <input id="headline" name="headline" defaultValue={props.headline} maxLength={120} placeholder="Régisseur son · alternant chez…" className="input" />
@@ -457,6 +446,102 @@ export function ClassForm({ cls }: { cls?: { id: number; name: string; sortOrder
         </button>
       )}
       <div className="w-full"><Feedback state={state} /></div>
+    </form>
+  );
+}
+
+// ---------- Ma promo : formations suivies (tags qui s'accumulent) + promotion ----------
+
+type FormationOption = { id: number; name: string; shortName: string | null; yearsCount: number };
+type MyFormation = { id: number; trackId: number; year: number; trackName: string; shortName: string | null; createdAt: Date };
+
+function formationTag(f: { trackName: string; shortName: string | null; year: number }) {
+  return `${f.shortName || f.trackName}${f.year}`;
+}
+
+export function FormationPicker({ tracks, myFormations }: { tracks: FormationOption[]; myFormations: MyFormation[] }) {
+  const [state, action, pending] = useActionState(addUserFormation, undefined);
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const [picked, setPicked] = useState<FormationOption | null>(null);
+  const [year, setYear] = useState(1);
+  const q = query.trim().toLowerCase();
+  const matches = q ? tracks.filter((t) => t.name.toLowerCase().includes(q) || (t.shortName ?? "").toLowerCase().includes(q)).slice(0, 8) : [];
+  const sorted = [...myFormations].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+  return (
+    <div className="space-y-3">
+      {sorted.length > 0 && (
+        <ul className="flex flex-wrap gap-2">
+          {sorted.map((f, i) => (
+            <li key={f.id} className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-sm ${i === 0 ? "bg-accent text-accent-fg" : "border border-line text-muted"}`}>
+              {formationTag(f)}
+              {i === 0 && <span className="text-xs opacity-75">(actuelle)</span>}
+              <form action={removeUserFormation}>
+                <input type="hidden" name="id" value={f.id} />
+                <button type="submit" aria-label={`Retirer ${formationTag(f)}`} className="opacity-70 hover:opacity-100"><Trash2 size={12} /></button>
+              </form>
+            </li>
+          ))}
+        </ul>
+      )}
+      {sorted.length === 0 && <p className="text-sm text-muted">Aucune formation renseignée pour l&apos;instant.</p>}
+
+      <form action={action} className="flex flex-wrap items-end gap-2">
+        <div className="relative min-w-56 flex-1">
+          <label className="label" htmlFor="formation-search">Ajouter une formation</label>
+          <input
+            id="formation-search" autoComplete="off" className="input" placeholder="Nom entier ou diminutif (ex. RT, Régisseur Technique)"
+            value={picked ? `${picked.name}${picked.shortName ? ` (${picked.shortName})` : ""}` : query}
+            onChange={(e) => { setPicked(null); setQuery(e.target.value); setOpen(true); }}
+            onFocus={() => setOpen(true)}
+            onBlur={() => setTimeout(() => setOpen(false), 120)}
+          />
+          {open && matches.length > 0 && !picked && (
+            <ul className="absolute z-10 mt-1 w-full overflow-hidden rounded-xl border border-line bg-surface shadow-lg">
+              {matches.map((t) => (
+                <li key={t.id}>
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-bg"
+                    onClick={() => { setPicked(t); setQuery(""); setOpen(false); setYear(1); }}
+                  >
+                    <span>{t.name}</span>
+                    {t.shortName && <span className="text-xs text-muted">{t.shortName}</span>}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <input type="hidden" name="trackId" value={picked?.id ?? ""} />
+        </div>
+        <div>
+          <label className="label" htmlFor="formation-year">Année</label>
+          <select id="formation-year" name="year" className="input w-28" value={year} onChange={(e) => setYear(Number(e.target.value))} disabled={!picked}>
+            {Array.from({ length: picked?.yearsCount ?? 1 }, (_, i) => i + 1).map((y) => <option key={y} value={y}>{y}{picked && y > picked.yearsCount ? " (indisponible)" : ""}</option>)}
+          </select>
+        </div>
+        <button className="btn" disabled={pending || !picked}>{pending ? "Ajout…" : "Ajouter"}</button>
+      </form>
+      <Feedback state={state} />
+      <p className="text-xs text-muted">La formation la plus récemment ajoutée (en couleur) est celle affichée dans l&apos;annuaire et pour les informations importantes de l&apos;appli.</p>
+    </div>
+  );
+}
+
+export function PromotionPicker({ classes, classId }: { classes: { id: number; name: string; startYear: number | null; endYear: number | null }[]; classId: number | null }) {
+  const label = (c: { name: string; startYear: number | null; endYear: number | null }) =>
+    c.startYear && c.endYear ? `${c.name} ${String(c.startYear).slice(-2)}-${String(c.endYear).slice(-2)}` : c.name;
+  return (
+    <form action={setPromotion} className="flex flex-wrap items-end gap-2">
+      <div className="min-w-56">
+        <label className="label" htmlFor="classId">Ma promo</label>
+        <select id="classId" name="classId" defaultValue={classId ?? ""} className="input">
+          <option value="">Non renseignée</option>
+          {classes.map((c) => <option key={c.id} value={c.id}>{label(c)}</option>)}
+        </select>
+      </div>
+      <button className="btn">Enregistrer</button>
     </form>
   );
 }
