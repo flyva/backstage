@@ -1,16 +1,17 @@
 import { requireUser } from "@/lib/auth";
 import Link from "next/link";
 import { and, asc, desc, eq, ne } from "drizzle-orm";
-import { CircleHelp, Contact, Download, GraduationCap, IdCard, KeyRound, LifeBuoy, Shield, UserRound } from "lucide-react";
+import { Bell, Briefcase, Calendar, CircleHelp, CreditCard, Download, GraduationCap, Headset, Link2, Palette, Shield, Users, UserRound } from "lucide-react";
 import QRCode from "qrcode";
 import { db } from "@/db";
 import { agendaViewers, classes, tracks, userFormations, userLinks, users } from "@/db/schema";
 import { ChangePasswordForm, CoordonneesForm, IcalForm, IdentityForm } from "@/components/forms";
-import { AnnuaireForm, AvatarForm, CardPanel, CardVisibilityForm, CompanyProfileForm, DeleteMyAccountForm, FeedPanel, FormationPicker, LinksEditor, PromotionPicker } from "@/components/people-forms";
+import { AnnuaireForm, Avatar, AvatarForm, CardPanel, CardVisibilityForm, CompanyProfileForm, DeleteMyAccountForm, FeedPanel, FormationPicker, LinksEditor, PromotionPicker } from "@/components/people-forms";
 import { TimeSettingsForm } from "@/components/time-forms";
 import { RestoSettingsForm } from "@/components/alternance-forms";
 import { SkinControls } from "@/components/shell/SkinControls";
 import { NotificationSettings } from "@/components/NotificationSettings";
+import { logout } from "@/lib/actions";
 import { setStudentStatus } from "@/lib/people-actions";
 import { skinFrom } from "@/lib/skin";
 import { pushEnabled, vapidPublicKey } from "@/lib/push";
@@ -19,36 +20,54 @@ import { absoluteUrl } from "@/lib/base-url";
 
 export const metadata = { title: "Profil" };
 
-// Mêmes rubriques que le menu profil de BDE (Profil, Annuaire, Carte de visite, Apparence, Notifications, Agenda),
-// plus Réseaux, Alternance/Stage, Confidentialité et Aide, propres à Backstage. Menu vertical repris tel quel de la
-// maquette /maquette (MenuMockup.tsx). L'onglet se choisit par l'adresse (?onglet=…), sans JavaScript.
-const TABS = [
-  { id: "photo", label: "Ma photo", icon: UserRound },
-  { id: "identite", label: "Identité", icon: IdCard },
-  { id: "coordonnees", label: "Coordonnées", icon: Contact },
-  { id: "mdp", label: "Mot de passe", icon: KeyRound },
-  { id: "promo", label: "Ma promo", icon: GraduationCap },
-  { id: "annuaire", label: "Annuaire" },
-  { id: "carte", label: "Carte de visite" },
-  { id: "apparence", label: "Apparence" },
-  { id: "notifications", label: "Notifications" },
-  { id: "agenda", label: "Agenda" },
-  { id: "reseaux", label: "Réseaux" },
-  { id: "alternance", label: "Alternance" },
-  { id: "confidentialite", label: "Confidentialité" },
-  { id: "aide", label: "Aide" },
-] as const;
-type TabId = (typeof TABS)[number]["id"];
+// Menu vertical repris à l'identique de celui du profil BDE (src/app/(app)/profil/ProfilClient.tsx) : un bloc avatar
+// en haut, des rubriques groupées par titre en petites majuscules, un indicateur de couleur à gauche de l'item actif,
+// la déconnexion tout en bas. Mêmes groupes et mêmes noms que BDE (Profil, Alternance/Stage, Confidentialité, Aide) ;
+// Ma promo s'ajoute dans le groupe Profil (spécifique à Backstage, inexistant côté BDE). L'onglet se choisit par
+// l'adresse (?onglet=…), sans JavaScript.
+function groupsFor(isAlternant: boolean) {
+  return [
+    {
+      title: "Profil",
+      items: [
+        { id: "general", label: "Profil", icon: UserRound },
+        { id: "annuaire", label: "Annuaire", icon: Users },
+        { id: "promo", label: "Ma promo", icon: GraduationCap },
+        { id: "carte", label: "Carte de visite", icon: CreditCard },
+        { id: "apparence", label: "Apparence", icon: Palette },
+        { id: "notifications", label: "Notifications", icon: Bell },
+        { id: "agenda", label: "Agenda", icon: Calendar },
+        { id: "reseaux", label: "Réseaux", icon: Link2 },
+      ],
+    },
+    {
+      title: isAlternant ? "Alternance" : "Stage",
+      items: [{ id: "alternance", label: isAlternant ? "Mon alternance" : "Mon stage", icon: Briefcase }],
+    },
+    {
+      title: "Confidentialité",
+      items: [{ id: "confidentialite", label: "Confidentialité & mes données", icon: Shield }],
+    },
+    {
+      title: "Aide",
+      items: [
+        { id: "aide-support", label: "Support / Tickets", icon: Headset },
+        { id: "aide-faq", label: "FAQ", icon: CircleHelp },
+      ],
+    },
+  ] as const;
+}
+type TabId = ReturnType<typeof groupsFor>[number]["items"][number]["id"];
 
 export default async function ProfilPage({ searchParams }: PageProps<"/profil">) {
   const user = await requireUser();
   if (user.perms.companyOnly) return <CompanyProfilePage user={user} />;
   const sp = await searchParams;
   const welcome = sp.bienvenue;
-  const tab: TabId = TABS.some((t) => t.id === sp.onglet) ? (sp.onglet as TabId) : "photo";
   const isAlternant = user.studentStatus === "alternant";
-
-  const tabs = TABS.map((t) => (t.id === "alternance" ? { ...t, label: isAlternant ? "Alternance" : "Stage" } : t));
+  const groups = groupsFor(isAlternant);
+  const allIds = groups.flatMap((g) => g.items.map((i) => i.id));
+  const tab: TabId = (allIds as readonly string[]).includes(sp.onglet as string) ? (sp.onglet as TabId) : "general";
 
   return (
     <div className="space-y-5">
@@ -60,48 +79,46 @@ export default async function ProfilPage({ searchParams }: PageProps<"/profil">)
       )}
 
       <div className="flex flex-col gap-5 md:flex-row">
-        <nav className="shrink-0 md:w-56" aria-label="Sections du profil">
-          <ul className="flex gap-1 overflow-x-auto md:flex-col md:overflow-visible">
-            {tabs.map((t) => (
-              <li key={t.id}>
-                <Link
-                  href={`/profil?onglet=${t.id}`}
-                  aria-current={t.id === tab ? "page" : undefined}
-                  className={`flex w-full items-center gap-3 whitespace-nowrap rounded-xl px-3 py-2 text-left text-sm ${t.id === tab ? "bg-accent text-accent-fg" : "text-muted hover:bg-bg hover:text-fg"}`}
-                >
-                  {"icon" in t && t.icon && <t.icon size={16} />}
-                  {t.label}
-                </Link>
-              </li>
+        <nav className="card flex shrink-0 flex-col gap-0 p-0 md:w-64" aria-label="Sections du profil">
+          <div className="flex items-center gap-3 border-b border-line p-3">
+            <Avatar name={user.name} url={avatarUrl(user.avatarFile)} size={44} />
+            <div className="min-w-0">
+              <div className="truncate text-sm font-semibold">{user.name}</div>
+              <div className="truncate text-xs text-muted">{user.email}</div>
+            </div>
+          </div>
+          <div className="flex flex-col gap-0.5 overflow-x-auto p-2 md:overflow-visible">
+            {groups.map((g) => (
+              <div key={g.title}>
+                <div className="px-2.5 pb-1 pt-2.5 text-[11px] font-bold uppercase tracking-wide text-muted">{g.title}</div>
+                <ul className="space-y-0.5">
+                  {g.items.map((it) => (
+                    <li key={it.id}>
+                      <Link
+                        href={`/profil?onglet=${it.id}`}
+                        aria-current={it.id === tab ? "page" : undefined}
+                        className={`flex items-center gap-2.5 whitespace-nowrap rounded-r-lg border-l-[3px] px-2.5 py-1.5 text-sm ${
+                          it.id === tab ? "border-accent bg-bg font-bold text-fg" : "border-transparent text-muted hover:bg-bg hover:text-fg"
+                        }`}
+                      >
+                        <it.icon size={16} className={it.id === tab ? "text-accent" : undefined} />
+                        {it.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ))}
-          </ul>
+          </div>
+          <form action={logout} className="mt-auto border-t border-line p-2">
+            <button className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-sm text-danger hover:bg-bg">
+              <LogOutIcon /> Déconnexion
+            </button>
+          </form>
         </nav>
 
         <div className="min-w-0 flex-1 space-y-5">
-          {tab === "photo" && (
-            <div className="card max-w-sm space-y-3">
-              <h2 className="font-semibold">Ma photo</h2>
-              <AvatarForm name={user.name} url={avatarUrl(user.avatarFile)} />
-            </div>
-          )}
-          {tab === "identite" && (
-            <div className="card max-w-xl space-y-3">
-              <h2 className="font-semibold">Identité</h2>
-              <IdentityForm firstName={user.firstName} lastName={user.lastName} homeAddress={user.homeAddress ?? ""} companyName={user.companyName ?? ""} companyAddress={user.companyAddress ?? ""} />
-            </div>
-          )}
-          {tab === "coordonnees" && (
-            <div className="card max-w-xl space-y-3">
-              <h2 className="font-semibold">Coordonnées</h2>
-              <CoordonneesForm firstName={user.firstName} lastName={user.lastName} homeAddress={user.homeAddress ?? ""} companyName={user.companyName ?? ""} companyAddress={user.companyAddress ?? ""} />
-            </div>
-          )}
-          {tab === "mdp" && (
-            <div className="card max-w-md space-y-3">
-              <h2 className="font-semibold">Mot de passe</h2>
-              <ChangePasswordForm />
-            </div>
-          )}
+          {tab === "general" && <GeneralTab user={user} />}
           {tab === "promo" && <PromoTab user={user} />}
           {tab === "annuaire" && <AnnuaireTab user={user} />}
           {tab === "carte" && <CarteTab user={user} />}
@@ -111,9 +128,49 @@ export default async function ProfilPage({ searchParams }: PageProps<"/profil">)
           {tab === "reseaux" && <NetworksTab userId={user.id} />}
           {tab === "alternance" && <AlternanceTab user={user} isAlternant={isAlternant} />}
           {tab === "confidentialite" && <ConfidentialiteTab email={user.email} />}
-          {tab === "aide" && <AideTab />}
+          {tab === "aide-support" && <AideSupportTab />}
+          {tab === "aide-faq" && <AideFaqTab />}
         </div>
       </div>
+    </div>
+  );
+}
+
+function LogOutIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
+    </svg>
+  );
+}
+
+// Bloc visuel « Section » : même présentation que les sous-sections Identité/Coordonnées/Sécurité du profil BDE.
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-3">
+      <h3 className="text-[11px] font-bold uppercase tracking-wide text-muted">{title}</h3>
+      {children}
+    </div>
+  );
+}
+
+function GeneralTab({ user }: { user: User }) {
+  return (
+    <div className="card max-w-xl space-y-6">
+      <Section title="Photo">
+        <AvatarForm name={user.name} url={avatarUrl(user.avatarFile)} />
+      </Section>
+      <Section title="Identité">
+        <IdentityForm firstName={user.firstName} lastName={user.lastName} homeAddress={user.homeAddress ?? ""} companyName={user.companyName ?? ""} companyAddress={user.companyAddress ?? ""} />
+      </Section>
+      <Section title="Coordonnées">
+        <CoordonneesForm firstName={user.firstName} lastName={user.lastName} homeAddress={user.homeAddress ?? ""} companyName={user.companyName ?? ""} companyAddress={user.companyAddress ?? ""} />
+      </Section>
+      <Section title="Sécurité">
+        <ChangePasswordForm />
+      </Section>
     </div>
   );
 }
@@ -334,19 +391,22 @@ function ConfidentialiteTab({ email }: { email: string }) {
   );
 }
 
-function AideTab() {
+function AideSupportTab() {
   return (
-    <div className="max-w-xl space-y-4">
-      <div className="card space-y-2">
-        <h2 className="flex items-center gap-2 font-semibold"><LifeBuoy size={16} className="text-accent" aria-hidden /> Support / Tickets</h2>
-        <p className="text-sm text-muted">Crée un ticket ou consulte l&apos;avancement de tes demandes auprès de l&apos;équipe.</p>
-        <Link href="/tickets" className="btn-ghost w-fit">Voir mes tickets</Link>
-      </div>
-      <div className="card space-y-2">
-        <h2 className="flex items-center gap-2 font-semibold"><CircleHelp size={16} className="text-accent" aria-hidden /> FAQ</h2>
-        <p className="text-sm text-muted">Questions fréquentes sur l&apos;appli et les services de la promo.</p>
-        <Link href="/faq" className="btn-ghost w-fit">Consulter la FAQ</Link>
-      </div>
+    <div className="card max-w-xl space-y-2">
+      <h2 className="flex items-center gap-2 font-semibold"><Headset size={16} className="text-accent" aria-hidden /> Support / Tickets</h2>
+      <p className="text-sm text-muted">Crée un ticket ou consulte l&apos;avancement de tes demandes auprès de l&apos;équipe.</p>
+      <Link href="/tickets" className="btn-ghost w-fit">Voir mes tickets</Link>
+    </div>
+  );
+}
+
+function AideFaqTab() {
+  return (
+    <div className="card max-w-xl space-y-2">
+      <h2 className="flex items-center gap-2 font-semibold"><CircleHelp size={16} className="text-accent" aria-hidden /> FAQ</h2>
+      <p className="text-sm text-muted">Questions fréquentes sur l&apos;appli et les services de la promo.</p>
+      <Link href="/faq" className="btn-ghost w-fit">Consulter la FAQ</Link>
     </div>
   );
 }
