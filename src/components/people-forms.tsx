@@ -8,8 +8,8 @@ import { Toggle } from "@/components/Toggle";
 import { LINK_KINDS, type LinkKind } from "@/db/schema";
 import { HABILITATION_SYMBOLS, LINK_LABEL, initialsOf } from "@/lib/people-shared";
 import {
-  addTrackReferentsBulk, addLink, addUserFormation, deleteLink, deleteMyAccount, regenerateCardSlug, removeAvatar, removeUserFormation, saveAnnuaire, saveCardVisibility, saveClass, saveCompanyProfile, saveDomaine, saveNetworkContact, saveTrack, setCardEnabled, setPromotionByEntryYear, uploadAvatar,
-  deleteClass, deleteDomaine, deleteNetworkContact, deleteTrack, setFeedEnabled, regenerateFeedToken,
+  addTrackReferentsBulk, addLink, addUserFormation, deleteLink, deleteMyAccount, regenerateCardSlug, removeAvatar, removeUserFormation, saveAnnuaire, saveCardVisibility, saveCompanyProfile, saveDomaine, saveNetworkContact, saveTrack, setCardEnabled, setPromotionByEntryYear, uploadAvatar,
+  deleteDomaine, deleteNetworkContact, deleteTrack, setFeedEnabled, regenerateFeedToken,
 } from "@/lib/people-actions";
 
 function Feedback({ state }: { state: FormState }) {
@@ -527,26 +527,8 @@ export function DomaineForm({ domaine }: { domaine?: { id: number; name: string;
   );
 }
 
-// ---------- Promotions (administration) ----------
-
-export function ClassForm({ cls }: { cls?: { id: number; name: string; startYear: number | null; endYear: number | null; sortOrder: number } }) {
-  const [state, action, pending] = useActionState(saveClass, undefined);
-  return (
-    <form action={action} className="flex flex-wrap items-center gap-2">
-      {cls && <input type="hidden" name="id" value={cls.id} />}
-      <input name="startYear" type="number" min={2000} max={2100} required defaultValue={cls?.startYear ?? ""} placeholder="Début (ex. 2026)" className="input w-36" aria-label="Année de début" title="Année de début" />
-      <input name="endYear" type="number" min={2000} max={2100} required defaultValue={cls?.endYear ?? ""} placeholder="Fin (ex. 2029)" className="input w-36" aria-label="Année de fin" title="Année de fin" />
-      {cls && <input name="sortOrder" type="number" min={0} max={999} defaultValue={cls.sortOrder} className="input w-20" aria-label="Ordre d'affichage" title="Ordre d'affichage" />}
-      <button className="btn" disabled={pending}>{cls ? "Enregistrer" : "Ajouter"}</button>
-      {cls && (
-        <button formAction={deleteClass} className="btn-ghost" onClick={(e) => { if (!confirm(`Supprimer la promotion « ${cls.name} » ? Les personnes concernées n'auront plus de promotion.`)) e.preventDefault(); }}>
-          <Trash2 size={15} /> Supprimer
-        </button>
-      )}
-      <div className="w-full"><Feedback state={state} /></div>
-    </form>
-  );
-}
+// Promotions : plus de page d'administration ni de formulaire manuel — la promo se calcule automatiquement
+// depuis l'onglet Ma promo du profil (voir PromotionPicker, année d'entrée + durée de la formation).
 
 // ---------- Ma promo : formations suivies (tags qui s'accumulent) + promotion ----------
 
@@ -627,20 +609,54 @@ export function FormationPicker({ tracks, myFormations }: { tracks: FormationOpt
   );
 }
 
+// Autocomplétion sur une liste fermée (les 5 années précédentes + l'année en cours) : jamais une année future.
+function EntryYearField({ entryYear, disabled }: { entryYear: number | null; disabled: boolean }) {
+  const nowYear = new Date().getFullYear();
+  const years = Array.from({ length: 6 }, (_, i) => nowYear - i); // [nowYear, nowYear-1, …, nowYear-5]
+  const [query, setQuery] = useState(entryYear ? String(entryYear) : "");
+  const [open, setOpen] = useState(false);
+  const [picked, setPicked] = useState<number | null>(entryYear);
+  const q = query.trim();
+  const matches = q ? years.filter((y) => String(y).includes(q)) : years;
+
+  return (
+    <div className="relative w-32">
+      <label className="label" htmlFor="entryYear-search">Année d&apos;entrée dans cette formation</label>
+      <input
+        id="entryYear-search" autoComplete="off" inputMode="numeric" className="input" placeholder={String(nowYear)}
+        value={query}
+        disabled={disabled}
+        onChange={(e) => { setPicked(null); setQuery(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 120)}
+      />
+      {open && matches.length > 0 && (
+        <ul className="absolute z-10 mt-1 w-full overflow-hidden rounded-xl border border-line bg-surface shadow-lg">
+          {matches.map((y) => (
+            <li key={y}>
+              <button type="button" className="block w-full px-3 py-2 text-left text-sm hover:bg-bg" onClick={() => { setPicked(y); setQuery(String(y)); setOpen(false); }}>
+                {y}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <input type="hidden" name="entryYear" value={picked ?? ""} />
+    </div>
+  );
+}
+
 export function PromotionPicker({ currentName, currentYearsCount, entryYear }: { currentName: string | null; currentYearsCount: number | null; entryYear: number | null }) {
   const [state, action, pending] = useActionState(setPromotionByEntryYear, undefined);
   return (
     <form action={action} className="space-y-2">
       <div className="flex flex-wrap items-end gap-2">
-        <div>
-          <label className="label" htmlFor="entryYear">Année d&apos;entrée dans cette formation</label>
-          <input id="entryYear" name="entryYear" type="number" min={2000} max={2100} required defaultValue={entryYear ?? ""} placeholder="2026" className="input w-32" disabled={!currentYearsCount} />
-        </div>
+        <EntryYearField entryYear={entryYear} disabled={!currentYearsCount} />
         <button className="btn" disabled={pending || !currentYearsCount}>{pending ? "…" : "Enregistrer"}</button>
       </div>
       {currentYearsCount ? (
         <p className="text-xs text-muted">
-          {currentName} dure {currentYearsCount} année{currentYearsCount > 1 ? "s" : ""} : la fin se calcule automatiquement (ex. entrée en 2026 → promo 2026-{2026 + currentYearsCount - 1}).
+          {currentName} dure {currentYearsCount} année{currentYearsCount > 1 ? "s" : ""} : la fin se calcule automatiquement (ex. entrée en {new Date().getFullYear()} → promo {new Date().getFullYear()}-{new Date().getFullYear() + currentYearsCount - 1}).
         </p>
       ) : (
         <p className="text-xs text-muted">Ajoute d&apos;abord une formation ci-dessus : la durée de la promo en dépend.</p>

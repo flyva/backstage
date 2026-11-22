@@ -115,7 +115,8 @@ export async function addUserFormation(_: FormState, fd: FormData): Promise<Form
 export async function setPromotionByEntryYear(_: FormState, fd: FormData): Promise<FormState> {
   const user = await requireUser();
   const startYear = Number(fd.get("entryYear"));
-  if (!Number.isInteger(startYear) || startYear < 2000 || startYear > 2100) return { error: "Année d'entrée invalide" };
+  const nowYear = new Date().getFullYear();
+  if (!Number.isInteger(startYear) || startYear < nowYear - 5 || startYear > nowYear) return { error: "Année d'entrée invalide (pas après l'année en cours, pas avant 5 ans)" };
 
   const [current] = await db
     .select({ yearsCount: tracks.yearsCount })
@@ -133,7 +134,6 @@ export async function setPromotionByEntryYear(_: FormState, fd: FormData): Promi
   await db.update(users).set({ classId: cls.id }).where(eq(users.id, user.id));
   revalidatePath("/profil");
   revalidatePath("/annuaire");
-  revalidatePath("/admin/3is/promotions");
   return { ok: `Promo enregistrée : ${startYear}-${endYear}` };
 }
 
@@ -328,40 +328,8 @@ export async function deleteDomaine(fd: FormData) {
 
 // ---------- Promotions (administration) ----------
 
-export async function saveClass(_: FormState, fd: FormData): Promise<FormState> {
-  await requireAdmin();
-  const order = Number(fd.get("sortOrder"));
-  const sortOrder = Number.isInteger(order) ? Math.max(0, Math.min(999, order)) : 0;
-  const startRaw = Number(fd.get("startYear"));
-  const endRaw = Number(fd.get("endYear"));
-  const startYear = Number.isInteger(startRaw) && startRaw >= 2000 && startRaw <= 2100 ? startRaw : null;
-  const endYear = Number.isInteger(endRaw) && endRaw >= 2000 && endRaw <= 2100 ? endRaw : null;
-  if (!startYear || !endYear) return { error: "Année de début et de fin obligatoires" };
-  if (endYear <= startYear) return { error: "L'année de fin doit être après l'année de début" };
-  // Pas de nom libre : uniquement l'année de début et de fin (ex. « 2026-2029 »), affiché « 26-29 » dans le profil.
-  const name = `${startYear}-${endYear}`;
-  const id = Number(fd.get("id"));
-  const [dup] = await db.select({ id: classes.id }).from(classes).where(eq(classes.name, name)).limit(1);
-  if (dup && dup.id !== id) return { error: "Cette promotion existe déjà" };
-  if (Number.isInteger(id) && id > 0) {
-    await db.update(classes).set({ name, startYear, endYear, sortOrder }).where(eq(classes.id, id));
-  } else {
-    const last = await db.select({ o: classes.sortOrder }).from(classes).orderBy(asc(classes.sortOrder));
-    await db.insert(classes).values({ name, startYear, endYear, sortOrder: fd.get("sortOrder") ? sortOrder : (last.at(-1)?.o ?? 0) + 1 });
-  }
-  revalidatePath("/admin/3is/promotions");
-  revalidatePath("/profil");
-  revalidatePath("/annuaire");
-  return { ok: "Promotion enregistrée" };
-}
-
-export async function deleteClass(fd: FormData) {
-  await requireAdmin();
-  await db.delete(classes).where(eq(classes.id, Number(fd.get("id")))); // les personnes concernées n'ont plus de promotion (SET NULL)
-  revalidatePath("/admin/3is/promotions");
-  revalidatePath("/profil");
-  revalidatePath("/annuaire");
-}
+// Promotions : plus de gestion manuelle en administration — créées/retrouvées automatiquement par
+// setPromotionByEntryYear (voir plus haut) depuis l'année d'entrée choisie dans Ma promo du profil.
 
 // ---------- Référents de filière (administration) ----------
 

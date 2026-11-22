@@ -29,7 +29,6 @@ const GROUPS: AdminGroup[] = [
       { href: "/admin/3is/utilisateurs", label: "Utilisateurs", hint: "Annuaire complet, lecture seule, export", icon: <Users size={17} /> },
       { href: "/admin/3is/formations", label: "Formations", hint: "Nom, diminutif, domaine, nombre d'années", icon: <GraduationCap size={17} /> },
       { href: "/admin/3is/domaines", label: "Domaines", hint: "Regroupent les formations", icon: <Network size={17} /> },
-      { href: "/admin/3is/promotions", label: "Promotions", hint: "Année de début/fin", icon: <Sparkles size={17} /> },
       { href: "/admin/3is/referents", label: "Référents", hint: "Qui suit quelle(s) filière(s)", icon: <UsersRound size={17} /> },
     ],
   },
