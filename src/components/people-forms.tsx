@@ -670,26 +670,62 @@ export function PromotionPicker({ currentName, currentYearsCount, entryYear }: {
 
 export function ReferentAssignForm({ users, tracks }: { users: { id: number; name: string }[]; tracks: { id: number; name: string }[] }) {
   const [state, action, pending] = useActionState(addTrackReferentsBulk, undefined);
+  const [userId, setUserId] = useState("");
+  const [picked, setPicked] = useState<{ id: number; name: string }[]>([]);
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const q = query.trim().toLowerCase();
+  const pickedIds = new Set(picked.map((p) => p.id));
+  const matches = tracks.filter((t) => !pickedIds.has(t.id) && (!q || t.name.toLowerCase().includes(q))).slice(0, 8);
+
   return (
     <form action={action} className="space-y-3">
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label className="label" htmlFor="ref-user">Personne</label>
-          <select id="ref-user" name="userId" required className="input" defaultValue="">
+          <select id="ref-user" name="userId" required className="input" value={userId} onChange={(e) => setUserId(e.target.value)}>
             <option value="" disabled>Choisir…</option>
             {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
           </select>
         </div>
-        <div>
+        <div className="relative">
           <label className="label" htmlFor="ref-tracks">Formations suivies</label>
-          <select id="ref-tracks" name="trackIds" multiple size={Math.min(6, Math.max(3, tracks.length))} required className="input">
-            {tracks.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-          </select>
-          <p className="mt-1 text-xs text-muted">Ctrl/cmd + clic pour en choisir plusieurs. On ne précise pas d&apos;année : un référent suit toujours « sa » filière.</p>
+          {picked.length > 0 && (
+            <ul className="mb-1.5 flex flex-wrap gap-1.5">
+              {picked.map((p) => (
+                <li key={p.id} className="flex items-center gap-1 rounded-full bg-accent/15 px-2.5 py-0.5 text-xs">
+                  {p.name}
+                  <input type="hidden" name="trackIds" value={p.id} />
+                  <button type="button" aria-label={`Retirer ${p.name}`} className="text-muted hover:text-danger" onClick={() => setPicked(picked.filter((x) => x.id !== p.id))}>
+                    <Trash2 size={11} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <input
+            id="ref-tracks" autoComplete="off" className="input" placeholder="Rechercher une formation…"
+            value={query}
+            onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+            onFocus={() => setOpen(true)}
+            onBlur={() => setTimeout(() => setOpen(false), 120)}
+          />
+          {open && matches.length > 0 && (
+            <ul className="absolute z-10 mt-1 w-full overflow-hidden rounded-xl border border-line bg-surface shadow-lg">
+              {matches.map((t) => (
+                <li key={t.id}>
+                  <button type="button" className="block w-full px-3 py-2 text-left text-sm hover:bg-bg" onClick={() => { setPicked([...picked, t]); setQuery(""); setOpen(false); }}>
+                    {t.name}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="mt-1 text-xs text-muted">On ne précise pas d&apos;année : un référent suit toujours « sa » filière.</p>
         </div>
       </div>
       <Feedback state={state} />
-      <button className="btn" disabled={pending}>{pending ? "Enregistrement…" : "Ajouter comme référent"}</button>
+      <button className="btn" disabled={pending || picked.length === 0}>{pending ? "Enregistrement…" : "Ajouter comme référent"}</button>
     </form>
   );
 }
