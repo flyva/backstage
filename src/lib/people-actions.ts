@@ -7,7 +7,7 @@ import { unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { and, asc, count, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { LINK_KINDS, classes, networkContacts, roles, tracks, userFormations, userLinks, users, type LinkKind } from "@/db/schema";
+import { LINK_KINDS, classes, domaines, networkContacts, roles, trackReferents, tracks, userFormations, userLinks, users, type LinkKind } from "@/db/schema";
 import { destroySession, requireAdmin, requireUser } from "@/lib/auth";
 import { AVATAR_NAME, MAX_AVATAR_BYTES, avatarDir, ensureAvatarDir, newAvatarName, sniffAvatar } from "@/lib/avatar-files";
 import { HABILITATION_SYMBOLS, PHONE_RE, normalizeDiscord, normalizeUrl } from "@/lib/people-shared";
@@ -254,32 +254,66 @@ export async function saveTrack(_: FormState, fd: FormData): Promise<FormState> 
   await requireAdmin();
   const name = text(fd, "name", 80);
   if (!name) return { error: "Le nom est obligatoire" };
+  const shortName = text(fd, "shortName", 20);
   const order = Number(fd.get("sortOrder"));
   const sortOrder = Number.isInteger(order) ? Math.max(0, Math.min(999, order)) : 0;
+  const domaineRaw = Number(fd.get("domaineId"));
+  const domaineId = Number.isInteger(domaineRaw) && domaineRaw > 0 ? domaineRaw : null;
+  const yearsRaw = Number(fd.get("yearsCount"));
+  const yearsCount = Number.isInteger(yearsRaw) && yearsRaw >= 1 && yearsRaw <= 10 ? yearsRaw : 1;
   const id = Number(fd.get("id"));
   const [dup] = await db.select({ id: tracks.id }).from(tracks).where(eq(tracks.name, name)).limit(1);
-  if (dup && dup.id !== id) return { error: "Une filière porte déjà ce nom" };
+  if (dup && dup.id !== id) return { error: "Une formation porte déjà ce nom" };
   if (Number.isInteger(id) && id > 0) {
-    await db.update(tracks).set({ name, sortOrder }).where(eq(tracks.id, id));
+    await db.update(tracks).set({ name, shortName: shortName || null, domaineId, yearsCount, sortOrder }).where(eq(tracks.id, id));
   } else {
     const last = await db.select({ o: tracks.sortOrder }).from(tracks).orderBy(asc(tracks.sortOrder));
-    await db.insert(tracks).values({ name, sortOrder: fd.get("sortOrder") ? sortOrder : (last.at(-1)?.o ?? 0) + 1 });
+    await db.insert(tracks).values({ name, shortName: shortName || null, domaineId, yearsCount, sortOrder: fd.get("sortOrder") ? sortOrder : (last.at(-1)?.o ?? 0) + 1 });
   }
-  revalidatePath("/admin/filieres");
+  revalidatePath("/admin/3is/formations");
   revalidatePath("/profil");
   revalidatePath("/annuaire");
-  return { ok: "Filière enregistrée" };
+  return { ok: "Formation enregistrée" };
 }
 
 export async function deleteTrack(fd: FormData) {
   await requireAdmin();
-  await db.delete(tracks).where(eq(tracks.id, Number(fd.get("id")))); // les personnes concernées n'ont plus de filière (SET NULL)
-  revalidatePath("/admin/filieres");
+  await db.delete(tracks).where(eq(tracks.id, Number(fd.get("id")))); // les personnes concernées n'ont plus de formation (SET NULL)
+  revalidatePath("/admin/3is/formations");
   revalidatePath("/profil");
   revalidatePath("/annuaire");
 }
 
-// ---------- Classes de promo (administration) ----------
+// ---------- Domaines (administration) ----------
+
+export async function saveDomaine(_: FormState, fd: FormData): Promise<FormState> {
+  await requireAdmin();
+  const name = text(fd, "name", 80);
+  if (!name) return { error: "Le nom est obligatoire" };
+  const order = Number(fd.get("sortOrder"));
+  const sortOrder = Number.isInteger(order) ? Math.max(0, Math.min(999, order)) : 0;
+  const id = Number(fd.get("id"));
+  const [dup] = await db.select({ id: domaines.id }).from(domaines).where(eq(domaines.name, name)).limit(1);
+  if (dup && dup.id !== id) return { error: "Un domaine porte déjà ce nom" };
+  if (Number.isInteger(id) && id > 0) {
+    await db.update(domaines).set({ name, sortOrder }).where(eq(domaines.id, id));
+  } else {
+    const last = await db.select({ o: domaines.sortOrder }).from(domaines).orderBy(asc(domaines.sortOrder));
+    await db.insert(domaines).values({ name, sortOrder: fd.get("sortOrder") ? sortOrder : (last.at(-1)?.o ?? 0) + 1 });
+  }
+  revalidatePath("/admin/3is/domaines");
+  revalidatePath("/admin/3is/formations");
+  return { ok: "Domaine enregistré" };
+}
+
+export async function deleteDomaine(fd: FormData) {
+  await requireAdmin();
+  await db.delete(domaines).where(eq(domaines.id, Number(fd.get("id")))); // les formations concernées n'ont plus de domaine (SET NULL)
+  revalidatePath("/admin/3is/domaines");
+  revalidatePath("/admin/3is/formations");
+}
+
+// ---------- Promotions (administration) ----------
 
 export async function saveClass(_: FormState, fd: FormData): Promise<FormState> {
   await requireAdmin();
@@ -287,27 +321,64 @@ export async function saveClass(_: FormState, fd: FormData): Promise<FormState> 
   if (!name) return { error: "Le nom est obligatoire" };
   const order = Number(fd.get("sortOrder"));
   const sortOrder = Number.isInteger(order) ? Math.max(0, Math.min(999, order)) : 0;
+  const startRaw = Number(fd.get("startYear"));
+  const endRaw = Number(fd.get("endYear"));
+  const startYear = Number.isInteger(startRaw) && startRaw >= 2000 && startRaw <= 2100 ? startRaw : null;
+  const endYear = Number.isInteger(endRaw) && endRaw >= 2000 && endRaw <= 2100 ? endRaw : null;
   const id = Number(fd.get("id"));
   const [dup] = await db.select({ id: classes.id }).from(classes).where(eq(classes.name, name)).limit(1);
-  if (dup && dup.id !== id) return { error: "Une classe porte déjà ce nom" };
+  if (dup && dup.id !== id) return { error: "Une promotion porte déjà ce nom" };
   if (Number.isInteger(id) && id > 0) {
-    await db.update(classes).set({ name, sortOrder }).where(eq(classes.id, id));
+    await db.update(classes).set({ name, startYear, endYear, sortOrder }).where(eq(classes.id, id));
   } else {
     const last = await db.select({ o: classes.sortOrder }).from(classes).orderBy(asc(classes.sortOrder));
-    await db.insert(classes).values({ name, sortOrder: fd.get("sortOrder") ? sortOrder : (last.at(-1)?.o ?? 0) + 1 });
+    await db.insert(classes).values({ name, startYear, endYear, sortOrder: fd.get("sortOrder") ? sortOrder : (last.at(-1)?.o ?? 0) + 1 });
   }
-  revalidatePath("/admin/filieres");
+  revalidatePath("/admin/3is/promotions");
   revalidatePath("/profil");
   revalidatePath("/annuaire");
-  return { ok: "Classe enregistrée" };
+  return { ok: "Promotion enregistrée" };
 }
 
 export async function deleteClass(fd: FormData) {
   await requireAdmin();
-  await db.delete(classes).where(eq(classes.id, Number(fd.get("id")))); // les personnes concernées n'ont plus de classe (SET NULL)
-  revalidatePath("/admin/filieres");
+  await db.delete(classes).where(eq(classes.id, Number(fd.get("id")))); // les personnes concernées n'ont plus de promotion (SET NULL)
+  revalidatePath("/admin/3is/promotions");
   revalidatePath("/profil");
   revalidatePath("/annuaire");
+}
+
+// ---------- Référents de filière (administration) ----------
+
+export async function addTrackReferent(fd: FormData) {
+  await requireAdmin();
+  const userId = Number(fd.get("userId"));
+  const trackId = Number(fd.get("trackId"));
+  if (!userId || !trackId) return;
+  const [existing] = await db.select().from(trackReferents).where(and(eq(trackReferents.userId, userId), eq(trackReferents.trackId, trackId)));
+  if (!existing) await db.insert(trackReferents).values({ userId, trackId });
+  revalidatePath("/admin/3is/referents");
+}
+
+export async function addTrackReferentsBulk(_: FormState, fd: FormData): Promise<FormState> {
+  await requireAdmin();
+  const userId = Number(fd.get("userId"));
+  const trackIds = fd.getAll("trackIds").map(Number).filter((n) => Number.isInteger(n) && n > 0);
+  if (!userId || trackIds.length === 0) return { error: "Choisis une personne et au moins une formation" };
+  const existing = await db.select().from(trackReferents).where(eq(trackReferents.userId, userId));
+  const have = new Set(existing.map((e) => e.trackId));
+  const toAdd = trackIds.filter((id) => !have.has(id));
+  if (toAdd.length > 0) await db.insert(trackReferents).values(toAdd.map((trackId) => ({ userId, trackId })));
+  revalidatePath("/admin/3is/referents");
+  return { ok: "Référent enregistré" };
+}
+
+export async function removeTrackReferent(fd: FormData) {
+  await requireAdmin();
+  const userId = Number(fd.get("userId"));
+  const trackId = Number(fd.get("trackId"));
+  await db.delete(trackReferents).where(and(eq(trackReferents.userId, userId), eq(trackReferents.trackId, trackId)));
+  revalidatePath("/admin/3is/referents");
 }
 
 // ---------- Abonnement calendrier (iCal) ----------

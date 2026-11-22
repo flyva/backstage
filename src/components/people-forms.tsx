@@ -8,8 +8,8 @@ import { Toggle } from "@/components/Toggle";
 import { LINK_KINDS, type LinkKind } from "@/db/schema";
 import { HABILITATION_SYMBOLS, LINK_LABEL, initialsOf } from "@/lib/people-shared";
 import {
-  addLink, addUserFormation, deleteLink, deleteMyAccount, regenerateCardSlug, removeAvatar, removeUserFormation, saveAnnuaire, saveCardVisibility, saveClass, saveCompanyProfile, saveNetworkContact, saveTrack, setCardEnabled, setPromotion, uploadAvatar,
-  deleteClass, deleteNetworkContact, deleteTrack, setFeedEnabled, regenerateFeedToken,
+  addTrackReferentsBulk, addLink, addUserFormation, deleteLink, deleteMyAccount, regenerateCardSlug, removeAvatar, removeUserFormation, saveAnnuaire, saveCardVisibility, saveClass, saveCompanyProfile, saveDomaine, saveNetworkContact, saveTrack, setCardEnabled, setPromotion, uploadAvatar,
+  deleteClass, deleteDomaine, deleteNetworkContact, deleteTrack, setFeedEnabled, regenerateFeedToken,
 } from "@/lib/people-actions";
 
 function Feedback({ state }: { state: FormState }) {
@@ -386,16 +386,22 @@ export function NetworkBook({ contacts }: { contacts: NetContact[] }) {
 
 // ---------- Filières (administration) ----------
 
-export function TrackForm({ track }: { track?: { id: number; name: string; sortOrder: number } }) {
+export function TrackForm({ track, domaines }: { track?: { id: number; name: string; shortName: string | null; domaineId: number | null; yearsCount: number; sortOrder: number }; domaines: { id: number; name: string }[] }) {
   const [state, action, pending] = useActionState(saveTrack, undefined);
   return (
     <form action={action} className="flex flex-wrap items-center gap-2">
       {track && <input type="hidden" name="id" value={track.id} />}
-      <input name="name" required maxLength={80} defaultValue={track?.name} placeholder="Nom de la filière" className="input min-w-56 flex-1" aria-label="Nom de la filière" />
+      <input name="name" required maxLength={80} defaultValue={track?.name} placeholder="Nom de formation entière" className="input min-w-48 flex-1" aria-label="Nom de formation entière" />
+      <input name="shortName" maxLength={20} defaultValue={track?.shortName ?? ""} placeholder="Diminutif (ex. RT)" className="input w-36" aria-label="Diminutif" />
+      <select name="domaineId" defaultValue={track?.domaineId ?? ""} className="input w-44" aria-label="Domaine">
+        <option value="">Sans domaine</option>
+        {domaines.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+      </select>
+      <input name="yearsCount" type="number" min={1} max={10} defaultValue={track?.yearsCount ?? 1} className="input w-20" aria-label="Nombre d'années" title="Nombre d'années" />
       {track && <input name="sortOrder" type="number" min={0} max={999} defaultValue={track.sortOrder} className="input w-20" aria-label="Ordre d'affichage" title="Ordre d'affichage" />}
       <button className="btn" disabled={pending}>{track ? "Enregistrer" : "Ajouter"}</button>
       {track && (
-        <button formAction={deleteTrack} className="btn-ghost" onClick={(e) => { if (!confirm(`Supprimer la filière « ${track.name} » ? Les personnes concernées n'auront plus de filière.`)) e.preventDefault(); }}>
+        <button formAction={deleteTrack} className="btn-ghost" onClick={(e) => { if (!confirm(`Supprimer la formation « ${track.name} » ? Les personnes concernées n'auront plus cette formation.`)) e.preventDefault(); }}>
           <Trash2 size={15} /> Supprimer
         </button>
       )}
@@ -424,18 +430,40 @@ export function DeleteMyAccountForm({ email }: { email: string }) {
   );
 }
 
-// ---------- Classes de promo (administration) ----------
+// ---------- Domaines (administration) ----------
 
-export function ClassForm({ cls }: { cls?: { id: number; name: string; sortOrder: number } }) {
+export function DomaineForm({ domaine }: { domaine?: { id: number; name: string; sortOrder: number } }) {
+  const [state, action, pending] = useActionState(saveDomaine, undefined);
+  return (
+    <form action={action} className="flex flex-wrap items-center gap-2">
+      {domaine && <input type="hidden" name="id" value={domaine.id} />}
+      <input name="name" required maxLength={80} defaultValue={domaine?.name} placeholder="Nom du domaine" className="input min-w-56 flex-1" aria-label="Nom du domaine" />
+      {domaine && <input name="sortOrder" type="number" min={0} max={999} defaultValue={domaine.sortOrder} className="input w-20" aria-label="Ordre d'affichage" title="Ordre d'affichage" />}
+      <button className="btn" disabled={pending}>{domaine ? "Enregistrer" : "Ajouter"}</button>
+      {domaine && (
+        <button formAction={deleteDomaine} className="btn-ghost" onClick={(e) => { if (!confirm(`Supprimer le domaine « ${domaine.name} » ? Les formations concernées n'auront plus de domaine.`)) e.preventDefault(); }}>
+          <Trash2 size={15} /> Supprimer
+        </button>
+      )}
+      <div className="w-full"><Feedback state={state} /></div>
+    </form>
+  );
+}
+
+// ---------- Promotions (administration) ----------
+
+export function ClassForm({ cls }: { cls?: { id: number; name: string; startYear: number | null; endYear: number | null; sortOrder: number } }) {
   const [state, action, pending] = useActionState(saveClass, undefined);
   return (
     <form action={action} className="flex flex-wrap items-center gap-2">
       {cls && <input type="hidden" name="id" value={cls.id} />}
-      <input name="name" required maxLength={80} defaultValue={cls?.name} placeholder="Nom de la classe" className="input min-w-56 flex-1" aria-label="Nom de la classe" />
+      <input name="name" required maxLength={80} defaultValue={cls?.name} placeholder="Nom de la promotion" className="input min-w-48 flex-1" aria-label="Nom de la promotion" />
+      <input name="startYear" type="number" min={2000} max={2100} defaultValue={cls?.startYear ?? ""} placeholder="Début" className="input w-24" aria-label="Année de début" title="Année de début" />
+      <input name="endYear" type="number" min={2000} max={2100} defaultValue={cls?.endYear ?? ""} placeholder="Fin" className="input w-24" aria-label="Année de fin" title="Année de fin" />
       {cls && <input name="sortOrder" type="number" min={0} max={999} defaultValue={cls.sortOrder} className="input w-20" aria-label="Ordre d'affichage" title="Ordre d'affichage" />}
       <button className="btn" disabled={pending}>{cls ? "Enregistrer" : "Ajouter"}</button>
       {cls && (
-        <button formAction={deleteClass} className="btn-ghost" onClick={(e) => { if (!confirm(`Supprimer la classe « ${cls.name} » ? Les personnes concernées n'auront plus de classe.`)) e.preventDefault(); }}>
+        <button formAction={deleteClass} className="btn-ghost" onClick={(e) => { if (!confirm(`Supprimer la promotion « ${cls.name} » ? Les personnes concernées n'auront plus de promotion.`)) e.preventDefault(); }}>
           <Trash2 size={15} /> Supprimer
         </button>
       )}
@@ -536,6 +564,34 @@ export function PromotionPicker({ classes, classId }: { classes: { id: number; n
         </select>
       </div>
       <button className="btn">Enregistrer</button>
+    </form>
+  );
+}
+
+// ---------- Référents de filière (administration) ----------
+
+export function ReferentAssignForm({ users, tracks }: { users: { id: number; name: string }[]; tracks: { id: number; name: string }[] }) {
+  const [state, action, pending] = useActionState(addTrackReferentsBulk, undefined);
+  return (
+    <form action={action} className="space-y-3">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label className="label" htmlFor="ref-user">Personne</label>
+          <select id="ref-user" name="userId" required className="input" defaultValue="">
+            <option value="" disabled>Choisir…</option>
+            {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="label" htmlFor="ref-tracks">Formations suivies</label>
+          <select id="ref-tracks" name="trackIds" multiple size={Math.min(6, Math.max(3, tracks.length))} required className="input">
+            {tracks.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+          </select>
+          <p className="mt-1 text-xs text-muted">Ctrl/cmd + clic pour en choisir plusieurs. On ne précise pas d&apos;année : un référent suit toujours « sa » filière.</p>
+        </div>
+      </div>
+      <Feedback state={state} />
+      <button className="btn" disabled={pending}>{pending ? "Enregistrement…" : "Ajouter comme référent"}</button>
     </form>
   );
 }
