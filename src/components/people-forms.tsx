@@ -457,9 +457,8 @@ export function ClassForm({ cls }: { cls?: { id: number; name: string; startYear
   return (
     <form action={action} className="flex flex-wrap items-center gap-2">
       {cls && <input type="hidden" name="id" value={cls.id} />}
-      <input name="name" required maxLength={80} defaultValue={cls?.name} placeholder="Nom de la promotion" className="input min-w-48 flex-1" aria-label="Nom de la promotion" />
-      <input name="startYear" type="number" min={2000} max={2100} defaultValue={cls?.startYear ?? ""} placeholder="Début" className="input w-24" aria-label="Année de début" title="Année de début" />
-      <input name="endYear" type="number" min={2000} max={2100} defaultValue={cls?.endYear ?? ""} placeholder="Fin" className="input w-24" aria-label="Année de fin" title="Année de fin" />
+      <input name="startYear" type="number" min={2000} max={2100} required defaultValue={cls?.startYear ?? ""} placeholder="Début (ex. 2026)" className="input w-36" aria-label="Année de début" title="Année de début" />
+      <input name="endYear" type="number" min={2000} max={2100} required defaultValue={cls?.endYear ?? ""} placeholder="Fin (ex. 2029)" className="input w-36" aria-label="Année de fin" title="Année de fin" />
       {cls && <input name="sortOrder" type="number" min={0} max={999} defaultValue={cls.sortOrder} className="input w-20" aria-label="Ordre d'affichage" title="Ordre d'affichage" />}
       <button className="btn" disabled={pending}>{cls ? "Enregistrer" : "Ajouter"}</button>
       {cls && (
@@ -553,7 +552,7 @@ export function FormationPicker({ tracks, myFormations }: { tracks: FormationOpt
 
 export function PromotionPicker({ classes, classId }: { classes: { id: number; name: string; startYear: number | null; endYear: number | null }[]; classId: number | null }) {
   const label = (c: { name: string; startYear: number | null; endYear: number | null }) =>
-    c.startYear && c.endYear ? `${c.name} ${String(c.startYear).slice(-2)}-${String(c.endYear).slice(-2)}` : c.name;
+    c.startYear && c.endYear ? `${String(c.startYear).slice(-2)}-${String(c.endYear).slice(-2)}` : c.name;
   return (
     <form action={setPromotion} className="flex flex-wrap items-end gap-2">
       <div className="min-w-56">
