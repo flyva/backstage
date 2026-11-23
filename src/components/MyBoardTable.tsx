@@ -44,7 +44,7 @@ export function MyBoardTable({ board, statuses }: { board: BoardRow[]; statuses:
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher (nom, ville, secteur)…" className="input max-w-xs flex-1" />
-        <Link href="/recherche-entreprises/annuaire" className="btn-ghost text-sm"><Plus size={15} /> Ajouter depuis l&apos;annuaire</Link>
+        <Link href="/recherche-entreprises/annuaire" className="btn-ghost text-sm"><Plus size={15} /> Ajouter</Link>
       </div>
 
       {selected.size > 0 && (
