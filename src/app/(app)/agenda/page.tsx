@@ -8,6 +8,7 @@ import { requireUser } from "@/lib/auth";
 import { refreshAgenda } from "@/lib/actions";
 import { WeekGrid } from "@/components/WeekGrid";
 import { courseEvents } from "@/lib/courses";
+import { interviewEvents } from "@/lib/company-search-actions";
 import { resolveTimeSubject, tutees } from "@/lib/time-access";
 import { dayKey, eventGroupTag, rangeOfWeek, weekDays, type AgendaEvent } from "@/lib/ical";
 
@@ -57,12 +58,14 @@ export default async function AgendaPage({ searchParams }: PageProps<"/agenda">)
 
   let events: AgendaEvent[] = [];
   let error: string | null = null;
+  const { from, to } = rangeOfWeek(days);
   try {
-    const { from, to } = rangeOfWeek(days);
     events = await courseEvents({ id: subject.userId, icalUrl: subjectIcal }, from, to);
   } catch (e) {
     error = e instanceof Error ? e.message : "erreur inconnue";
   }
+  // Entretiens de la recherche d'alternance/stage : ajoutés directement à l'agenda, à côté des cours.
+  events = [...events, ...(await interviewEvents(subject.userId, from, to))];
   const byDay = Map.groupBy(events, (e) => dayKey(e.start));
   // Planning de l'alternance (école / entreprise / congé / férié) : affiché même sans lien iCal.
   const kinds = new Map((await db.select({ day: workDays.day, kind: workDays.kind }).from(workDays).where(and(eq(workDays.userId, subject.userId), inArray(workDays.day, days.map((d) => d.key))))).map((r) => [r.day, r.kind]));

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { and, eq, inArray, like, or } from "drizzle-orm";
 import { db } from "@/db";
-import { altCompanies, altCompanySearches, companyContacts, companyInterviews, companyStatuses, CONTACT_TYPES } from "@/db/schema";
+import { altCompanies, altCompanySearches, companyContacts, companyInterviews, companyStatuses, CONTACT_TYPES, INTERVIEW_MODES } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { companyKey, parseCsv, parseDelay, parseFrDate, parseKind, parsePriority, parseStatus, parseTypes, type CompanyMatch } from "@/lib/company-search";
 import type { FormState } from "@/lib/actions";
@@ -209,6 +209,40 @@ export async function importCompaniesCsv(_: FormState, fd: FormData): Promise<Fo
 }
 
 /** Vérifie que la ligne de suivi `searchId` appartient bien à l'utilisateur connecté, et la renvoie. */
+/**
+ * Entretiens d'une personne (recherche d'alternance/stage) dans une période, au même format que les autres
+ * évènements de l'agenda (src/lib/ical.ts > AgendaEvent) : voir src/app/(app)/agenda/page.tsx, qui les fusionne avec
+ * les cours. Présentiel → lieu = adresse de l'entreprise ; visio → lieu = « Visio », lien en description.
+ */
+export async function interviewEvents(userId: number, from: Date, to: Date) {
+  const rows = await db
+    .select({
+      id: companyInterviews.id, interviewDate: companyInterviews.interviewDate, interviewTime: companyInterviews.interviewTime,
+      mode: companyInterviews.mode, visioUrl: companyInterviews.visioUrl, note: companyInterviews.note,
+      companyName: altCompanies.name, companyAddress: altCompanies.address,
+    })
+    .from(companyInterviews)
+    .innerJoin(altCompanySearches, eq(altCompanySearches.id, companyInterviews.searchId))
+    .innerJoin(altCompanies, eq(altCompanies.id, altCompanySearches.companyId))
+    .where(eq(altCompanySearches.userId, userId));
+
+  return rows
+    .map((r) => {
+      const [h, m] = r.interviewTime.split(":").map(Number);
+      const start = new Date(`${r.interviewDate}T00:00:00`);
+      start.setHours(h, m, 0, 0);
+      const end = new Date(start.getTime() + 60 * 60 * 1000);
+      return {
+        id: `interview-${r.id}`,
+        title: `Entretien — ${r.companyName}`,
+        start, end, allDay: false,
+        location: r.mode === "visio" ? "Visio" : r.companyAddress || "Présentiel",
+        description: [r.mode === "visio" && r.visioUrl ? r.visioUrl : null, r.note || null].filter(Boolean).join(" — "),
+      };
+    })
+    .filter((e) => e.start >= from && e.start < to);
+}
+
 async function myVerifiedSearch(searchId: number, userId: number) {
   const [row] = await db.select({ id: altCompanySearches.id }).from(altCompanySearches)
     .where(and(eq(altCompanySearches.id, searchId), eq(altCompanySearches.userId, userId))).limit(1);
@@ -255,14 +289,20 @@ export async function addInterview(_: FormState, fd: FormData): Promise<FormStat
   const user = await requireUser();
   const searchId = Number(fd.get("searchId"));
   const interviewDate = String(fd.get("interviewDate") ?? "").trim();
+  const interviewTime = String(fd.get("interviewTime") ?? "").trim();
+  const modeRaw = String(fd.get("mode") ?? "");
+  const mode = (INTERVIEW_MODES as readonly string[]).includes(modeRaw) ? (modeRaw as (typeof INTERVIEW_MODES)[number]) : "presentiel";
+  const visioUrl = String(fd.get("visioUrl") ?? "").trim().slice(0, 500);
   const note = String(fd.get("note") ?? "").trim().slice(0, 255);
   if (!searchId || !/^\d{4}-\d{2}-\d{2}$/.test(interviewDate)) return { error: "Date invalide" };
+  if (!/^\d{2}:\d{2}$/.test(interviewTime)) return { error: "Heure invalide" };
+  if (mode === "visio" && !visioUrl) return { error: "URL de la visio obligatoire pour un entretien en visio" };
   if (!(await myVerifiedSearch(searchId, user.id))) return { error: "Introuvable" };
 
-  await db.insert(companyInterviews).values({ searchId, interviewDate, note });
+  await db.insert(companyInterviews).values({ searchId, interviewDate, interviewTime, mode, visioUrl: mode === "visio" ? visioUrl : null, note });
   refresh();
   refreshDetail(searchId);
-  return { ok: "Entretien ajouté" };
+  return { ok: "Entretien ajouté : il apparaît aussi dans ton agenda" };
 }
 
 /** Supprime un entretien (seulement le mien). */

@@ -78,8 +78,11 @@ const fmtDate = (d: string) => dateFmt.format(new Date(`${d}T12:00:00`));
 
 type Interview = InferSelectModel<typeof companyInterviews>;
 
+const MODE_LABEL = { visio: "Visio", presentiel: "Présentiel" } as const;
+
 export function InterviewList({ searchId, interviews }: { searchId: number; interviews: Interview[] }) {
   const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState<"visio" | "presentiel">("presentiel");
   const [state, action, pending] = useActionState(addInterview, undefined);
   return (
     <div className="space-y-3">
@@ -88,7 +91,11 @@ export function InterviewList({ searchId, interviews }: { searchId: number; inte
         <ul className="space-y-1.5 text-sm">
           {interviews.map((it) => (
             <li key={it.id} className="flex items-center justify-between gap-2 rounded-lg border border-line px-2.5 py-1.5">
-              <span>{fmtDate(it.interviewDate)}{it.note ? ` — ${it.note}` : ""}</span>
+              <span>
+                {fmtDate(it.interviewDate)} à {it.interviewTime} — {MODE_LABEL[it.mode]}
+                {it.mode === "visio" && it.visioUrl && <> (<a href={it.visioUrl} target="_blank" rel="noopener noreferrer" className="text-accent underline">lien</a>)</>}
+                {it.note ? ` — ${it.note}` : ""}
+              </span>
               <form action={deleteInterview}>
                 <input type="hidden" name="id" value={it.id} />
                 <input type="hidden" name="searchId" value={searchId} />
@@ -105,8 +112,17 @@ export function InterviewList({ searchId, interviews }: { searchId: number; inte
           <input type="hidden" name="searchId" value={searchId} />
           <div className="flex gap-2">
             <input name="interviewDate" type="date" required className="input flex-1" />
-            <input name="note" placeholder="Note (facultatif)" maxLength={255} className="input flex-[2]" />
+            <input name="interviewTime" type="time" required defaultValue="09:00" className="input flex-1" />
           </div>
+          <div className="flex gap-2">
+            <select name="mode" value={mode} onChange={(e) => setMode(e.target.value as "visio" | "presentiel")} className="input flex-1">
+              <option value="presentiel">Présentiel</option>
+              <option value="visio">Visio</option>
+            </select>
+            {mode === "visio" && <input name="visioUrl" type="url" required placeholder="URL de la visio" className="input flex-[2]" />}
+          </div>
+          <input name="note" placeholder="Note (facultatif)" maxLength={255} className="input w-full" />
+          <p className="text-xs text-muted">S&apos;ajoute automatiquement à ton agenda.</p>
           <div className="flex items-center gap-2">
             <button className="btn text-sm" disabled={pending}>{pending ? "…" : "Ajouter"}</button>
             <button type="button" onClick={() => setOpen(false)} className="btn-ghost text-sm">Annuler</button>

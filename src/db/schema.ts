@@ -1608,13 +1608,21 @@ export const companyContacts = mysqlTable(
   (t) => [index("company_contacts_search_idx").on(t.searchId)],
 );
 
+export const INTERVIEW_MODES = ["visio", "presentiel"] as const;
+export type InterviewMode = (typeof INTERVIEW_MODES)[number];
+
 // Entretiens pour UN suivi de candidature : plusieurs possibles (un bouton "+ ajouter un entretien" dans l'app).
+// Date + heure (et pas juste une date) et mode visio/présentiel (avec lien si visio) : l'entretien s'ajoute
+// automatiquement à l'agenda de la personne, à côté de ses cours (voir src/lib/company-search.ts > interviewEvents).
 export const companyInterviews = mysqlTable(
   "company_interviews",
   {
     id: int("id").primaryKey().autoincrement(),
     searchId: int("search_id").notNull().references(() => altCompanySearches.id, { onDelete: "cascade" }),
     interviewDate: date("interview_date", { mode: "string" }).notNull(),
+    interviewTime: varchar("interview_time", { length: 5 }).notNull().default("09:00"), // "HH:MM"
+    mode: mysqlEnum("mode", INTERVIEW_MODES).notNull().default("presentiel"),
+    visioUrl: varchar("visio_url", { length: 500 }), // renseigné seulement si mode = visio
     note: varchar("note", { length: 255 }).notNull().default(""),
     createdAt: datetime("created_at").notNull().$defaultFn(() => new Date()),
   },
