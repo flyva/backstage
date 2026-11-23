@@ -49,6 +49,7 @@ const GROUPS: AdminGroup[] = [
     title: "Entreprises",
     cards: [
       { href: "/admin/statuts-entreprises", label: "Statuts entreprises", hint: "Suivi des candidatures", icon: <Building2 size={17} /> },
+      { href: "/admin/demarchage", label: "Démarchage entreprise", hint: "Import annuaire, ressources, banque de mails", icon: <FileSpreadsheet size={17} /> },
     ],
   },
   {

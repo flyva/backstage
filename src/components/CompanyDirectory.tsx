@@ -1,9 +1,9 @@
 "use client";
 
 import { useActionState, useMemo, useRef, useState } from "react";
-import { CheckSquare, FileUp, Mail, MapPin, Phone, Plus, Search, Trash2, X } from "lucide-react";
+import { CheckSquare, Mail, MapPin, Phone, Plus, Search, Trash2, X } from "lucide-react";
 import type { FormState } from "@/lib/actions";
-import { bulkAddToBoard, createCompany, deleteCompany, importCompaniesCsv, removeFromBoard, searchCompaniesByQuery } from "@/lib/company-search-actions";
+import { bulkAddToBoard, createCompany, deleteCompany, removeFromBoard, searchCompaniesByQuery } from "@/lib/company-search-actions";
 import { TYPE_LABEL, TYPE_ORDER, type CompanyMatch } from "@/lib/company-search";
 import { TypeBadges } from "@/components/TypeBadges";
 import { ConfirmButton } from "@/components/ConfirmButton";
@@ -22,11 +22,8 @@ function Feedback({ state }: { state: FormState }) {
 
 export function CompanyDirectory({ directory }: { directory: DirectoryRow[] }) {
   const [q, setQ] = useState("");
-  const [showImport, setShowImport] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
   const addFormRef = useRef<HTMLFormElement>(null);
-  const [importState, importAction, importPending] = useActionState(importCompaniesCsv, undefined);
   const [addState, addAction, addPending] = useActionState(createCompany, undefined);
 
   const [lookup, setLookup] = useState("");
@@ -78,7 +75,6 @@ export function CompanyDirectory({ directory }: { directory: DirectoryRow[] }) {
       <div className="flex flex-wrap items-center gap-2">
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher (nom, ville, secteur)…" className="input max-w-xs flex-1" />
         <button type="button" onClick={() => setShowAdd((v) => !v)} className="btn-ghost text-sm"><Plus size={15} /> Ajouter une entreprise</button>
-        <button type="button" onClick={() => setShowImport((v) => !v)} className="btn-ghost text-sm"><FileUp size={15} /> Importer un CSV</button>
       </div>
 
       {selected.size > 0 && (
@@ -88,20 +84,6 @@ export function CompanyDirectory({ directory }: { directory: DirectoryRow[] }) {
           <button type="button" onClick={() => setSelected(new Set())} className="btn-ghost text-xs">Annuler</button>
           <button type="button" onClick={addSelected} disabled={adding} className="btn text-sm">{adding ? "Ajout…" : "Ajouter au tableau"}</button>
         </div>
-      )}
-
-      {showImport && (
-        <form action={importAction} className="card space-y-2">
-          <p className="text-sm font-medium">Importer un CSV (colonnes du tableur de recherche d&apos;alternance)</p>
-          <p className="text-xs text-muted">
-            Les entreprises rejoignent l&apos;annuaire partagé (sans doublon par nom + ville) ; le statut, la priorité et le reste du suivi vont dans <strong>ton</strong> tableau uniquement.
-          </p>
-          <input ref={fileRef} name="file" type="file" accept=".csv,text/csv" required className="input" />
-          <div className="flex items-center gap-3">
-            <button className="btn" disabled={importPending}>{importPending ? "Import…" : "Importer"}</button>
-            <Feedback state={importState} />
-          </div>
-        </form>
       )}
 
       {showAdd && (
