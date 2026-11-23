@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, CheckSquare, Globe, Info, Mail, Phone, Plus, Trash2 } from "lucide-react";
-import { publishCompanies, removeFromBoard, saveSearchField } from "@/lib/company-search-actions";
+import { publishCompanies, removeFromBoard } from "@/lib/company-search-actions";
 import { type CompanyKind, type CompanyPriority } from "@/lib/company-search";
 import { STATUS_BADGE_CLASS, STATUS_ROW_CLASS, type CompanyStatusDef } from "@/lib/company-status";
 import { ConfirmButton } from "@/components/ConfirmButton";
@@ -16,43 +16,6 @@ export type BoardRow = {
   lastContactDate: string | null; nextInterviewDate: string | null; interviewCount: number; delayDays: number | null; note: string;
   published: boolean; canPublish: boolean; overdue: boolean;
 };
-
-/** Cellule éditable : un <select> ou <input> qui s'auto-soumet au changement (une ligne de suivi = un formulaire par champ). */
-function EditCell({ searchId, field, value, type, options }: {
-  searchId: number; field: string; value: string; type: "select" | "date" | "number"; options?: { value: string; label: string }[];
-}) {
-  return (
-    <form action={saveSearchField}>
-      <input type="hidden" name="id" value={searchId} />
-      <input type="hidden" name="field" value={field} />
-      {type === "select" ? (
-        <select name="value" defaultValue={value} onChange={(e) => e.currentTarget.form?.requestSubmit()} className="input py-1 text-xs">
-          <option value="">—</option>
-          {options!.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
-      ) : (
-        <input
-          name="value" type={type} defaultValue={value}
-          onChange={(e) => e.currentTarget.form?.requestSubmit()}
-          className="input w-full py-1 text-xs"
-        />
-      )}
-    </form>
-  );
-}
-
-function NoteCell({ searchId, value }: { searchId: number; value: string }) {
-  const [v, setV] = useState(value);
-  const dirty = v !== value;
-  return (
-    <form action={saveSearchField} className="flex items-center gap-1">
-      <input type="hidden" name="id" value={searchId} />
-      <input type="hidden" name="field" value="note" />
-      <input name="value" value={v} onChange={(e) => setV(e.target.value)} placeholder="Observation…" className="input w-40 py-1 text-xs" />
-      {dirty && <button type="submit" className="btn-ghost shrink-0 px-1.5 py-1 text-xs">OK</button>}
-    </form>
-  );
-}
 
 export function MyBoardTable({ board, statuses }: { board: BoardRow[]; statuses: CompanyStatusDef[] }) {
   const statusByKey = new Map(statuses.map((s) => [s.key, s]));
@@ -101,7 +64,19 @@ export function MyBoardTable({ board, statuses }: { board: BoardRow[]; statuses:
             ) : "Aucun résultat."}
           </p>
         ) : (
-          <table className="w-full min-w-[1100px] text-sm">
+          <table className="w-full min-w-[1000px] text-sm">
+            <colgroup>
+              <col className="w-[16%]" />
+              <col className="w-[12%]" />
+              <col className="w-[14%]" />
+              <col className="w-[18%]" />
+              <col className="w-[10%]" />
+              <col className="w-[10%]" />
+              <col className="w-[12%]" />
+              <col className="w-[8%]" />
+              <col />
+              <col />
+            </colgroup>
             <thead>
               <tr className="border-b border-line text-left text-xs text-muted">
                 <th className="p-2 font-medium">Entreprise</th>
@@ -119,7 +94,7 @@ export function MyBoardTable({ board, statuses }: { board: BoardRow[]; statuses:
             <tbody>
               {filtered.map((r) => {
                 const statusDef = r.status ? statusByKey.get(r.status) : undefined;
-                const rowClass = r.overdue ? "border-l-4 border-danger bg-danger/10" : statusDef ? STATUS_ROW_CLASS[statusDef.color] : "";
+                const rowClass = r.overdue ? "bg-danger/20" : statusDef ? STATUS_ROW_CLASS[statusDef.color] : "";
                 return (
                 <tr key={r.searchId} className={`border-b border-line last:border-0 align-top ${rowClass}`}>
                   <td className="p-2">
@@ -132,22 +107,25 @@ export function MyBoardTable({ board, statuses }: { board: BoardRow[]; statuses:
                     <TypeBadges types={r.types} />
                   </td>
                   <td className="p-2 text-xs">
-                    {r.contactName && <p>{r.contactName}</p>}
-                    {r.phone && <a href={`tel:${r.phone.replace(/[^\d+]/g, "")}`} className="flex items-center gap-1 text-muted underline hover:text-accent"><Phone size={11} /> {r.phone}</a>}
-                    {r.email && <a href={`mailto:${r.email.split(";")[0]}`} className="flex items-center gap-1 truncate text-muted underline hover:text-accent" title={r.email}><Mail size={11} /> {r.email}</a>}
+                    {r.contactName && <p className="truncate">{r.contactName}</p>}
+                    {r.phone && <a href={`tel:${r.phone.replace(/[^\d+]/g, "")}`} className="flex items-center gap-1 truncate text-muted underline hover:text-accent"><Phone size={11} className="shrink-0" /> {r.phone}</a>}
+                    {r.email && <a href={`mailto:${r.email.split(";")[0]}`} className="flex items-center gap-1 truncate text-muted underline hover:text-accent" title={r.email}><Mail size={11} className="shrink-0" /> {r.email}</a>}
                   </td>
                   <td className="p-2">
-                    <EditCell searchId={r.searchId} field="status" value={r.status ?? ""} type="select" options={statuses.map((s) => ({ value: s.key, label: s.label }))} />
-                    {statusDef && <span className={`mt-1 block w-fit rounded-full px-1.5 py-0.5 text-[10px] ${STATUS_BADGE_CLASS[statusDef.color]}`}>{statusDef.label}</span>}
+                    {statusDef ? (
+                      <span className={`inline-block w-fit rounded-full px-2 py-1 text-xs font-medium ${STATUS_BADGE_CLASS[statusDef.color]}`}>{statusDef.label}</span>
+                    ) : (
+                      <span className="text-xs text-muted">—</span>
+                    )}
                   </td>
-                  <td className="p-2"><EditCell searchId={r.searchId} field="lastContactDate" value={r.lastContactDate ?? ""} type="date" /></td>
+                  <td className="p-2 text-xs">{r.lastContactDate ? new Date(`${r.lastContactDate}T12:00:00`).toLocaleDateString("fr-FR") : "—"}</td>
                   <td className="p-2 text-xs">
                     <Link href={`/recherche-entreprises/suivi/${r.searchId}`} className="text-accent underline">
                       {r.interviewCount === 0 ? "Aucun" : `${r.interviewCount} · ${r.nextInterviewDate ? new Date(`${r.nextInterviewDate}T12:00:00`).toLocaleDateString("fr-FR") : ""}`}
                     </Link>
                     {r.overdue && <p className="mt-0.5 text-[10px] text-danger">Relance dépassée</p>}
                   </td>
-                  <td className="p-2"><NoteCell searchId={r.searchId} value={r.note} /></td>
+                  <td className="p-2 text-xs text-muted"><p className="line-clamp-2">{r.note || "—"}</p></td>
                   <td className="p-2">
                     {r.published ? (
                       <span className="text-xs text-muted">Publiée</span>
@@ -165,7 +143,7 @@ export function MyBoardTable({ board, statuses }: { board: BoardRow[]; statuses:
                     )}
                   </td>
                   <td className="p-2">
-                    <Link href={`/recherche-entreprises/suivi/${r.searchId}`} className="rounded-lg p-1.5 text-muted hover:bg-bg hover:text-accent" title="Détails (priorité, type d'offre, délais, entretiens, historique de contact)">
+                    <Link href={`/recherche-entreprises/suivi/${r.searchId}`} className="rounded-lg p-1.5 text-muted hover:bg-bg hover:text-accent" title="Modifier (statut, priorité, type d'offre, délais, observation, entretiens, historique de contact)">
                       <Info size={14} aria-label="Détails" />
                     </Link>
                   </td>

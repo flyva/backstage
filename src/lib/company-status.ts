@@ -32,20 +32,22 @@ export const STATUS_BADGE_CLASS: Record<StatusColor, string> = {
   violet: "bg-violet-500/20 text-violet-800 dark:text-violet-200",
   pink: "bg-pink-500/20 text-pink-800 dark:text-pink-200",
 };
+// Teinte toute la ligne du tableau (pas juste un liseré) : opacité plus marquée que STATUS_BADGE_CLASS pour rester
+// lisible sur une grande surface.
 export const STATUS_ROW_CLASS: Record<StatusColor, string> = {
-  zinc: "border-l-4 border-zinc-500 bg-zinc-500/5",
-  slate: "border-l-4 border-slate-500 bg-slate-500/5",
-  red: "border-l-4 border-red-500 bg-red-500/5",
-  rose: "border-l-4 border-rose-500 bg-rose-500/5",
-  orange: "border-l-4 border-orange-500 bg-orange-500/5",
-  amber: "border-l-4 border-amber-500 bg-amber-500/5",
-  emerald: "border-l-4 border-emerald-500 bg-emerald-500/5",
-  teal: "border-l-4 border-teal-500 bg-teal-500/5",
-  sky: "border-l-4 border-sky-500 bg-sky-500/5",
-  blue: "border-l-4 border-blue-500 bg-blue-500/5",
-  indigo: "border-l-4 border-indigo-500 bg-indigo-500/5",
-  violet: "border-l-4 border-violet-500 bg-violet-500/5",
-  pink: "border-l-4 border-pink-500 bg-pink-500/5",
+  zinc: "bg-zinc-500/20",
+  slate: "bg-slate-500/20",
+  red: "bg-red-500/20",
+  rose: "bg-rose-500/20",
+  orange: "bg-orange-500/20",
+  amber: "bg-amber-500/20",
+  emerald: "bg-emerald-500/20",
+  teal: "bg-teal-500/20",
+  sky: "bg-sky-500/20",
+  blue: "bg-blue-500/20",
+  indigo: "bg-indigo-500/20",
+  violet: "bg-violet-500/20",
+  pink: "bg-pink-500/20",
 };
 
 /** Normalise un libellé en clé stable (ex. "À contacter" → "a_contacter"). */
