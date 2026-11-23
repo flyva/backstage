@@ -100,7 +100,7 @@ export function MyBoardTable({ board, statuses }: { board: BoardRow[]; statuses:
                 const statusDef = r.status ? statusByKey.get(r.status) : undefined;
                 const rowClass = r.overdue ? "bg-danger/20" : statusDef ? STATUS_ROW_CLASS[statusDef.color] : "";
                 return (
-                <tr key={r.searchId} className={`align-top ${rowClass}`}>
+                <tr key={r.searchId} className={`align-top transition-[filter] hover:brightness-95 dark:hover:brightness-125 ${rowClass}`}>
                   <td className={`${CELL} border-l-0`}>
                     <p className="font-medium">{r.name}</p>
                     <p className="text-xs text-muted">{r.city}</p>
