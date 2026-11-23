@@ -25,18 +25,10 @@ export const GROUPS: Group[] = [
       { href: "/alternance/carnet", label: "Journal de bord", icon: NotebookPen },
       { href: "/alternance/pointeuse", label: "Suivi d'activité", icon: Clock },
       { href: "/alternance/notes-de-frais", label: "Notes de frais", icon: Receipt },
-    ],
-  },
-  {
-    id: "travail", title: "Travail",
-    items: [
-      { href: "/projets", label: "Projets", icon: Briefcase },
-      { href: "/kanban", label: "Mon kanban", icon: SquareKanban },
-      { href: "/reseau", label: "Carnet de réseau", icon: Contact },
       {
-        label: "Recherche entreprises", icon: Building2, module: "rechercheEntreprises",
+        label: "Démarchage entreprise", icon: Building2, module: "rechercheEntreprises",
         children: [
-          { href: "/recherche-entreprises", label: "Mon tableau", icon: ClipboardList },
+          { href: "/recherche-entreprises", label: "Statut Tableau", icon: ClipboardList },
           { href: "/recherche-entreprises/annuaire", label: "Annuaire", icon: Building2, variant: "button" },
           { href: "/recherche-entreprises/outils", label: "Outils & IA", icon: Wrench },
           { href: "/recherche-entreprises/sites-ressources", label: "Sites ressources", icon: Globe },
@@ -46,6 +38,14 @@ export const GROUPS: Group[] = [
           { href: "/faq", label: "FAQ", icon: CircleHelp, variant: "button" },
         ],
       },
+    ],
+  },
+  {
+    id: "travail", title: "Travail",
+    items: [
+      { href: "/projets", label: "Projets", icon: Briefcase },
+      { href: "/kanban", label: "Mon kanban", icon: SquareKanban },
+      { href: "/reseau", label: "Carnet de réseau", icon: Contact },
       { href: "/calculettes", label: "Calculettes", icon: Calculator },
       {
         label: "Cours", icon: NotebookPen,

@@ -31,7 +31,7 @@ export default async function CompanySearchDetailPage({ params }: PageProps<"/re
 
   return (
     <div className="max-w-lg space-y-5">
-      <p className="text-sm"><Link href="/recherche-entreprises" className="inline-flex items-center gap-1 text-muted hover:text-fg"><ArrowLeft size={14} /> Mon tableau</Link></p>
+      <p className="text-sm"><Link href="/recherche-entreprises" className="inline-flex items-center gap-1 text-muted hover:text-fg"><ArrowLeft size={14} /> Statut Tableau</Link></p>
       <header>
         <h1 className="text-2xl font-bold">{company.name}</h1>
         <p className="text-sm text-muted">{company.city}{company.sector ? ` · ${company.sector}` : ""}</p>
@@ -48,9 +48,17 @@ export default async function CompanySearchDetailPage({ params }: PageProps<"/re
         <div className="card space-y-1 text-sm">
           <h2 className="font-semibold">Coordonnées</h2>
           {company.contactName && <p>{company.contactTitle ? `${company.contactTitle} — ` : ""}{company.contactName}</p>}
-          {company.phone && <p className="text-muted">{company.phone}</p>}
-          {company.email && <p className="text-muted">{company.email}</p>}
+          {company.phone && <a href={`tel:${company.phone.replace(/[^\d+]/g, "")}`} className="block text-muted underline hover:text-accent">{company.phone}</a>}
+          {company.email && <a href={`mailto:${company.email.split(";")[0]}`} className="block text-muted underline hover:text-accent">{company.email}</a>}
           {company.address && <p className="text-muted">{company.address}</p>}
+          {company.address && (
+            <iframe
+              title={`Carte : ${company.address}`}
+              src={`https://maps.google.com/maps?q=${encodeURIComponent(company.address)}&output=embed`}
+              className="mt-2 h-48 w-full rounded-lg border border-line"
+              loading="lazy"
+            />
+          )}
         </div>
       )}
 

@@ -8,7 +8,7 @@ import { addDays } from "@/lib/alternance";
 import { todayParis } from "@/lib/equipment";
 import { MyBoardTable, type BoardRow } from "@/components/MyBoardTable";
 
-export const metadata = { title: "Mon tableau · Recherche entreprises" };
+export const metadata = { title: "Statut Tableau · Démarchage entreprise" };
 
 export default async function MyBoardPage() {
   const user = await requireUser();
@@ -49,7 +49,7 @@ export default async function MyBoardPage() {
   return (
     <div className="space-y-5">
       <header>
-        <h1 className="flex items-center gap-2 text-2xl font-bold"><ClipboardList size={22} className="text-accent" /> Mon tableau</h1>
+        <h1 className="flex items-center gap-2 text-2xl font-bold"><ClipboardList size={22} className="text-accent" /> Statut Tableau</h1>
         <p className="text-sm text-muted">
           Ton suivi de candidatures (statut, priorité, relances…), rien que pour toi. Ajoute des entreprises depuis l&apos;<Link href="/recherche-entreprises/annuaire" className="text-accent underline">annuaire</Link>.
         </p>
