@@ -9,6 +9,10 @@ import { STATUS_BADGE_CLASS, STATUS_ROW_CLASS, type CompanyStatusDef } from "@/l
 import { ConfirmButton } from "@/components/ConfirmButton";
 import { TypeBadges } from "@/components/TypeBadges";
 
+// Bordure par cellule (ligne ET colonne) plutôt qu'un simple border-b sur la ligne : reste visible même quand deux
+// lignes de suite ont la même couleur de statut (border-line/line ne ressort pas assez sur un fond déjà teinté).
+const CELL = "border border-line/70 p-2";
+
 export type BoardRow = {
   searchId: number; companyId: number; name: string; city: string; sector: string; types: string; address: string;
   contactName: string; phone: string; email: string;
@@ -64,7 +68,7 @@ export function MyBoardTable({ board, statuses }: { board: BoardRow[]; statuses:
             ) : "Aucun résultat."}
           </p>
         ) : (
-          <table className="w-full min-w-[1000px] text-sm">
+          <table className="w-full min-w-[1000px] border-collapse text-sm">
             <colgroup>
               <col className="w-[16%]" />
               <col className="w-[12%]" />
@@ -78,17 +82,17 @@ export function MyBoardTable({ board, statuses }: { board: BoardRow[]; statuses:
               <col />
             </colgroup>
             <thead>
-              <tr className="border-b border-line text-left text-xs text-muted">
-                <th className="p-2 font-medium">Entreprise</th>
-                <th className="p-2 font-medium">Domaine</th>
-                <th className="p-2 font-medium">Contact</th>
-                <th className="p-2 font-medium">Statut</th>
-                <th className="p-2 font-medium">Dernier contact</th>
-                <th className="p-2 font-medium">Entretien</th>
-                <th className="p-2 font-medium">Observation</th>
-                <th className="p-2 font-medium">Annuaire</th>
-                <th className="p-2"></th>
-                <th className="p-2"></th>
+              <tr className="text-left text-xs text-muted">
+                <th className={`${CELL} border-l-0 border-t-0 font-medium`}>Entreprise</th>
+                <th className={`${CELL} border-t-0 font-medium`}>Domaine</th>
+                <th className={`${CELL} border-t-0 font-medium`}>Contact</th>
+                <th className={`${CELL} border-t-0 font-medium`}>Statut</th>
+                <th className={`${CELL} border-t-0 font-medium`}>Dernier contact</th>
+                <th className={`${CELL} border-t-0 font-medium`}>Entretien</th>
+                <th className={`${CELL} border-t-0 font-medium`}>Observation</th>
+                <th className={`${CELL} border-t-0 font-medium`}>Annuaire</th>
+                <th className={`${CELL} border-t-0`}></th>
+                <th className={`${CELL} border-r-0 border-t-0`}></th>
               </tr>
             </thead>
             <tbody>
@@ -96,37 +100,37 @@ export function MyBoardTable({ board, statuses }: { board: BoardRow[]; statuses:
                 const statusDef = r.status ? statusByKey.get(r.status) : undefined;
                 const rowClass = r.overdue ? "bg-danger/20" : statusDef ? STATUS_ROW_CLASS[statusDef.color] : "";
                 return (
-                <tr key={r.searchId} className={`border-b border-line last:border-0 align-top ${rowClass}`}>
-                  <td className="p-2">
+                <tr key={r.searchId} className={`align-top ${rowClass}`}>
+                  <td className={`${CELL} border-l-0`}>
                     <p className="font-medium">{r.name}</p>
                     <p className="text-xs text-muted">{r.city}</p>
                     {r.overdue && <p className="flex items-center gap-1 text-xs font-medium text-danger"><AlertTriangle size={12} /> En retard</p>}
                   </td>
-                  <td className="p-2">
+                  <td className={CELL}>
                     <p className="text-xs">{r.sector}</p>
                     <TypeBadges types={r.types} />
                   </td>
-                  <td className="p-2 text-xs">
+                  <td className={`${CELL} text-xs`}>
                     {r.contactName && <p className="truncate">{r.contactName}</p>}
                     {r.phone && <a href={`tel:${r.phone.replace(/[^\d+]/g, "")}`} className="flex items-center gap-1 truncate text-muted underline hover:text-accent"><Phone size={11} className="shrink-0" /> {r.phone}</a>}
                     {r.email && <a href={`mailto:${r.email.split(";")[0]}`} className="flex items-center gap-1 truncate text-muted underline hover:text-accent" title={r.email}><Mail size={11} className="shrink-0" /> {r.email}</a>}
                   </td>
-                  <td className="p-2">
+                  <td className={CELL}>
                     {statusDef ? (
                       <span className={`inline-block w-fit rounded-full px-2 py-1 text-xs font-medium ${STATUS_BADGE_CLASS[statusDef.color]}`}>{statusDef.label}</span>
                     ) : (
                       <span className="text-xs text-muted">—</span>
                     )}
                   </td>
-                  <td className="p-2 text-xs">{r.lastContactDate ? new Date(`${r.lastContactDate}T12:00:00`).toLocaleDateString("fr-FR") : "—"}</td>
-                  <td className="p-2 text-xs">
+                  <td className={`${CELL} text-xs`}>{r.lastContactDate ? new Date(`${r.lastContactDate}T12:00:00`).toLocaleDateString("fr-FR") : "—"}</td>
+                  <td className={`${CELL} text-xs`}>
                     <Link href={`/recherche-entreprises/suivi/${r.searchId}`} className="text-accent underline">
                       {r.interviewCount === 0 ? "Aucun" : `${r.interviewCount} · ${r.nextInterviewDate ? new Date(`${r.nextInterviewDate}T12:00:00`).toLocaleDateString("fr-FR") : ""}`}
                     </Link>
                     {r.overdue && <p className="mt-0.5 text-[10px] text-danger">Relance dépassée</p>}
                   </td>
-                  <td className="p-2 text-xs text-muted"><p className="line-clamp-2">{r.note || "—"}</p></td>
-                  <td className="p-2">
+                  <td className={`${CELL} text-xs text-muted`}><p className="line-clamp-2">{r.note || "—"}</p></td>
+                  <td className={CELL}>
                     {r.published ? (
                       <span className="text-xs text-muted">Publiée</span>
                     ) : r.canPublish ? (
@@ -142,12 +146,12 @@ export function MyBoardTable({ board, statuses }: { board: BoardRow[]; statuses:
                       <span className="text-xs text-muted">Pas encore publiée</span>
                     )}
                   </td>
-                  <td className="p-2">
+                  <td className={CELL}>
                     <Link href={`/recherche-entreprises/suivi/${r.searchId}`} className="rounded-lg p-1.5 text-muted hover:bg-bg hover:text-accent" title="Modifier (statut, priorité, type d'offre, délais, observation, entretiens, historique de contact)">
                       <Info size={14} aria-label="Détails" />
                     </Link>
                   </td>
-                  <td className="p-2">
+                  <td className={`${CELL} border-r-0`}>
                     <form action={removeFromBoard}>
                       <input type="hidden" name="companyId" value={r.companyId} />
                       <ConfirmButton message="Retirer cette entreprise de ton tableau ?" className="rounded-lg p-1.5 text-muted hover:bg-bg hover:text-danger">
